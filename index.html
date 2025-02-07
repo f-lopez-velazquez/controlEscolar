@@ -167,14 +167,25 @@
       .btn, .cred-btn { padding: 6px 10px; font-size: 0.8em; }
     }
   </style>
-  <!-- Incluir Firebase (v9 compat) -->
+  <!-- Incluir Firebase (v9 compat) y dependencias -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body>
+  <!-- Modal General (para editar rúbrica, materia, alumnos, equipos, etc.) -->
+  <div id="modalOverlay" class="modal">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <div id="modalBody"></div>
+    </div>
+  </div>
+
   <!-- Modal de Login -->
   <div id="loginModal" class="modal">
     <div class="modal-content">
+      <span class="close">&times;</span>
       <h2>Iniciar Sesión</h2>
       <label>Usuario (correo):</label>
       <input type="text" id="loginUser" placeholder="ej. admin@ejemplo.com">
@@ -273,26 +284,27 @@
     <footer>Pagina creada y diseñada por Francisco López Velázquez</footer>
   </div>
   
-  <!-- Modal General -->
-  <div id="modalOverlay" class="modal">
-    <div class="modal-content">
-      <span class="close">&times;</span>
-      <div id="modalBody"></div>
-    </div>
-  </div>
-  
-  <!-- ===== SCRIPTS ===== -->
-  <!-- Firebase (v9 compat) -->
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-  <!-- jsPDF y autoTable -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
-  
   <script>
-    /***********************
-     * DEFINICIÓN DE MATERIAS, ALUMNOS Y EQUIPOS
-     ***********************/
+    /* -----------------------------
+       FUNCIONES DE MODAL (Abrir y Cerrar)
+    ------------------------------ */
+    function attachModalClose() {
+      document.querySelectorAll(".modal .close").forEach(el => {
+        el.addEventListener("click", () => {
+          el.parentElement.parentElement.style.display = "none";
+        });
+      });
+      window.addEventListener("click", (e) => {
+        if(e.target.classList.contains("modal")) {
+          e.target.style.display = "none";
+        }
+      });
+    }
+    attachModalClose();
+    
+    /* -----------------------------
+       DEFINICIÓN DE DATOS: materias, alumnos y equipos
+    ------------------------------ */
     const subjectsConfig = {
       circuitos: {
         name: "Circuitos Eléctricos",
@@ -357,9 +369,9 @@
       ]
     };
     
-    /***********************
-     * INICIALIZAR FIREBASE
-     ***********************/
+    /* -----------------------------
+       INICIALIZAR FIREBASE
+    ------------------------------ */
     const firebaseConfig = {
       apiKey: "AIzaSyDsoLZHDpR8EEyvs5tJ7gF1tE7eKS-ZGcU",
       authDomain: "controlescolar-a184f.firebaseapp.com",
@@ -371,9 +383,9 @@
     const appFirebase = firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     
-    /***********************
-     * VARIABLES GLOBALES Y LECTURA DE PARÁMETROS DE URL
-     ***********************/
+    /* -----------------------------
+       LECTURA DE PARÁMETROS DE URL
+    ------------------------------ */
     const urlParams = new URLSearchParams(window.location.search);
     let readOnlyMode = urlParams.get("readonly") === "true";
     let urlSubject = urlParams.get("subject");
@@ -381,9 +393,9 @@
     let currentSubject = (urlSubject && subjectsConfig[urlSubject]) ? urlSubject : "circuitos";
     let currentPartial = (!isNaN(urlPartial) && urlPartial > 0) ? urlPartial : 1;
     
-    /***********************
-     * FUNCIONES DE INTERFAZ
-     ***********************/
+    /* -----------------------------
+       FUNCIONES DE INTERFAZ
+    ------------------------------ */
     function buildSubjectSelect() {
       const select = document.getElementById("subjectSelect");
       select.innerHTML = "";
@@ -457,7 +469,7 @@
       teamTableBody.innerHTML = "";
       const cfg = subjectsConfig[currentSubject];
       let headerHTML = "<tr><th>Equipo</th><th>Encargado</th>";
-      cfg.practiceEvals.forEach((evalObj) => { headerHTML += `<th>${evalObj.name}</th>`; });
+      cfg.practiceEvals.forEach(evalObj => { headerHTML += `<th>${evalObj.name}</th>`; });
       headerHTML += "<th>Acciones</th></tr>";
       teamTableHead.innerHTML = headerHTML;
       const subjectTeams = teams[currentSubject] || [];
@@ -470,7 +482,10 @@
         team.partials[currentPartial].forEach((val, idx) => {
           rowHTML += `<td><input type="number" class="team-practice-input" data-team-id="${team.id}" data-index="${idx}" min="0" max="10" step="0.1" value="${val || 0}"></td>`;
         });
-        rowHTML += `<td><button class="edit-team btn">Editar</button> <button class="delete-team btn">Eliminar</button></td></tr>`;
+        rowHTML += `<td>
+                      <button class="edit-team btn">Editar</button>
+                      <button class="delete-team btn">Eliminar</button>
+                    </td></tr>`;
         teamTableBody.innerHTML += rowHTML;
       });
       document.querySelectorAll(".team-practice-input").forEach(input => {
@@ -507,13 +522,13 @@
               <label>Encargado: <input type="text" id="editTeamHead" value="${team.head}"></label><br>
               <button id="saveTeam" class="btn">Guardar</button>`;
             showModal(content);
-            document.getElementById("saveTeam").addEventListener("click", () => {
+            document.getElementById("saveTeam").addEventListener("click", function handler() {
               team.name = document.getElementById("editTeamName").value.trim();
               team.head = document.getElementById("editTeamHead").value.trim();
               modal.style.display = "none";
               buildTeamTable();
               buildGradeTable();
-            });
+            }, { once: true });
           }
         });
       });
@@ -731,11 +746,12 @@
       recalculateRow(row);
     }
     
-    /***********************
-     * MODALES: DEDUCCIONES, EDITAR RÚBRICA, MATERIA, AGREGAR ALUMNO, EQUIPO
-     ***********************/
+    /* -----------------------------
+       MODALES: Funciones para mostrar modales de deducciones, editar rúbrica, materia, agregar alumno y equipo
+    ----------------------------- */
     function showModal(contentHTML) {
-      document.getElementById("modalBody").innerHTML = contentHTML;
+      const modalBody = document.getElementById("modalBody");
+      modalBody.innerHTML = contentHTML;
       document.getElementById("modalOverlay").style.display = "block";
     }
     
@@ -765,7 +781,7 @@
           student.partials[currentPartial].deductions.push({ amount, reason, date });
           document.getElementById("modalOverlay").style.display = "none";
           buildGradeTable();
-        });
+        }, { once: true });
       }
     }
     
@@ -815,7 +831,8 @@
           buildDynamicHeader();
           buildGradeTable();
           modal.style.display = "none";
-          document.getElementById("editRubric").click();
+          // Reabrir el modal para seguir editando
+          setTimeout(() => { document.getElementById("editRubric").click(); }, 200);
         });
       });
       
@@ -854,9 +871,9 @@
       });
     });
     
-    /***********************
-     * AGREGAR ALUMNO
-     ***********************/
+    /* -----------------------------
+       AGREGAR ALUMNO
+    ----------------------------- */
     document.getElementById("addStudent").addEventListener("click", () => {
       let content = `<h3>Agregar Alumno</h3>
          <label>N° LS: <input type="number" id="newListNumber"></label><br>
@@ -868,7 +885,7 @@
          </label><br>
          <button id="saveStudent" class="btn">Guardar</button>`;
       showModal(content);
-      document.getElementById("saveStudent").addEventListener("click", () => {
+      document.getElementById("saveStudent").addEventListener("click", function handler() {
          const listNum = parseInt(document.getElementById("newListNumber").value);
          const name = document.getElementById("newStudentName").value.trim();
          const team = document.getElementById("newStudentTeam").value;
@@ -876,12 +893,12 @@
          students.push({ listNumber: listNum, name, team, subject: currentSubject, partials: {} });
          modal.style.display = "none";
          buildGradeTable();
-      });
+      }, { once: true });
     });
     
-    /***********************
-     * AGREGAR EQUIPO
-     ***********************/
+    /* -----------------------------
+       AGREGAR EQUIPO
+    ----------------------------- */
     document.getElementById("addTeam").addEventListener("click", () => {
       let content = `<h3>Agregar Equipo</h3>
          <label>ID: <input type="text" id="newTeamId"></label><br>
@@ -889,7 +906,7 @@
          <label>Encargado: <input type="text" id="newTeamHead"></label><br>
          <button id="saveTeamNew" class="btn">Guardar</button>`;
       showModal(content);
-      document.getElementById("saveTeamNew").addEventListener("click", () => {
+      document.getElementById("saveTeamNew").addEventListener("click", function handler() {
          const id = document.getElementById("newTeamId").value.trim();
          const name = document.getElementById("newTeamName").value.trim();
          const head = document.getElementById("newTeamHead").value.trim();
@@ -899,38 +916,38 @@
          modal.style.display = "none";
          buildTeamTable();
          buildGradeTable();
-      });
+      }, { once: true });
     });
     
-    /***********************
-     * EDITAR MATERIA
-     ***********************/
+    /* -----------------------------
+       EDITAR MATERIA
+    ----------------------------- */
     document.getElementById("editSubject").addEventListener("click", () => {
       const subj = subjectsConfig[currentSubject];
       let content = `<h3>Editar Materia</h3>
         <label>Nombre: <input type="text" id="editSubjName" value="${subj.name}"></label><br>
         <label>Semestre: 
           <select id="editSubjSemester">
-            <option value="ene-jul" ${subj.semester==="ene-jul"?"selected":""}>ene-jul</option>
-            <option value="ago-dic" ${subj.semester==="ago-dic"?"selected":""}>ago-dic</option>
+            <option value="ene-jul" ${subj.semester === "ene-jul" ? "selected" : ""}>ene-jul</option>
+            <option value="ago-dic" ${subj.semester === "ago-dic" ? "selected" : ""}>ago-dic</option>
           </select>
         </label><br>
         <label>Año: <input type="number" id="editSubjYear" value="${subj.year}"></label><br>
         <button id="saveSubjectEd" class="btn">Guardar</button>`;
       showModal(content);
-      document.getElementById("saveSubjectEd").addEventListener("click", () => {
+      document.getElementById("saveSubjectEd").addEventListener("click", function handler() {
         subj.name = document.getElementById("editSubjName").value.trim();
         subj.semester = document.getElementById("editSubjSemester").value;
         subj.year = parseInt(document.getElementById("editSubjYear").value);
         modal.style.display = "none";
         buildSubjectSelect();
         buildDynamicHeader();
-      });
+      }, { once: true });
     });
     
-    /***********************
-     * AGREGAR MATERIA
-     ***********************/
+    /* -----------------------------
+       AGREGAR MATERIA
+    ----------------------------- */
     document.getElementById("addSubject").addEventListener("click", () => {
       let content = `<h3>Agregar Materia</h3>
         <label>ID: <input type="text" id="newSubjectId"></label><br>
@@ -944,7 +961,7 @@
         <label>Año: <input type="number" id="newSubjectYear" value="2023"></label><br>
         <button id="saveSubject" class="btn">Guardar Materia</button>`;
       showModal(content);
-      document.getElementById("saveSubject").addEventListener("click", () => {
+      document.getElementById("saveSubject").addEventListener("click", function handler() {
         const id = document.getElementById("newSubjectId").value.trim();
         const name = document.getElementById("newSubjectName").value.trim();
         const semester = document.getElementById("newSubjectSemester").value;
@@ -962,12 +979,12 @@
         teams[id] = [];
         buildSubjectSelect();
         modal.style.display = "none";
-      });
+      }, { once: true });
     });
     
-    /***********************
-     * COMPARTIR VERSIÓN (solo lectura)
-     ***********************/
+    /* -----------------------------
+       COMPARTIR VERSIÓN (modo solo lectura)
+    ----------------------------- */
     document.getElementById("shareVersion").addEventListener("click", () => {
       const url = new URL(window.location.href);
       url.searchParams.set("subject", currentSubject);
@@ -976,9 +993,9 @@
       prompt("Copia este enlace para compartir la versión de solo lectura:", url.toString());
     });
     
-    /***********************
-     * EXPORTAR A EXCEL (celdas vacías se muestran como 0)
-     ***********************/
+    /* -----------------------------
+       EXPORTAR A EXCEL (celdas vacías = 0)
+    ----------------------------- */
     document.getElementById("exportExcel").addEventListener("click", () => {
       const table = document.getElementById("gradeTable");
       let csv = "";
@@ -1000,9 +1017,9 @@
       URL.revokeObjectURL(url);
     });
     
-    /***********************
-     * EXPORTAR A PDF (celdas vacías se muestran como 0)
-     ***********************/
+    /* -----------------------------
+       EXPORTAR A PDF (celdas vacías = 0)
+    ----------------------------- */
     document.getElementById("exportPDF").addEventListener("click", () => {
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF('landscape', 'pt', 'a4');
@@ -1057,9 +1074,9 @@
     
     document.getElementById("printGrades").addEventListener("click", () => { window.print(); });
     
-    /***********************
-     * CAMBIOS DE PARCIAL Y MATERIA
-     ***********************/
+    /* -----------------------------
+       CAMBIOS DE PARCIAL Y MATERIA
+    ----------------------------- */
     document.querySelectorAll(".tab-btn").forEach(btn => {
       btn.addEventListener("click", () => {
         currentPartial = parseInt(btn.getAttribute("data-partial"));
@@ -1089,9 +1106,9 @@
       window.history.pushState({}, '', url.toString());
     }
     
-    /***********************
-     * CARGA INICIAL
-     ***********************/
+    /* -----------------------------
+       CARGA INICIAL
+    ----------------------------- */
     buildSubjectSelect();
     updateRubricDisplay();
     updatePartialDisplay();
@@ -1099,9 +1116,9 @@
     buildTeamTable();
     buildGradeTable();
     
-    /***********************
-     * INICIO DE SESIÓN CON FIREBASE
-     ***********************/
+    /* -----------------------------
+       INICIO DE SESIÓN CON FIREBASE
+    ----------------------------- */
     window.addEventListener("load", () => {
       if (readOnlyMode) {
         updateURLParams();
