@@ -186,7 +186,7 @@
     </div>
   </div>
 
-  <!-- Contenedor principal (editable) -->
+  <!-- Contenedor principal -->
   <div class="container" id="appContainer" style="display:none;">
     <header>
       <h1>Sistema de Calificaciones</h1>
@@ -222,7 +222,7 @@
       <section class="student-controls">
         <button id="addStudent" class="btn">Agregar Alumno</button>
       </section>
-      <!-- Tabla de equipos (prácticas) -->
+      <!-- Tabla de equipos -->
       <section class="team-section">
         <h2>Equipos (Prácticas)</h2>
         <div class="table-container">
@@ -233,7 +233,7 @@
           </table>
         </div>
       </section>
-      <!-- Tabla principal de calificaciones -->
+      <!-- Tabla de calificaciones -->
       <section class="grade-section">
         <h2>Calificaciones - Parcial <span id="currentPartialDisplay">1</span></h2>
         <div class="table-container">
@@ -273,7 +273,7 @@
     <footer>Pagina creada y diseñada por Francisco López Velázquez</footer>
   </div>
   
-  <!-- Modal General (para editar rúbrica, materia, alumnos, equipos, deducciones, etc.) -->
+  <!-- Modal General -->
   <div id="modalOverlay" class="modal">
     <div class="modal-content">
       <span class="close">&times;</span>
@@ -281,16 +281,17 @@
     </div>
   </div>
   
-  <!-- ===== SCRIPTS: Firebase, jsPDF, autoTable y código principal ===== -->
+  <!-- ===== SCRIPTS ===== -->
   <!-- Firebase (v9 compat) -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <!-- jsPDF y autoTable -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+  
   <script>
     /***********************
-     * DEFINICIÓN DE MATERIAS (subjectsConfig)
+     * DEFINICIÓN DE MATERIAS, ALUMNOS Y EQUIPOS
      ***********************/
     const subjectsConfig = {
       circuitos: {
@@ -331,36 +332,6 @@
       }
     };
     
-    /***********************
-     * INICIALIZAR FIREBASE
-     ***********************/
-    const firebaseConfig = {
-      apiKey: "AIzaSyDsoLZHDpR8EEyvs5tJ7gF1tE7eKS-ZGcU",
-      authDomain: "controlescolar-a184f.firebaseapp.com",
-      projectId: "controlescolar-a184f",
-      storageBucket: "controlescolar-a184f.firebasestorage.app",
-      messagingSenderId: "213806947943",
-      appId: "1:213806947943:web:996ab97cdd805998f0bec2"
-    };
-    const appFirebase = firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-    
-    /***********************
-     * VARIABLES GLOBALES Y LECTURA DE PARÁMETROS DE URL
-     ***********************/
-    // Primero se leen los parámetros de la URL
-    const urlParams = new URLSearchParams(window.location.search);
-    let readOnlyMode = urlParams.get("readonly") === "true";
-    let urlSubject = urlParams.get("subject");
-    let urlPartial = parseInt(urlParams.get("partial"));
-    // Si el parámetro "subject" es válido (existe en subjectsConfig), lo usamos; de lo contrario, por defecto "circuitos"
-    let currentSubject = (urlSubject && subjectsConfig[urlSubject]) ? urlSubject : "circuitos";
-    // Si el parámetro "partial" es un número mayor que 0, lo usamos; sino, por defecto 1
-    let currentPartial = (!isNaN(urlPartial) && urlPartial > 0) ? urlPartial : 1;
-    
-    /***********************
-     * OTRAS VARIABLES (alumnos, equipos)
-     ***********************/
     const students = [
       { listNumber: 1, name: "Juan Pérez", team: "E1", subject: "circuitos", partials: {} },
       { listNumber: 2, name: "María García", team: "E2", subject: "circuitos", partials: {} },
@@ -387,20 +358,59 @@
     };
     
     /***********************
-     * FUNCIONES UTILITARIAS
+     * INICIALIZAR FIREBASE
      ***********************/
-    function getCurrentSubjectConfig() { return subjectsConfig[currentSubject]; }
+    const firebaseConfig = {
+      apiKey: "AIzaSyDsoLZHDpR8EEyvs5tJ7gF1tE7eKS-ZGcU",
+      authDomain: "controlescolar-a184f.firebaseapp.com",
+      projectId: "controlescolar-a184f",
+      storageBucket: "controlescolar-a184f.firebasestorage.app",
+      messagingSenderId: "213806947943",
+      appId: "1:213806947943:web:996ab97cdd805998f0bec2"
+    };
+    const appFirebase = firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    
+    /***********************
+     * VARIABLES GLOBALES Y LECTURA DE PARÁMETROS DE URL
+     ***********************/
+    const urlParams = new URLSearchParams(window.location.search);
+    let readOnlyMode = urlParams.get("readonly") === "true";
+    let urlSubject = urlParams.get("subject");
+    let urlPartial = parseInt(urlParams.get("partial"));
+    let currentSubject = (urlSubject && subjectsConfig[urlSubject]) ? urlSubject : "circuitos";
+    let currentPartial = (!isNaN(urlPartial) && urlPartial > 0) ? urlPartial : 1;
+    
+    /***********************
+     * FUNCIONES DE INTERFAZ
+     ***********************/
+    function buildSubjectSelect() {
+      const select = document.getElementById("subjectSelect");
+      select.innerHTML = "";
+      for (let key in subjectsConfig) {
+        const subj = subjectsConfig[key];
+        const option = document.createElement("option");
+        option.value = key;
+        option.textContent = `${subj.name} (${subj.semester}, ${subj.year})`;
+        select.appendChild(option);
+      }
+      select.value = currentSubject;
+    }
+    
     function updateRubricDisplay() {
-      const cfg = getCurrentSubjectConfig();
+      const cfg = subjectsConfig[currentSubject];
       document.getElementById("weightExam").textContent = cfg.rubric.exam + "%";
       document.getElementById("weightTask").textContent = cfg.rubric.task + "%";
       document.getElementById("weightPractice").textContent = cfg.rubric.practice + "%";
       document.getElementById("weightPart").textContent = cfg.rubric.participation + "%";
     }
-    function updatePartialDisplay() { document.getElementById("currentPartialDisplay").textContent = currentPartial; }
+    
+    function updatePartialDisplay() {
+      document.getElementById("currentPartialDisplay").textContent = currentPartial;
+    }
     
     function buildGroupHeader() {
-      const cfg = getCurrentSubjectConfig();
+      const cfg = subjectsConfig[currentSubject];
       const examColspan = cfg.examEvals.length + 1;
       const taskColspan = cfg.taskEvals.length + 1;
       const practiceColspan = cfg.practiceEvals.length + 1;
@@ -408,10 +418,11 @@
       document.querySelector(".task-group").setAttribute("colspan", taskColspan);
       document.querySelector(".practice-group").setAttribute("colspan", practiceColspan);
     }
+    
     function buildDynamicHeader() {
       const headerRow = document.getElementById("dynamicHeader");
       headerRow.innerHTML = "";
-      const cfg = getCurrentSubjectConfig();
+      const cfg = subjectsConfig[currentSubject];
       cfg.examEvals.forEach(evalObj => {
         const th = document.createElement("th");
         th.textContent = evalObj.name;
@@ -439,17 +450,14 @@
       buildGroupHeader();
     }
     
-    /***********************
-     * TABLA DE EQUIPOS (Prácticas) – Registros por Parcial
-     ***********************/
     function buildTeamTable() {
       const teamTableHead = document.getElementById("teamHeader");
       const teamTableBody = document.querySelector("#teamTable tbody");
       teamTableHead.innerHTML = "";
       teamTableBody.innerHTML = "";
-      const cfg = getCurrentSubjectConfig();
+      const cfg = subjectsConfig[currentSubject];
       let headerHTML = "<tr><th>Equipo</th><th>Encargado</th>";
-      cfg.practiceEvals.forEach((evalObj, index) => { headerHTML += `<th>${evalObj.name}</th>`; });
+      cfg.practiceEvals.forEach((evalObj) => { headerHTML += `<th>${evalObj.name}</th>`; });
       headerHTML += "<th>Acciones</th></tr>";
       teamTableHead.innerHTML = headerHTML;
       const subjectTeams = teams[currentSubject] || [];
@@ -474,7 +482,7 @@
           const team = subjectTeams.find(t => t.id === teamId);
           if(team) {
             if (!team.partials) team.partials = {};
-            if (!team.partials[currentPartial]) { team.partials[currentPartial] = Array(getCurrentSubjectConfig().practiceEvals.length).fill(0); }
+            if (!team.partials[currentPartial]) { team.partials[currentPartial] = Array(subjectsConfig[currentSubject].practiceEvals.length).fill(0); }
             team.partials[currentPartial][idx] = newVal;
             document.querySelectorAll("#gradeTable tbody tr").forEach(row => {
               const stuTeamSelect = row.querySelector(".student-team");
@@ -494,8 +502,7 @@
           const subjectTeams = teams[currentSubject];
           const team = subjectTeams.find(t => t.id === teamId);
           if(team) {
-            let content = `
-              <h3>Editar Equipo</h3>
+            let content = `<h3>Editar Equipo</h3>
               <label>Nombre: <input type="text" id="editTeamName" value="${team.name}"></label><br>
               <label>Encargado: <input type="text" id="editTeamHead" value="${team.head}"></label><br>
               <button id="saveTeam" class="btn">Guardar</button>`;
@@ -523,13 +530,10 @@
       });
     }
     
-    /***********************
-     * TABLA DE CALIFICACIONES (Alumnos) – Registros por Parcial
-     ***********************/
     function buildGradeTable() {
-      const tbody = document.querySelector("#gradeTable tbody");
+      const tbody = document.getElementById("gradeTable").querySelector("tbody");
       tbody.innerHTML = "";
-      const cfg = getCurrentSubjectConfig();
+      const cfg = subjectsConfig[currentSubject];
       const filteredStudents = students.filter(s => s.subject === currentSubject);
       filteredStudents.forEach(student => {
         if (!student.partials[currentPartial]) {
@@ -608,11 +612,8 @@
       if(readOnlyMode) { setReadOnly(); }
     }
     
-    /***********************
-     * CÁLCULOS (incluyendo deducciones)
-     ***********************/
     function recalculateRow(row) {
-      const rubric = getCurrentSubjectConfig().rubric;
+      const rubric = subjectsConfig[currentSubject].rubric;
       let examSum = 0, examCount = 0;
       row.querySelectorAll(".exam-input").forEach(input => { examSum += parseFloat(input.value) || 0; examCount++; });
       const examAvg = examCount ? examSum / examCount : 0;
@@ -643,11 +644,11 @@
       row.querySelector(".total-partial").textContent = totalPartial.toFixed(2);
       if(student) { student.partials[currentPartial].total = totalPartial; }
     }
-    function recalculateAll() { document.querySelectorAll("#gradeTable tbody tr").forEach(row => recalculateRow(row)); }
     
-    /***********************
-     * EVENTOS DE LA TABLA
-     ***********************/
+    function recalculateAll() {
+      document.querySelectorAll("#gradeTable tbody tr").forEach(row => recalculateRow(row));
+    }
+    
     function attachTableListeners() {
       document.querySelectorAll("#gradeTable tbody input").forEach(input => {
         input.addEventListener("input", () => {
@@ -689,7 +690,6 @@
           if(student) { openDeductionModal(student, true); }
         });
       });
-      // Eliminar alumno
       document.querySelectorAll(".delete-student").forEach(btn => {
         btn.addEventListener("click", (e) => {
           const row = e.target.closest("tr");
@@ -701,6 +701,7 @@
         });
       });
     }
+    
     function saveRowData(row) {
       const listNum = row.getAttribute("data-list");
       const student = students.find(s => s.listNumber == listNum);
@@ -717,6 +718,7 @@
       partialData.participation = parseFloat(row.querySelector(".participation").value) || 0;
       partialData.absences = parseFloat(row.querySelector(".absences").value) || 0;
     }
+    
     function propagateTeamGradeForRow(row) {
       const listNum = row.getAttribute("data-list");
       const student = students.find(s => s.listNumber == listNum);
@@ -730,7 +732,7 @@
     }
     
     /***********************
-     * MODALES: Funciones para mostrar modales de deducciones, editar rúbrica, materia, agregar alumno y equipo
+     * MODALES: DEDUCCIONES, EDITAR RÚBRICA, MATERIA, AGREGAR ALUMNO, EQUIPO
      ***********************/
     function showModal(contentHTML) {
       document.getElementById("modalBody").innerHTML = contentHTML;
@@ -767,9 +769,8 @@
       }
     }
     
-    // Editar Rúbrica
     document.getElementById("editRubric").addEventListener("click", () => {
-      const cfg = getCurrentSubjectConfig();
+      const cfg = subjectsConfig[currentSubject];
       let content = `<h3>Editar Rúbrica</h3>
         <h4>Porcentajes</h4>
         <label>Exámenes (%): <input type="number" id="rubricExam" value="${cfg.rubric.exam}" min="0" max="100"></label><br>
@@ -910,8 +911,8 @@
         <label>Nombre: <input type="text" id="editSubjName" value="${subj.name}"></label><br>
         <label>Semestre: 
           <select id="editSubjSemester">
-            <option value="ene-jul" ${subj.semester === "ene-jul" ? "selected" : ""}>ene-jul</option>
-            <option value="ago-dic" ${subj.semester === "ago-dic" ? "selected" : ""}>ago-dic</option>
+            <option value="ene-jul" ${subj.semester==="ene-jul"?"selected":""}>ene-jul</option>
+            <option value="ago-dic" ${subj.semester==="ago-dic"?"selected":""}>ago-dic</option>
           </select>
         </label><br>
         <label>Año: <input type="number" id="editSubjYear" value="${subj.year}"></label><br>
@@ -976,7 +977,7 @@
     });
     
     /***********************
-     * EXPORTAR A EXCEL (celdas vacías muestran 0)
+     * EXPORTAR A EXCEL (celdas vacías se muestran como 0)
      ***********************/
     document.getElementById("exportExcel").addEventListener("click", () => {
       const table = document.getElementById("gradeTable");
@@ -1010,7 +1011,7 @@
       const headerCells = [
         "N° LS", "Alumno", "Equipo"
       ];
-      const cfg = getCurrentSubjectConfig();
+      const cfg = subjectsConfig[currentSubject];
       cfg.examEvals.forEach(e => headerCells.push(e.name));
       headerCells.push("P-EX");
       cfg.taskEvals.forEach(e => headerCells.push(e.name));
@@ -1070,6 +1071,7 @@
         updateURLParams();
       });
     });
+    
     document.getElementById("subjectSelect").addEventListener("change", (e) => {
       currentSubject = e.target.value;
       updateRubricDisplay();
@@ -1079,7 +1081,6 @@
       updateURLParams();
     });
     
-    // Actualiza la URL con los parámetros actuales (solo en modo editable)
     function updateURLParams() {
       const url = new URL(window.location.href);
       url.searchParams.set("subject", currentSubject);
@@ -1122,7 +1123,7 @@
           const email = document.getElementById("loginUser").value.trim();
           const password = document.getElementById("loginPass").value;
           auth.signInWithEmailAndPassword(email, password)
-            .then((userCredential) => {
+            .then(() => {
               document.getElementById("loginModal").style.display = "none";
               document.getElementById("appContainer").style.display = "block";
             })
@@ -1131,7 +1132,6 @@
       }
     });
     
-    // Modo solo lectura: deshabilitar todos los controles
     function setReadOnly() {
       document.querySelectorAll("input, select, button").forEach(el => { el.disabled = true; });
       const notice = document.createElement("p");
