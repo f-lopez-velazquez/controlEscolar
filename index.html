@@ -167,14 +167,14 @@
       .btn, .cred-btn { padding: 6px 10px; font-size: 0.8em; }
     }
   </style>
-  <!-- Incluir Firebase (v9 compat) y dependencias -->
+  <!-- Incluir Firebase y dependencias -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body>
-  <!-- Modal General (para editar rúbrica, materia, alumnos, equipos, etc.) -->
+  <!-- Modal General -->
   <div id="modalOverlay" class="modal">
     <div class="modal-content">
       <span class="close">&times;</span>
@@ -283,16 +283,12 @@
     </main>
     <footer>Pagina creada y diseñada por Francisco López Velázquez</footer>
   </div>
-
+  
   <script>
     /* -----------------------------
-       Variables globales y definición del modal
-    ------------------------------ */
+       Funciones de Modal: abrir y cerrar
+    ----------------------------- */
     const modal = document.getElementById("modalOverlay");
-
-    /* -----------------------------
-       Función para asignar el cierre del modal (la “X” y clic fuera)
-    ------------------------------ */
     function attachModalClose() {
       document.querySelectorAll(".modal .close").forEach(el => {
         el.addEventListener("click", () => {
@@ -306,8 +302,8 @@
     attachModalClose();
     
     /* -----------------------------
-       DEFINICIÓN DE DATOS: Materias, Alumnos y Equipos
-    ------------------------------ */
+       Datos: Materias, Alumnos y Equipos
+    ----------------------------- */
     const subjectsConfig = {
       circuitos: {
         name: "Circuitos Eléctricos",
@@ -373,8 +369,8 @@
     };
     
     /* -----------------------------
-       INICIALIZAR FIREBASE
-    ------------------------------ */
+       Inicializar Firebase
+    ----------------------------- */
     const firebaseConfig = {
       apiKey: "AIzaSyDsoLZHDpR8EEyvs5tJ7gF1tE7eKS-ZGcU",
       authDomain: "controlescolar-a184f.firebaseapp.com",
@@ -387,8 +383,8 @@
     const auth = firebase.auth();
     
     /* -----------------------------
-       LECTURA DE PARÁMETROS DE URL (Modo solo lectura, materia y parcial)
-    ------------------------------ */
+       Lectura de Parámetros de URL
+    ----------------------------- */
     const urlParams = new URLSearchParams(window.location.search);
     let readOnlyMode = urlParams.get("readonly") === "true";
     let urlSubject = urlParams.get("subject");
@@ -397,8 +393,8 @@
     let currentPartial = (!isNaN(urlPartial) && urlPartial > 0) ? urlPartial : 1;
     
     /* -----------------------------
-       FUNCIONES DE INTERFAZ
-    ------------------------------ */
+       Funciones de Interfaz
+    ----------------------------- */
     function buildSubjectSelect() {
       const select = document.getElementById("subjectSelect");
       select.innerHTML = "";
@@ -500,8 +496,11 @@
           const team = subjectTeams.find(t => t.id === teamId);
           if(team) {
             if (!team.partials) team.partials = {};
-            if (!team.partials[currentPartial]) { team.partials[currentPartial] = Array(subjectsConfig[currentSubject].practiceEvals.length).fill(0); }
+            if (!team.partials[currentPartial]) { 
+              team.partials[currentPartial] = Array(subjectsConfig[currentSubject].practiceEvals.length).fill(0); 
+            }
             team.partials[currentPartial][idx] = newVal;
+            // Actualizar en la tabla de alumnos
             document.querySelectorAll("#gradeTable tbody tr").forEach(row => {
               const stuTeamSelect = row.querySelector(".student-team");
               const stuTeam = stuTeamSelect ? stuTeamSelect.value : "";
@@ -525,6 +524,7 @@
               <label>Encargado: <input type="text" id="editTeamHead" value="${team.head}"></label><br>
               <button id="saveTeam" class="btn">Guardar</button>`;
             showModal(content);
+            // Asignar evento al botón guardar
             document.getElementById("saveTeam").addEventListener("click", () => {
               team.name = document.getElementById("editTeamName").value.trim();
               team.head = document.getElementById("editTeamHead").value.trim();
@@ -750,8 +750,8 @@
     }
     
     /* -----------------------------
-       MODALES: Funciones para mostrar modales (deducciones, editar rúbrica, materia, agregar alumno y equipo)
-    ------------------------------ */
+       Funciones de Modal para agregar/editar elementos
+    ----------------------------- */
     function showModal(contentHTML) {
       const modalBody = document.getElementById("modalBody");
       modalBody.innerHTML = contentHTML;
@@ -823,6 +823,7 @@
         <br>
         <button id="saveRubric" class="btn">Guardar Rúbrica</button>`;
       showModal(content);
+      // Asignar los eventos para quitar y agregar evaluaciones
       document.querySelectorAll(".removeEval").forEach(btn => {
         btn.addEventListener("click", (e) => {
           const cat = e.target.getAttribute("data-cat");
@@ -871,7 +872,7 @@
     });
     
     /* -----------------------------
-       AGREGAR ALUMNO
+       Agregar Alumno
     ----------------------------- */
     document.getElementById("addStudent").addEventListener("click", () => {
       let content = `<h3>Agregar Alumno</h3>
@@ -896,7 +897,7 @@
     });
     
     /* -----------------------------
-       AGREGAR EQUIPO
+       Agregar Equipo
     ----------------------------- */
     document.getElementById("addTeam").addEventListener("click", () => {
       let content = `<h3>Agregar Equipo</h3>
@@ -919,7 +920,7 @@
     });
     
     /* -----------------------------
-       EDITAR MATERIA
+       Editar Materia
     ----------------------------- */
     document.getElementById("editSubject").addEventListener("click", () => {
       const subj = subjectsConfig[currentSubject];
@@ -927,8 +928,8 @@
         <label>Nombre: <input type="text" id="editSubjName" value="${subj.name}"></label><br>
         <label>Semestre: 
           <select id="editSubjSemester">
-            <option value="ene-jul" ${subj.semester === "ene-jul" ? "selected" : ""}>ene-jul</option>
-            <option value="ago-dic" ${subj.semester === "ago-dic" ? "selected" : ""}>ago-dic</option>
+            <option value="ene-jul" ${subj.semester==="ene-jul"?"selected":""}>ene-jul</option>
+            <option value="ago-dic" ${subj.semester==="ago-dic"?"selected":""}>ago-dic</option>
           </select>
         </label><br>
         <label>Año: <input type="number" id="editSubjYear" value="${subj.year}"></label><br>
@@ -945,7 +946,7 @@
     });
     
     /* -----------------------------
-       AGREGAR MATERIA
+       Agregar Materia
     ----------------------------- */
     document.getElementById("addSubject").addEventListener("click", () => {
       let content = `<h3>Agregar Materia</h3>
@@ -982,7 +983,7 @@
     });
     
     /* -----------------------------
-       COMPARTIR VERSIÓN (Modo Solo Lectura)
+       Compartir Versión (Solo Lectura)
     ----------------------------- */
     document.getElementById("shareVersion").addEventListener("click", () => {
       const url = new URL(window.location.href);
@@ -993,7 +994,7 @@
     });
     
     /* -----------------------------
-       EXPORTAR A EXCEL (celdas vacías = 0)
+       Exportar a Excel (celdas vacías = 0)
     ----------------------------- */
     document.getElementById("exportExcel").addEventListener("click", () => {
       const table = document.getElementById("gradeTable");
@@ -1017,7 +1018,7 @@
     });
     
     /* -----------------------------
-       EXPORTAR A PDF (celdas vacías = 0)
+       Exportar a PDF (celdas vacías = 0)
     ----------------------------- */
     document.getElementById("exportPDF").addEventListener("click", () => {
       const { jsPDF } = window.jspdf;
@@ -1074,7 +1075,7 @@
     document.getElementById("printGrades").addEventListener("click", () => { window.print(); });
     
     /* -----------------------------
-       CAMBIOS DE PARCIAL Y MATERIA
+       Cambios de Parcial y Materia
     ----------------------------- */
     document.querySelectorAll(".tab-btn").forEach(btn => {
       btn.addEventListener("click", () => {
@@ -1106,7 +1107,7 @@
     }
     
     /* -----------------------------
-       CARGA INICIAL
+       Carga Inicial
     ----------------------------- */
     buildSubjectSelect();
     updateRubricDisplay();
@@ -1116,7 +1117,7 @@
     buildGradeTable();
     
     /* -----------------------------
-       INICIO DE SESIÓN CON FIREBASE
+       Inicio de Sesión con Firebase
     ----------------------------- */
     window.addEventListener("load", () => {
       if (readOnlyMode) {
