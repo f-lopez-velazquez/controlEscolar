@@ -290,31 +290,8 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
   <script>
     /***********************
-     * INICIALIZAR FIREBASE
+     * DEFINICIÓN DE MATERIAS (subjectsConfig)
      ***********************/
-    const firebaseConfig = {
-      apiKey: "AIzaSyDsoLZHDpR8EEyvs5tJ7gF1tE7eKS-ZGcU",
-      authDomain: "controlescolar-a184f.firebaseapp.com",
-      projectId: "controlescolar-a184f",
-      storageBucket: "controlescolar-a184f.firebasestorage.app",
-      messagingSenderId: "213806947943",
-      appId: "1:213806947943:web:996ab97cdd805998f0bec2"
-    };
-    const appFirebase = firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-
-    /***********************
-     * VARIABLES Y CONFIGURACIÓN
-     ***********************/
-    // Leer parámetros de la URL para modo solo lectura, materia y parcial
-    const urlParams = new URLSearchParams(window.location.search);
-    let readOnlyMode = urlParams.get("readonly") === "true";
-    let urlSubject = urlParams.get("subject");
-    let urlPartial = parseInt(urlParams.get("partial"));
-    let currentSubject = (urlSubject && subjectsConfig[urlSubject]) ? urlSubject : "circuitos";
-    let currentPartial = (!isNaN(urlPartial) && urlPartial > 0) ? urlPartial : 1;
-    
-    // Configuración de materias (con nombre, semestre y año)
     const subjectsConfig = {
       circuitos: {
         name: "Circuitos Eléctricos",
@@ -354,28 +331,42 @@
       }
     };
     
-    // Función para recargar el selector de materias
-    function buildSubjectSelect() {
-      const select = document.getElementById("subjectSelect");
-      select.innerHTML = "";
-      for (let key in subjectsConfig) {
-        const subj = subjectsConfig[key];
-        const option = document.createElement("option");
-        option.value = key;
-        option.textContent = `${subj.name} (${subj.semester}, ${subj.year})`;
-        select.appendChild(option);
-      }
-      select.value = currentSubject;
-    }
+    /***********************
+     * INICIALIZAR FIREBASE
+     ***********************/
+    const firebaseConfig = {
+      apiKey: "AIzaSyDsoLZHDpR8EEyvs5tJ7gF1tE7eKS-ZGcU",
+      authDomain: "controlescolar-a184f.firebaseapp.com",
+      projectId: "controlescolar-a184f",
+      storageBucket: "controlescolar-a184f.firebasestorage.app",
+      messagingSenderId: "213806947943",
+      appId: "1:213806947943:web:996ab97cdd805998f0bec2"
+    };
+    const appFirebase = firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
     
-    // Alumnos: cada alumno tiene número de lista, nombre, equipo, materia y registros por parcial
+    /***********************
+     * VARIABLES GLOBALES Y LECTURA DE PARÁMETROS DE URL
+     ***********************/
+    // Primero se leen los parámetros de la URL
+    const urlParams = new URLSearchParams(window.location.search);
+    let readOnlyMode = urlParams.get("readonly") === "true";
+    let urlSubject = urlParams.get("subject");
+    let urlPartial = parseInt(urlParams.get("partial"));
+    // Si el parámetro "subject" es válido (existe en subjectsConfig), lo usamos; de lo contrario, por defecto "circuitos"
+    let currentSubject = (urlSubject && subjectsConfig[urlSubject]) ? urlSubject : "circuitos";
+    // Si el parámetro "partial" es un número mayor que 0, lo usamos; sino, por defecto 1
+    let currentPartial = (!isNaN(urlPartial) && urlPartial > 0) ? urlPartial : 1;
+    
+    /***********************
+     * OTRAS VARIABLES (alumnos, equipos)
+     ***********************/
     const students = [
       { listNumber: 1, name: "Juan Pérez", team: "E1", subject: "circuitos", partials: {} },
       { listNumber: 2, name: "María García", team: "E2", subject: "circuitos", partials: {} },
       { listNumber: 3, name: "Carlos López", team: "E1", subject: "tt6", partials: {} }
     ];
     
-    // Equipos por materia: cada equipo tiene registros de prácticas por parcial
     const teams = {
       circuitos: [
         { id: "E1", name: "Equipo E1", head: "Encargado 1", partials: {} },
@@ -408,9 +399,6 @@
     }
     function updatePartialDisplay() { document.getElementById("currentPartialDisplay").textContent = currentPartial; }
     
-    /***********************
-     * ENCABEZADO DE TABLA (Página Web)
-     ***********************/
     function buildGroupHeader() {
       const cfg = getCurrentSubjectConfig();
       const examColspan = cfg.examEvals.length + 1;
@@ -474,7 +462,6 @@
         team.partials[currentPartial].forEach((val, idx) => {
           rowHTML += `<td><input type="number" class="team-practice-input" data-team-id="${team.id}" data-index="${idx}" min="0" max="10" step="0.1" value="${val || 0}"></td>`;
         });
-        // Agregamos botones Editar y Eliminar
         rowHTML += `<td><button class="edit-team btn">Editar</button> <button class="delete-team btn">Eliminar</button></td></tr>`;
         teamTableBody.innerHTML += rowHTML;
       });
@@ -500,7 +487,6 @@
           }
         });
       });
-      // Botón para editar equipo
       document.querySelectorAll(".edit-team").forEach(btn => {
         btn.addEventListener("click", (e) => {
           const row = e.target.closest("tr");
@@ -524,7 +510,6 @@
           }
         });
       });
-      // Botón para eliminar equipo
       document.querySelectorAll(".delete-team").forEach(btn => {
         btn.addEventListener("click", (e) => {
           const row = e.target.closest("tr");
@@ -555,7 +540,7 @@
             extraExam: 0,
             extraTask: 0,
             extraPractice: 0,
-            extraPartial: 0,
+            extraParcial: 0,
             participation: 0,
             absences: 0,
             deductions: [],
@@ -565,7 +550,7 @@
           while (student.partials[currentPartial].exams.length < cfg.examEvals.length) { student.partials[currentPartial].exams.push(0); }
           while (student.partials[currentPartial].tasks.length < cfg.taskEvals.length) { student.partials[currentPartial].tasks.push(0); }
           while (student.partials[currentPartial].practices.length < cfg.practiceEvals.length) { student.partials[currentPartial].practices.push(0); }
-          if (student.partials[currentPartial].extraPartial === undefined) { student.partials[currentPartial].extraPartial = 0; }
+          if (student.partials[currentPartial].extraParcial === undefined) { student.partials[currentPartial].extraParcial = 0; }
           if (!student.partials[currentPartial].deductions) { student.partials[currentPartial].deductions = []; }
         }
         const partialData = student.partials[currentPartial];
@@ -661,11 +646,11 @@
     function recalculateAll() { document.querySelectorAll("#gradeTable tbody tr").forEach(row => recalculateRow(row)); }
     
     /***********************
-     * EVENTOS EN LA TABLA
+     * EVENTOS DE LA TABLA
      ***********************/
     function attachTableListeners() {
       document.querySelectorAll("#gradeTable tbody input").forEach(input => {
-        input.addEventListener("input", () => { 
+        input.addEventListener("input", () => {
           const row = input.closest("tr");
           saveRowData(row);
           recalculateRow(row);
@@ -704,14 +689,13 @@
           if(student) { openDeductionModal(student, true); }
         });
       });
-      // Botón para eliminar alumno
+      // Eliminar alumno
       document.querySelectorAll(".delete-student").forEach(btn => {
         btn.addEventListener("click", (e) => {
           const row = e.target.closest("tr");
           const listNum = parseInt(row.getAttribute("data-list"));
-          if(confirm("¿Eliminar este alumno?")) {
-            const index = students.findIndex(s => s.listNumber === listNum);
-            if(index !== -1) { students.splice(index, 1); }
+          if(confirm("¿Estás seguro de eliminar este alumno?")) {
+            students.splice(students.findIndex(s => s.listNumber === listNum), 1);
             buildGradeTable();
           }
         });
@@ -746,7 +730,7 @@
     }
     
     /***********************
-     * MODALES: DEDUCCIONES, EDITAR MATERIA, EDITAR RÚBRICA, AGREGAR ALUMNO, EQUIPO, ETC.
+     * MODALES: Funciones para mostrar modales de deducciones, editar rúbrica, materia, agregar alumno y equipo
      ***********************/
     function showModal(contentHTML) {
       document.getElementById("modalBody").innerHTML = contentHTML;
@@ -870,33 +854,133 @@
     });
     
     /***********************
-     * MODO SOLO LECTURA: Aplicar parámetros y deshabilitar edición
+     * AGREGAR ALUMNO
      ***********************/
-    function updateURLParams() {
+    document.getElementById("addStudent").addEventListener("click", () => {
+      let content = `<h3>Agregar Alumno</h3>
+         <label>N° LS: <input type="number" id="newListNumber"></label><br>
+         <label>Alumno: <input type="text" id="newStudentName"></label><br>
+         <label>Equipo: 
+             <select id="newStudentTeam">
+                ${teams[currentSubject].map(team => `<option value="${team.id}">${team.name}</option>`).join('')}
+             </select>
+         </label><br>
+         <button id="saveStudent" class="btn">Guardar</button>`;
+      showModal(content);
+      document.getElementById("saveStudent").addEventListener("click", () => {
+         const listNum = parseInt(document.getElementById("newListNumber").value);
+         const name = document.getElementById("newStudentName").value.trim();
+         const team = document.getElementById("newStudentTeam").value;
+         if(!listNum || !name) { alert("Complete todos los campos."); return; }
+         students.push({ listNumber: listNum, name, team, subject: currentSubject, partials: {} });
+         modal.style.display = "none";
+         buildGradeTable();
+      });
+    });
+    
+    /***********************
+     * AGREGAR EQUIPO
+     ***********************/
+    document.getElementById("addTeam").addEventListener("click", () => {
+      let content = `<h3>Agregar Equipo</h3>
+         <label>ID: <input type="text" id="newTeamId"></label><br>
+         <label>Nombre: <input type="text" id="newTeamName"></label><br>
+         <label>Encargado: <input type="text" id="newTeamHead"></label><br>
+         <button id="saveTeamNew" class="btn">Guardar</button>`;
+      showModal(content);
+      document.getElementById("saveTeamNew").addEventListener("click", () => {
+         const id = document.getElementById("newTeamId").value.trim();
+         const name = document.getElementById("newTeamName").value.trim();
+         const head = document.getElementById("newTeamHead").value.trim();
+         if(!id || !name || !head) { alert("Complete todos los campos."); return; }
+         if(!teams[currentSubject]) teams[currentSubject] = [];
+         teams[currentSubject].push({ id, name, head, partials: {} });
+         modal.style.display = "none";
+         buildTeamTable();
+         buildGradeTable();
+      });
+    });
+    
+    /***********************
+     * EDITAR MATERIA
+     ***********************/
+    document.getElementById("editSubject").addEventListener("click", () => {
+      const subj = subjectsConfig[currentSubject];
+      let content = `<h3>Editar Materia</h3>
+        <label>Nombre: <input type="text" id="editSubjName" value="${subj.name}"></label><br>
+        <label>Semestre: 
+          <select id="editSubjSemester">
+            <option value="ene-jul" ${subj.semester === "ene-jul" ? "selected" : ""}>ene-jul</option>
+            <option value="ago-dic" ${subj.semester === "ago-dic" ? "selected" : ""}>ago-dic</option>
+          </select>
+        </label><br>
+        <label>Año: <input type="number" id="editSubjYear" value="${subj.year}"></label><br>
+        <button id="saveSubjectEd" class="btn">Guardar</button>`;
+      showModal(content);
+      document.getElementById("saveSubjectEd").addEventListener("click", () => {
+        subj.name = document.getElementById("editSubjName").value.trim();
+        subj.semester = document.getElementById("editSubjSemester").value;
+        subj.year = parseInt(document.getElementById("editSubjYear").value);
+        modal.style.display = "none";
+        buildSubjectSelect();
+        buildDynamicHeader();
+      });
+    });
+    
+    /***********************
+     * AGREGAR MATERIA
+     ***********************/
+    document.getElementById("addSubject").addEventListener("click", () => {
+      let content = `<h3>Agregar Materia</h3>
+        <label>ID: <input type="text" id="newSubjectId"></label><br>
+        <label>Nombre: <input type="text" id="newSubjectName"></label><br>
+        <label>Semestre: 
+          <select id="newSubjectSemester">
+            <option value="ene-jul">ene-jul</option>
+            <option value="ago-dic">ago-dic</option>
+          </select>
+        </label><br>
+        <label>Año: <input type="number" id="newSubjectYear" value="2023"></label><br>
+        <button id="saveSubject" class="btn">Guardar Materia</button>`;
+      showModal(content);
+      document.getElementById("saveSubject").addEventListener("click", () => {
+        const id = document.getElementById("newSubjectId").value.trim();
+        const name = document.getElementById("newSubjectName").value.trim();
+        const semester = document.getElementById("newSubjectSemester").value;
+        const year = parseInt(document.getElementById("newSubjectYear").value);
+        if(!id || !name || !semester || isNaN(year)) { alert("Complete todos los campos."); return; }
+        subjectsConfig[id] = {
+          name: name,
+          semester: semester,
+          year: year,
+          rubric: { exam: 45, task: 25, practice: 30, participation: 5 },
+          examEvals: [],
+          taskEvals: [],
+          practiceEvals: []
+        };
+        teams[id] = [];
+        buildSubjectSelect();
+        modal.style.display = "none";
+      });
+    });
+    
+    /***********************
+     * COMPARTIR VERSIÓN (solo lectura)
+     ***********************/
+    document.getElementById("shareVersion").addEventListener("click", () => {
       const url = new URL(window.location.href);
       url.searchParams.set("subject", currentSubject);
       url.searchParams.set("partial", currentPartial);
-      if (!readOnlyMode) { url.searchParams.delete("readonly"); }
-      window.history.pushState({}, '', url.toString());
-    }
-    
-    function setReadOnly() {
-      document.querySelectorAll("input, select, button").forEach(el => { el.disabled = true; });
-      const notice = document.createElement("p");
-      notice.textContent = "Modo Solo Lectura – No se permite la edición";
-      notice.style.textAlign = "center";
-      notice.style.fontWeight = "bold";
-      notice.style.color = "#900";
-      document.getElementById("appContainer").insertBefore(notice, document.getElementById("appContainer").firstChild);
-    }
+      url.searchParams.set("readonly", "true");
+      prompt("Copia este enlace para compartir la versión de solo lectura:", url.toString());
+    });
     
     /***********************
-     * EXPORTAR A EXCEL (Si una celda está vacía se coloca 0)
+     * EXPORTAR A EXCEL (celdas vacías muestran 0)
      ***********************/
     document.getElementById("exportExcel").addEventListener("click", () => {
       const table = document.getElementById("gradeTable");
       let csv = "";
-      // Recorrer cada fila y celda manualmente
       for (let row of table.rows) {
         let rowData = [];
         for (let cell of row.cells) {
@@ -916,14 +1000,13 @@
     });
     
     /***********************
-     * EXPORTAR A PDF (Si celda vacía se muestra 0)
+     * EXPORTAR A PDF (celdas vacías se muestran como 0)
      ***********************/
     document.getElementById("exportPDF").addEventListener("click", () => {
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF('landscape', 'pt', 'a4');
       doc.setFontSize(10);
       doc.text("Calificaciones - " + subjectsConfig[currentSubject].name + " - Parcial " + currentPartial, 40, 30);
-      // Encabezados compactos (acrónimos) para PDF
       const headerCells = [
         "N° LS", "Alumno", "Equipo"
       ];
@@ -996,6 +1079,15 @@
       updateURLParams();
     });
     
+    // Actualiza la URL con los parámetros actuales (solo en modo editable)
+    function updateURLParams() {
+      const url = new URL(window.location.href);
+      url.searchParams.set("subject", currentSubject);
+      url.searchParams.set("partial", currentPartial);
+      if (!readOnlyMode) { url.searchParams.delete("readonly"); }
+      window.history.pushState({}, '', url.toString());
+    }
+    
     /***********************
      * CARGA INICIAL
      ***********************/
@@ -1039,7 +1131,7 @@
       }
     });
     
-    // Modo solo lectura: deshabilitar edición
+    // Modo solo lectura: deshabilitar todos los controles
     function setReadOnly() {
       document.querySelectorAll("input, select, button").forEach(el => { el.disabled = true; });
       const notice = document.createElement("p");
@@ -1048,27 +1140,6 @@
       notice.style.fontWeight = "bold";
       notice.style.color = "#900";
       document.getElementById("appContainer").insertBefore(notice, document.getElementById("appContainer").firstChild);
-    }
-    
-    // Agregar funcionalidad para eliminar alumnos
-    document.addEventListener("click", (e) => {
-      if(e.target && e.target.classList.contains("delete-student")) {
-        const row = e.target.closest("tr");
-        const listNum = parseInt(row.getAttribute("data-list"));
-        if(confirm("¿Estás seguro de eliminar este alumno?")) {
-          students.splice(students.findIndex(s => s.listNumber === listNum), 1);
-          buildGradeTable();
-        }
-      }
-    });
-    
-    // Actualizar la URL con los parámetros actuales
-    function updateURLParams() {
-      const url = new URL(window.location.href);
-      url.searchParams.set("subject", currentSubject);
-      url.searchParams.set("partial", currentPartial);
-      if (!readOnlyMode) { url.searchParams.delete("readonly"); }
-      window.history.pushState({}, '', url.toString());
     }
   </script>
 </body>
