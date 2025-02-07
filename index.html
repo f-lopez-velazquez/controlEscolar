@@ -283,27 +283,30 @@
     </main>
     <footer>Pagina creada y diseñada por Francisco López Velázquez</footer>
   </div>
-  
+
   <script>
     /* -----------------------------
-       FUNCIONES DE MODAL (Abrir y Cerrar)
+       Variables globales y definición del modal
+    ------------------------------ */
+    const modal = document.getElementById("modalOverlay");
+
+    /* -----------------------------
+       Función para asignar el cierre del modal (la “X” y clic fuera)
     ------------------------------ */
     function attachModalClose() {
       document.querySelectorAll(".modal .close").forEach(el => {
         el.addEventListener("click", () => {
-          el.parentElement.parentElement.style.display = "none";
+          modal.style.display = "none";
         });
       });
       window.addEventListener("click", (e) => {
-        if(e.target.classList.contains("modal")) {
-          e.target.style.display = "none";
-        }
+        if(e.target === modal) { modal.style.display = "none"; }
       });
     }
     attachModalClose();
     
     /* -----------------------------
-       DEFINICIÓN DE DATOS: materias, alumnos y equipos
+       DEFINICIÓN DE DATOS: Materias, Alumnos y Equipos
     ------------------------------ */
     const subjectsConfig = {
       circuitos: {
@@ -384,7 +387,7 @@
     const auth = firebase.auth();
     
     /* -----------------------------
-       LECTURA DE PARÁMETROS DE URL
+       LECTURA DE PARÁMETROS DE URL (Modo solo lectura, materia y parcial)
     ------------------------------ */
     const urlParams = new URLSearchParams(window.location.search);
     let readOnlyMode = urlParams.get("readonly") === "true";
@@ -522,13 +525,13 @@
               <label>Encargado: <input type="text" id="editTeamHead" value="${team.head}"></label><br>
               <button id="saveTeam" class="btn">Guardar</button>`;
             showModal(content);
-            document.getElementById("saveTeam").addEventListener("click", function handler() {
+            document.getElementById("saveTeam").addEventListener("click", () => {
               team.name = document.getElementById("editTeamName").value.trim();
               team.head = document.getElementById("editTeamHead").value.trim();
               modal.style.display = "none";
               buildTeamTable();
               buildGradeTable();
-            }, { once: true });
+            });
           }
         });
       });
@@ -747,12 +750,12 @@
     }
     
     /* -----------------------------
-       MODALES: Funciones para mostrar modales de deducciones, editar rúbrica, materia, agregar alumno y equipo
-    ----------------------------- */
+       MODALES: Funciones para mostrar modales (deducciones, editar rúbrica, materia, agregar alumno y equipo)
+    ------------------------------ */
     function showModal(contentHTML) {
       const modalBody = document.getElementById("modalBody");
       modalBody.innerHTML = contentHTML;
-      document.getElementById("modalOverlay").style.display = "block";
+      modal.style.display = "block";
     }
     
     function openDeductionModal(student, viewOnly = false) {
@@ -779,9 +782,9 @@
           if(amount <= 0 || !reason || !date) { alert("Complete todos los campos."); return; }
           if(!student.partials[currentPartial].deductions) student.partials[currentPartial].deductions = [];
           student.partials[currentPartial].deductions.push({ amount, reason, date });
-          document.getElementById("modalOverlay").style.display = "none";
+          modal.style.display = "none";
           buildGradeTable();
-        }, { once: true });
+        });
       }
     }
     
@@ -820,7 +823,6 @@
         <br>
         <button id="saveRubric" class="btn">Guardar Rúbrica</button>`;
       showModal(content);
-      
       document.querySelectorAll(".removeEval").forEach(btn => {
         btn.addEventListener("click", (e) => {
           const cat = e.target.getAttribute("data-cat");
@@ -831,11 +833,9 @@
           buildDynamicHeader();
           buildGradeTable();
           modal.style.display = "none";
-          // Reabrir el modal para seguir editando
           setTimeout(() => { document.getElementById("editRubric").click(); }, 200);
         });
       });
-      
       document.getElementById("addExamItem").addEventListener("click", () => {
         const newItem = prompt("Nuevo examen:");
         if(newItem) { cfg.examEvals.push({ name: newItem }); buildDynamicHeader(); buildGradeTable(); }
@@ -858,7 +858,6 @@
           buildGradeTable();
         }
       });
-      
       document.getElementById("saveRubric").addEventListener("click", () => {
         cfg.rubric.exam = parseFloat(document.getElementById("rubricExam").value) || 0;
         cfg.rubric.task = parseFloat(document.getElementById("rubricTask").value) || 0;
@@ -885,7 +884,7 @@
          </label><br>
          <button id="saveStudent" class="btn">Guardar</button>`;
       showModal(content);
-      document.getElementById("saveStudent").addEventListener("click", function handler() {
+      document.getElementById("saveStudent").addEventListener("click", () => {
          const listNum = parseInt(document.getElementById("newListNumber").value);
          const name = document.getElementById("newStudentName").value.trim();
          const team = document.getElementById("newStudentTeam").value;
@@ -893,7 +892,7 @@
          students.push({ listNumber: listNum, name, team, subject: currentSubject, partials: {} });
          modal.style.display = "none";
          buildGradeTable();
-      }, { once: true });
+      });
     });
     
     /* -----------------------------
@@ -906,7 +905,7 @@
          <label>Encargado: <input type="text" id="newTeamHead"></label><br>
          <button id="saveTeamNew" class="btn">Guardar</button>`;
       showModal(content);
-      document.getElementById("saveTeamNew").addEventListener("click", function handler() {
+      document.getElementById("saveTeamNew").addEventListener("click", () => {
          const id = document.getElementById("newTeamId").value.trim();
          const name = document.getElementById("newTeamName").value.trim();
          const head = document.getElementById("newTeamHead").value.trim();
@@ -916,7 +915,7 @@
          modal.style.display = "none";
          buildTeamTable();
          buildGradeTable();
-      }, { once: true });
+      });
     });
     
     /* -----------------------------
@@ -935,14 +934,14 @@
         <label>Año: <input type="number" id="editSubjYear" value="${subj.year}"></label><br>
         <button id="saveSubjectEd" class="btn">Guardar</button>`;
       showModal(content);
-      document.getElementById("saveSubjectEd").addEventListener("click", function handler() {
+      document.getElementById("saveSubjectEd").addEventListener("click", () => {
         subj.name = document.getElementById("editSubjName").value.trim();
         subj.semester = document.getElementById("editSubjSemester").value;
         subj.year = parseInt(document.getElementById("editSubjYear").value);
         modal.style.display = "none";
         buildSubjectSelect();
         buildDynamicHeader();
-      }, { once: true });
+      });
     });
     
     /* -----------------------------
@@ -961,7 +960,7 @@
         <label>Año: <input type="number" id="newSubjectYear" value="2023"></label><br>
         <button id="saveSubject" class="btn">Guardar Materia</button>`;
       showModal(content);
-      document.getElementById("saveSubject").addEventListener("click", function handler() {
+      document.getElementById("saveSubject").addEventListener("click", () => {
         const id = document.getElementById("newSubjectId").value.trim();
         const name = document.getElementById("newSubjectName").value.trim();
         const semester = document.getElementById("newSubjectSemester").value;
@@ -979,11 +978,11 @@
         teams[id] = [];
         buildSubjectSelect();
         modal.style.display = "none";
-      }, { once: true });
+      });
     });
     
     /* -----------------------------
-       COMPARTIR VERSIÓN (modo solo lectura)
+       COMPARTIR VERSIÓN (Modo Solo Lectura)
     ----------------------------- */
     document.getElementById("shareVersion").addEventListener("click", () => {
       const url = new URL(window.location.href);
