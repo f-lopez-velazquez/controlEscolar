@@ -199,7 +199,7 @@
           <button id="shareVersion" class="cred-btn">Compartir Versión</button>
         </div>
         <div class="partial-tabs">
-          <button class="tab-btn active" data-partial="1">Parcial 1</button>
+          <button class="tab-btn" data-partial="1">Parcial 1</button>
           <button class="tab-btn" data-partial="2">Parcial 2</button>
           <button class="tab-btn" data-partial="3">Parcial 3</button>
           <button class="tab-btn" data-partial="4">Parcial 4</button>
@@ -222,7 +222,7 @@
       <section class="student-controls">
         <button id="addStudent" class="btn">Agregar Alumno</button>
       </section>
-      <!-- Tabla de equipos (prácticas) y edición de equipos -->
+      <!-- Tabla de equipos (prácticas) -->
       <section class="team-section">
         <h2>Equipos (Prácticas)</h2>
         <div class="table-container">
@@ -272,15 +272,15 @@
     </main>
     <footer>Pagina creada y diseñada por Francisco López Velázquez</footer>
   </div>
-
-  <!-- Modal General (para editar rúbrica, materia, agregar alumno, equipo, deducciones, etc.) -->
+  
+  <!-- Modal General (para editar rúbrica, materia, alumnos, equipos, deducciones, etc.) -->
   <div id="modalOverlay" class="modal">
     <div class="modal-content">
       <span class="close">&times;</span>
       <div id="modalBody"></div>
     </div>
   </div>
-
+  
   <!-- ===== SCRIPTS: Firebase, jsPDF, autoTable y código principal ===== -->
   <!-- Firebase (v9 compat) -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -306,12 +306,15 @@
     /***********************
      * VARIABLES Y CONFIGURACIÓN
      ***********************/
-    let isLoggedIn = false;
-    let readOnlyMode = (new URLSearchParams(window.location.search)).get("readonly") === "true";
-    let currentSubject = "circuitos";
-    let currentPartial = 1;
+    // Leer parámetros de la URL para modo solo lectura, materia y parcial
+    const urlParams = new URLSearchParams(window.location.search);
+    let readOnlyMode = urlParams.get("readonly") === "true";
+    let urlSubject = urlParams.get("subject");
+    let urlPartial = parseInt(urlParams.get("partial"));
+    let currentSubject = (urlSubject && subjectsConfig[urlSubject]) ? urlSubject : "circuitos";
+    let currentPartial = (!isNaN(urlPartial) && urlPartial > 0) ? urlPartial : 1;
     
-    // Configuración de materias (incluye nombre, semestre y año)
+    // Configuración de materias (con nombre, semestre y año)
     const subjectsConfig = {
       circuitos: {
         name: "Circuitos Eléctricos",
@@ -469,9 +472,10 @@
         }
         let rowHTML = `<tr data-team-id="${team.id}"><td>${team.name}</td><td>${team.head}</td>`;
         team.partials[currentPartial].forEach((val, idx) => {
-          rowHTML += `<td><input type="number" class="team-practice-input" data-team-id="${team.id}" data-index="${idx}" min="0" max="10" step="0.1" value="${val}"></td>`;
+          rowHTML += `<td><input type="number" class="team-practice-input" data-team-id="${team.id}" data-index="${idx}" min="0" max="10" step="0.1" value="${val || 0}"></td>`;
         });
-        rowHTML += `<td><button class="edit-team btn">Editar</button></td></tr>`;
+        // Agregamos botones Editar y Eliminar
+        rowHTML += `<td><button class="edit-team btn">Editar</button> <button class="delete-team btn">Eliminar</button></td></tr>`;
         teamTableBody.innerHTML += rowHTML;
       });
       document.querySelectorAll(".team-practice-input").forEach(input => {
@@ -496,6 +500,7 @@
           }
         });
       });
+      // Botón para editar equipo
       document.querySelectorAll(".edit-team").forEach(btn => {
         btn.addEventListener("click", (e) => {
           const row = e.target.closest("tr");
@@ -507,8 +512,7 @@
               <h3>Editar Equipo</h3>
               <label>Nombre: <input type="text" id="editTeamName" value="${team.name}"></label><br>
               <label>Encargado: <input type="text" id="editTeamHead" value="${team.head}"></label><br>
-              <button id="saveTeam" class="btn">Guardar</button>
-            `;
+              <button id="saveTeam" class="btn">Guardar</button>`;
             showModal(content);
             document.getElementById("saveTeam").addEventListener("click", () => {
               team.name = document.getElementById("editTeamName").value.trim();
@@ -520,10 +524,22 @@
           }
         });
       });
+      // Botón para eliminar equipo
+      document.querySelectorAll(".delete-team").forEach(btn => {
+        btn.addEventListener("click", (e) => {
+          const row = e.target.closest("tr");
+          const teamId = row.getAttribute("data-team-id");
+          if(confirm("¿Estás seguro de eliminar este equipo?")) {
+            teams[currentSubject] = teams[currentSubject].filter(t => t.id !== teamId);
+            buildTeamTable();
+            buildGradeTable();
+          }
+        });
+      });
     }
     
     /***********************
-     * TABLA DE CALIFICACIONES (ALUMNOS) – Registros por Parcial
+     * TABLA DE CALIFICACIONES (Alumnos) – Registros por Parcial
      ***********************/
     function buildGradeTable() {
       const tbody = document.querySelector("#gradeTable tbody");
@@ -562,12 +578,14 @@
             </select>
           </td>`;
         cfg.examEvals.forEach((evalObj, index) => {
-          const val = partialData.exams[index] || 0;
+          let val = partialData.exams[index];
+          if(val === "" || val == null) { val = 0; }
           rowHTML += `<td><input type="number" class="exam-input" data-index="${index}" min="0" max="10" step="0.1" value="${val}"></td>`;
         });
         rowHTML += `<td class="exam-average">0</td>`;
         cfg.taskEvals.forEach((evalObj, index) => {
-          const val = partialData.tasks[index] || 0;
+          let val = partialData.tasks[index];
+          if(val === "" || val == null) { val = 0; }
           rowHTML += `<td><input type="number" class="task-input" data-index="${index}" min="0" max="10" step="0.1" value="${val}"></td>`;
         });
         rowHTML += `<td class="task-average">0</td>`;
@@ -579,21 +597,24 @@
             grade = teamObj.partials[currentPartial][index]; 
           }
           partialData.practices[index] = grade;
-          rowHTML += `<td><input type="number" class="practice-input" data-index="${index}" min="0" max="10" step="0.1" value="${grade}" readonly></td>`;
+          rowHTML += `<td><input type="number" class="practice-input" data-index="${index}" min="0" max="10" step="0.1" value="${grade || 0}" readonly></td>`;
         });
         rowHTML += `<td class="practice-average">0</td>`;
-        // Extras y deducciones: Extra Ex, Extra Ta, Extra Pr, Extra Parcial, Extra Total, Participación, Faltas, Deducciones y Total Parcial, Acciones
+        // Extras y deducciones
         rowHTML += `
-          <td><input type="number" class="extra-exam" min="0" max="2" step="0.1" value="${partialData.extraExam}"></td>
-          <td><input type="number" class="extra-task" min="0" max="2" step="0.1" value="${partialData.extraTask}"></td>
-          <td><input type="number" class="extra-practice" min="0" max="2" step="0.1" value="${partialData.extraPractice}"></td>
-          <td><input type="number" class="extra-parcial" min="0" step="0.1" value="${partialData.extraPartial}"></td>
+          <td><input type="number" class="extra-exam" min="0" max="2" step="0.1" value="${partialData.extraExam || 0}"></td>
+          <td><input type="number" class="extra-task" min="0" max="2" step="0.1" value="${partialData.extraTask || 0}"></td>
+          <td><input type="number" class="extra-practice" min="0" max="2" step="0.1" value="${partialData.extraPractice || 0}"></td>
+          <td><input type="number" class="extra-parcial" min="0" step="0.1" value="${partialData.extraParcial || 0}"></td>
           <td class="extra-total">0</td>
-          <td><input type="number" class="participation" min="0" max="5" step="0.1" value="${partialData.participation}"></td>
-          <td><input type="number" class="absences" min="0" step="1" value="${partialData.absences}"></td>
+          <td><input type="number" class="participation" min="0" max="5" step="0.1" value="${partialData.participation || 0}"></td>
+          <td><input type="number" class="absences" min="0" step="1" value="${partialData.absences || 0}"></td>
           <td class="deductions"><span class="deduction-sum">0</span> <button class="deduct-btn btn">Ded</button></td>
           <td class="total-partial">0</td>
-          <td><button class="row-action-btn btn">Ver Ded.</button></td>
+          <td>
+            <button class="row-action-btn btn">Ver Ded.</button>
+            <button class="delete-student btn">Eliminar</button>
+          </td>
         </tr>`;
         tbody.innerHTML += rowHTML;
       });
@@ -683,6 +704,18 @@
           if(student) { openDeductionModal(student, true); }
         });
       });
+      // Botón para eliminar alumno
+      document.querySelectorAll(".delete-student").forEach(btn => {
+        btn.addEventListener("click", (e) => {
+          const row = e.target.closest("tr");
+          const listNum = parseInt(row.getAttribute("data-list"));
+          if(confirm("¿Eliminar este alumno?")) {
+            const index = students.findIndex(s => s.listNumber === listNum);
+            if(index !== -1) { students.splice(index, 1); }
+            buildGradeTable();
+          }
+        });
+      });
     }
     function saveRowData(row) {
       const listNum = row.getAttribute("data-list");
@@ -715,7 +748,10 @@
     /***********************
      * MODALES: DEDUCCIONES, EDITAR MATERIA, EDITAR RÚBRICA, AGREGAR ALUMNO, EQUIPO, ETC.
      ***********************/
-    function showModal(contentHTML) { document.getElementById("modalBody").innerHTML = contentHTML; document.getElementById("modalOverlay").style.display = "block"; }
+    function showModal(contentHTML) {
+      document.getElementById("modalBody").innerHTML = contentHTML;
+      document.getElementById("modalOverlay").style.display = "block";
+    }
     
     function openDeductionModal(student, viewOnly = false) {
       let content = `<h3>Deducciones para ${student.name}</h3>
@@ -747,7 +783,7 @@
       }
     }
     
-    // Editar Rúbrica – Permite editar porcentajes y modificar la lista de evaluaciones
+    // Editar Rúbrica
     document.getElementById("editRubric").addEventListener("click", () => {
       const cfg = getCurrentSubjectConfig();
       let content = `<h3>Editar Rúbrica</h3>
@@ -784,7 +820,6 @@
         <button id="saveRubric" class="btn">Guardar Rúbrica</button>`;
       showModal(content);
       
-      // Eventos para quitar elementos
       document.querySelectorAll(".removeEval").forEach(btn => {
         btn.addEventListener("click", (e) => {
           const cat = e.target.getAttribute("data-cat");
@@ -795,12 +830,10 @@
           buildDynamicHeader();
           buildGradeTable();
           modal.style.display = "none";
-          // Reabrir para seguir editando
           document.getElementById("editRubric").click();
         });
       });
       
-      // Eventos para agregar elementos
       document.getElementById("addExamItem").addEventListener("click", () => {
         const newItem = prompt("Nuevo examen:");
         if(newItem) { cfg.examEvals.push({ name: newItem }); buildDynamicHeader(); buildGradeTable(); }
@@ -813,7 +846,6 @@
         const newItem = prompt("Nueva práctica:");
         if(newItem) {
           cfg.practiceEvals.push({ name: newItem });
-          // Para cada equipo en el parcial actual, agregar 0 a su registro de prácticas
           teams[currentSubject].forEach(team => {
             if (!team.partials) team.partials = {};
             if (!team.partials[currentPartial]) { team.partials[currentPartial] = Array(cfg.practiceEvals.length - 1).fill(0); }
@@ -825,7 +857,6 @@
         }
       });
       
-      // Guardar cambios de porcentajes y evaluaciones
       document.getElementById("saveRubric").addEventListener("click", () => {
         cfg.rubric.exam = parseFloat(document.getElementById("rubricExam").value) || 0;
         cfg.rubric.task = parseFloat(document.getElementById("rubricTask").value) || 0;
@@ -839,8 +870,16 @@
     });
     
     /***********************
-     * MODO SOLO LECTURA: Deshabilitar edición si la URL contiene ?readonly=true
+     * MODO SOLO LECTURA: Aplicar parámetros y deshabilitar edición
      ***********************/
+    function updateURLParams() {
+      const url = new URL(window.location.href);
+      url.searchParams.set("subject", currentSubject);
+      url.searchParams.set("partial", currentPartial);
+      if (!readOnlyMode) { url.searchParams.delete("readonly"); }
+      window.history.pushState({}, '', url.toString());
+    }
+    
     function setReadOnly() {
       document.querySelectorAll("input, select, button").forEach(el => { el.disabled = true; });
       const notice = document.createElement("p");
@@ -852,36 +891,22 @@
     }
     
     /***********************
-     * EXPORTAR A EXCEL
+     * EXPORTAR A EXCEL (Si una celda está vacía se coloca 0)
      ***********************/
     document.getElementById("exportExcel").addEventListener("click", () => {
-      const tableHTML = document.getElementById("gradeTable").outerHTML;
-      const html = `
-        <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
-        <head>
-          <!--[if gte mso 9]><xml>
-          <x:ExcelWorkbook>
-          <x:ExcelWorksheets>
-            <x:ExcelWorksheet>
-              <x:Name>Calificaciones</x:Name>
-              <x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>
-            </x:ExcelWorksheet>
-          </x:ExcelWorksheets>
-          </x:ExcelWorkbook>
-          </xml><![endif]-->
-          <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-          <style>
-            .exam-average, .task-average, .practice-average, .total-partial { background-color: #d1e7dd; }
-            table, th, td { border: 1px solid #ccc; }
-            th { background: #003366; color: #fff; }
-          </style>
-        </head>
-        <body>
-          ${tableHTML}
-        </body>
-        </html>
-      `;
-      const blob = new Blob([html], { type: "application/vnd.ms-excel" });
+      const table = document.getElementById("gradeTable");
+      let csv = "";
+      // Recorrer cada fila y celda manualmente
+      for (let row of table.rows) {
+        let rowData = [];
+        for (let cell of row.cells) {
+          let text = cell.innerText.trim();
+          if (!text) text = "0";
+          rowData.push('"' + text + '"');
+        }
+        csv += rowData.join(",") + "\n";
+      }
+      const blob = new Blob([csv], { type: "application/vnd.ms-excel" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -891,14 +916,14 @@
     });
     
     /***********************
-     * EXPORTAR A PDF
+     * EXPORTAR A PDF (Si celda vacía se muestra 0)
      ***********************/
     document.getElementById("exportPDF").addEventListener("click", () => {
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF('landscape', 'pt', 'a4');
       doc.setFontSize(10);
       doc.text("Calificaciones - " + subjectsConfig[currentSubject].name + " - Parcial " + currentPartial, 40, 30);
-      // Encabezado compacto para PDF con acrónimos
+      // Encabezados compactos (acrónimos) para PDF
       const headerCells = [
         "N° LS", "Alumno", "Equipo"
       ];
@@ -912,7 +937,7 @@
       headerCells.push("ExE");
       headerCells.push("ExT");
       headerCells.push("ExP");
-      headerCells.push("ExP-Gen"); // Extra Parcial
+      headerCells.push("ExP-Gen");
       headerCells.push("ExTOT");
       headerCells.push("Par");
       headerCells.push("Faltas");
@@ -925,20 +950,11 @@
       document.querySelectorAll("#gradeTable tbody tr").forEach(row => {
         const rowData = [];
         const cells = Array.from(row.querySelectorAll("td"));
-        // Omitir la última columna de acciones
-        cells.slice(0, cells.length - 1).forEach((cell, index) => {
-          const input = cell.querySelector("input, select");
-          if(input) {
-            if(input.tagName.toLowerCase() === "select") {
-              rowData.push(input.options[input.selectedIndex].text);
-            } else {
-              rowData.push(input.value);
-            }
-          } else {
-            rowData.push(cell.textContent.trim());
-          }
+        cells.slice(0, cells.length - 1).forEach(cell => {
+          let text = cell.innerText.trim();
+          if (!text) text = "0";
+          rowData.push(text);
         });
-        // Agregar celda de firma
         rowData.push("____________________________");
         data.push(rowData);
       });
@@ -968,6 +984,7 @@
         updatePartialDisplay();
         buildGradeTable();
         buildTeamTable();
+        updateURLParams();
       });
     });
     document.getElementById("subjectSelect").addEventListener("change", (e) => {
@@ -976,6 +993,7 @@
       buildDynamicHeader();
       buildTeamTable();
       buildGradeTable();
+      updateURLParams();
     });
     
     /***********************
@@ -992,12 +1010,12 @@
      * INICIO DE SESIÓN CON FIREBASE
      ***********************/
     window.addEventListener("load", () => {
-      const loginModal = document.getElementById("loginModal");
-      // Si estamos en modo solo lectura, no se requiere login
       if (readOnlyMode) {
+        updateURLParams();
         document.getElementById("appContainer").style.display = "block";
         setReadOnly();
       } else {
+        const loginModal = document.getElementById("loginModal");
         loginModal.style.display = "block";
         auth.onAuthStateChanged((user) => {
           if (user) {
@@ -1030,6 +1048,27 @@
       notice.style.fontWeight = "bold";
       notice.style.color = "#900";
       document.getElementById("appContainer").insertBefore(notice, document.getElementById("appContainer").firstChild);
+    }
+    
+    // Agregar funcionalidad para eliminar alumnos
+    document.addEventListener("click", (e) => {
+      if(e.target && e.target.classList.contains("delete-student")) {
+        const row = e.target.closest("tr");
+        const listNum = parseInt(row.getAttribute("data-list"));
+        if(confirm("¿Estás seguro de eliminar este alumno?")) {
+          students.splice(students.findIndex(s => s.listNumber === listNum), 1);
+          buildGradeTable();
+        }
+      }
+    });
+    
+    // Actualizar la URL con los parámetros actuales
+    function updateURLParams() {
+      const url = new URL(window.location.href);
+      url.searchParams.set("subject", currentSubject);
+      url.searchParams.set("partial", currentPartial);
+      if (!readOnlyMode) { url.searchParams.delete("readonly"); }
+      window.history.pushState({}, '', url.toString());
     }
   </script>
 </body>
