@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Sistema de Calificaciones - Institución XYZ</title>
+  <title>Control Escolar</title>
   <style>
     /* ===== ESTILOS GENERALES Y RESPONSIVOS ===== */
     * { box-sizing: border-box; }
@@ -285,55 +285,146 @@
   </div>
 
   <script>
-    /* -----------------------------
-       Funciones para persistir datos en localStorage
-    ----------------------------- */
+    /***********************
+     * 1. Variables Globales: Definir Datos
+     ***********************/
+    const subjectsConfig = {
+      circuitos: {
+        name: "Circuitos Eléctricos",
+        semester: "ene-jul",
+        year: 2023,
+        rubric: { exam: 45, task: 25, practice: 30, participation: 5 },
+        examEvals: [],
+        taskEvals: [],
+        practiceEvals: []
+      },
+      tt6: {
+        name: "TT6",
+        semester: "ene-jul",
+        year: 2023,
+        rubric: { exam: 45, task: 25, practice: 30, participation: 5 },
+        examEvals: [],
+        taskEvals: [],
+        practiceEvals: []
+      },
+      instalaciones: {
+        name: "Instalaciones y Control Eléctrico",
+        semester: "ago-dic",
+        year: 2023,
+        rubric: { exam: 45, task: 25, practice: 30, participation: 5 },
+        examEvals: [],
+        taskEvals: [],
+        practiceEvals: []
+      },
+      fisica4: {
+        name: "Física 4",
+        semester: "ago-dic",
+        year: 2023,
+        rubric: { exam: 45, task: 25, practice: 30, participation: 5 },
+        examEvals: [],
+        taskEvals: [],
+        practiceEvals: []
+      }
+    };
+
+    const students = [
+      { listNumber: 1, name: "Juan Pérez", team: "E1", subject: "circuitos", partials: {} },
+      { listNumber: 2, name: "María García", team: "E2", subject: "circuitos", partials: {} },
+      { listNumber: 3, name: "Carlos López", team: "E1", subject: "tt6", partials: {} }
+    ];
+
+    const teams = {
+      circuitos: [
+        { id: "E1", name: "Equipo E1", head: "Encargado 1", partials: {} },
+        { id: "E2", name: "Equipo E2", head: "Encargado 2", partials: {} }
+      ],
+      tt6: [
+        { id: "E1", name: "Equipo A", head: "Encargado A", partials: {} },
+        { id: "E2", name: "Equipo B", head: "Encargado B", partials: {} }
+      ],
+      instalaciones: [
+        { id: "E1", name: "Equipo X", head: "Encargado X", partials: {} },
+        { id: "E2", name: "Equipo Y", head: "Encargado Y", partials: {} }
+      ],
+      fisica4: [
+        { id: "E1", name: "Equipo F1", head: "Encargado F1", partials: {} },
+        { id: "E2", name: "Equipo F2", head: "Encargado F2", partials: {} }
+      ]
+    };
+
+    /***********************
+     * 2. Persistencia con localStorage
+     ***********************/
     function saveData() {
       localStorage.setItem("subjectsConfig", JSON.stringify(subjectsConfig));
       localStorage.setItem("students", JSON.stringify(students));
       localStorage.setItem("teams", JSON.stringify(teams));
     }
     function loadData() {
-      const storedSubjects = localStorage.getItem("subjectsConfig");
-      if (storedSubjects) {
-        const parsed = JSON.parse(storedSubjects);
-        for (let key in parsed) {
-          subjectsConfig[key] = parsed[key];
+      try {
+        const storedSubjects = localStorage.getItem("subjectsConfig");
+        if (storedSubjects) {
+          const parsed = JSON.parse(storedSubjects);
+          for (let key in parsed) {
+            subjectsConfig[key] = parsed[key];
+          }
         }
+      } catch (error) {
+        console.error("Error al cargar subjectsConfig:", error);
+        localStorage.removeItem("subjectsConfig");
       }
-      const storedStudents = localStorage.getItem("students");
-      if (storedStudents) {
-        const parsed = JSON.parse(storedStudents);
-        students.splice(0, students.length, ...parsed);
-      }
-      const storedTeams = localStorage.getItem("teams");
-      if (storedTeams) {
-        const parsed = JSON.parse(storedTeams);
-        for (let key in parsed) {
-          teams[key] = parsed[key];
+      try {
+        const storedStudents = localStorage.getItem("students");
+        if (storedStudents) {
+          const parsed = JSON.parse(storedStudents);
+          students.splice(0, students.length, ...parsed);
         }
+      } catch (error) {
+        console.error("Error al cargar students:", error);
+        localStorage.removeItem("students");
+      }
+      try {
+        const storedTeams = localStorage.getItem("teams");
+        if (storedTeams) {
+          const parsed = JSON.parse(storedTeams);
+          for (let key in parsed) {
+            teams[key] = parsed[key];
+          }
+        }
+      } catch (error) {
+        console.error("Error al cargar teams:", error);
+        localStorage.removeItem("teams");
       }
     }
-    // Intentamos cargar datos persistidos al inicio
     loadData();
 
-    /* -----------------------------
-       Funciones de Modal (abrir y cerrar)
-    ----------------------------- */
-    const modal = document.getElementById("modalOverlay");
-    function attachModalClose() {
-      document.querySelectorAll(".modal .close").forEach(el => {
-        el.addEventListener("click", () => { modal.style.display = "none"; });
-      });
-      window.addEventListener("click", (e) => {
-        if(e.target === modal) { modal.style.display = "none"; }
-      });
-    }
-    attachModalClose();
-    
-    /* -----------------------------
-       Funciones de Interfaz
-    ----------------------------- */
+    /***********************
+     * 3. Inicializar Firebase (usando la misma configuración que ya tienes)
+     ***********************/
+    const firebaseConfig = {
+      apiKey: "AIzaSyDsoLZHDpR8EEyvs5tJ7gF1tE7eKS-ZGcU",
+      authDomain: "controlescolar-a184f.firebaseapp.com",
+      projectId: "controlescolar-a184f",
+      storageBucket: "controlescolar-a184f.firebasestorage.app",
+      messagingSenderId: "213806947943",
+      appId: "1:213806947943:web:996ab97cdd805998f0bec2"
+    };
+    const appFirebase = firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+
+    /***********************
+     * 4. Variables de Estado
+     ***********************/
+    const urlParams = new URLSearchParams(window.location.search);
+    let readOnlyMode = urlParams.get("readonly") === "true";
+    let urlSubject = urlParams.get("subject");
+    let urlPartial = parseInt(urlParams.get("partial"));
+    let currentSubject = (urlSubject && subjectsConfig[urlSubject]) ? urlSubject : "circuitos";
+    let currentPartial = (!isNaN(urlPartial) && urlPartial > 0) ? urlPartial : 1;
+
+    /***********************
+     * 5. Funciones de Interfaz
+     ***********************/
     function buildSubjectSelect() {
       const select = document.getElementById("subjectSelect");
       select.innerHTML = "";
@@ -346,7 +437,7 @@
       }
       select.value = currentSubject;
     }
-    
+
     function updateRubricDisplay() {
       const cfg = subjectsConfig[currentSubject];
       document.getElementById("weightExam").textContent = cfg.rubric.exam + "%";
@@ -354,11 +445,11 @@
       document.getElementById("weightPractice").textContent = cfg.rubric.practice + "%";
       document.getElementById("weightPart").textContent = cfg.rubric.participation + "%";
     }
-    
+
     function updatePartialDisplay() {
       document.getElementById("currentPartialDisplay").textContent = currentPartial;
     }
-    
+
     function buildGroupHeader() {
       const cfg = subjectsConfig[currentSubject];
       const examColspan = cfg.examEvals.length + 1;
@@ -368,7 +459,7 @@
       document.querySelector(".task-group").setAttribute("colspan", taskColspan);
       document.querySelector(".practice-group").setAttribute("colspan", practiceColspan);
     }
-    
+
     function buildDynamicHeader() {
       const headerRow = document.getElementById("dynamicHeader");
       headerRow.innerHTML = "";
@@ -399,7 +490,7 @@
       headerRow.appendChild(thPracticeAvg);
       buildGroupHeader();
     }
-    
+
     function buildTeamTable() {
       const teamTableHead = document.getElementById("teamHeader");
       const teamTableBody = document.querySelector("#teamTable tbody");
@@ -488,7 +579,7 @@
         });
       });
     }
-    
+
     function buildGradeTable() {
       const tbody = document.getElementById("gradeTable").querySelector("tbody");
       tbody.innerHTML = "";
@@ -571,7 +662,7 @@
       if(readOnlyMode) { setReadOnly(); }
       saveData();
     }
-    
+
     function recalculateRow(row) {
       const rubric = subjectsConfig[currentSubject].rubric;
       let examSum = 0, examCount = 0;
@@ -604,11 +695,11 @@
       row.querySelector(".total-partial").textContent = totalPartial.toFixed(2);
       if(student) { student.partials[currentPartial].total = totalPartial; }
     }
-    
+
     function recalculateAll() {
       document.querySelectorAll("#gradeTable tbody tr").forEach(row => recalculateRow(row));
     }
-    
+
     function attachTableListeners() {
       document.querySelectorAll("#gradeTable tbody input").forEach(input => {
         input.addEventListener("input", () => {
@@ -665,7 +756,7 @@
         });
       });
     }
-    
+
     function saveRowData(row) {
       const listNum = row.getAttribute("data-list");
       const student = students.find(s => s.listNumber == listNum);
@@ -683,7 +774,7 @@
       partialData.absences = parseFloat(row.querySelector(".absences").value) || 0;
       saveData();
     }
-    
+
     function propagateTeamGradeForRow(row) {
       const listNum = row.getAttribute("data-list");
       const student = students.find(s => s.listNumber == listNum);
@@ -696,15 +787,15 @@
       recalculateRow(row);
       saveData();
     }
-    
-    /* -----------------------------
-       Funciones de Modal para agregar/editar elementos
-    ----------------------------- */
+
+    /***********************
+     * Funciones de Modal para agregar/editar elementos
+    ***********************/
     function showModal(contentHTML) {
       document.getElementById("modalBody").innerHTML = contentHTML;
       modal.style.display = "block";
     }
-    
+
     function openDeductionModal(student, viewOnly = false) {
       let content = `<h3>Deducciones para ${student.name}</h3>
         <label>Monto (-): <input type="number" id="dedAmount" step="0.1"></label><br>
@@ -735,92 +826,7 @@
         });
       }
     }
-    
-    document.getElementById("editRubric").addEventListener("click", () => {
-      const cfg = subjectsConfig[currentSubject];
-      let content = `<h3>Editar Rúbrica</h3>
-        <h4>Porcentajes</h4>
-        <label>Exámenes (%): <input type="number" id="rubricExam" value="${cfg.rubric.exam}" min="0" max="100"></label><br>
-        <label>Tareas (%): <input type="number" id="rubricTask" value="${cfg.rubric.task}" min="0" max="100"></label><br>
-        <label>Prácticas (%): <input type="number" id="rubricPractice" value="${cfg.rubric.practice}" min="0" max="100"></label><br>
-        <label>Participación (%): <input type="number" id="rubricPart" value="${cfg.rubric.participation}" min="0" max="100"></label><br>
-        <h4>Evaluaciones</h4>
-        <div id="rubricEdits">
-          <h5>Exámenes</h5>
-          <ul id="examList">`;
-      cfg.examEvals.forEach((e, i) => {
-        content += `<li><input type="text" data-cat="exam" data-index="${i}" value="${e.name}"> <button class="removeEval btn" data-cat="exam" data-index="${i}">Quitar</button></li>`;
-      });
-      content += `</ul>
-          <button id="addExamItem" class="btn">Agregar Examen</button>
-          <h5>Tareas</h5>
-          <ul id="taskList">`;
-      cfg.taskEvals.forEach((e, i) => {
-        content += `<li><input type="text" data-cat="task" data-index="${i}" value="${e.name}"> <button class="removeEval btn" data-cat="task" data-index="${i}">Quitar</button></li>`;
-      });
-      content += `</ul>
-          <button id="addTaskItem" class="btn">Agregar Tarea</button>
-          <h5>Prácticas</h5>
-          <ul id="practiceList">`;
-      cfg.practiceEvals.forEach((e, i) => {
-        content += `<li><input type="text" data-cat="practice" data-index="${i}" value="${e.name}"> <button class="removeEval btn" data-cat="practice" data-index="${i}">Quitar</button></li>`;
-      });
-      content += `</ul>
-          <button id="addPracticeItem" class="btn">Agregar Práctica</button>
-        </div>
-        <br>
-        <button id="saveRubric" class="btn">Guardar Rúbrica</button>`;
-      showModal(content);
-      document.querySelectorAll(".removeEval").forEach(btn => {
-        btn.addEventListener("click", (e) => {
-          const cat = e.target.getAttribute("data-cat");
-          const index = parseInt(e.target.getAttribute("data-index"));
-          if(cat === "exam") { cfg.examEvals.splice(index, 1); }
-          else if(cat === "task") { cfg.taskEvals.splice(index, 1); }
-          else if(cat === "practice") { cfg.practiceEvals.splice(index, 1); }
-          buildDynamicHeader();
-          buildGradeTable();
-          modal.style.display = "none";
-          setTimeout(() => { document.getElementById("editRubric").click(); }, 200);
-          saveData();
-        });
-      });
-      document.getElementById("addExamItem").addEventListener("click", () => {
-        const newItem = prompt("Nuevo examen:");
-        if(newItem) { cfg.examEvals.push({ name: newItem }); buildDynamicHeader(); buildGradeTable(); saveData(); }
-      });
-      document.getElementById("addTaskItem").addEventListener("click", () => {
-        const newItem = prompt("Nueva tarea:");
-        if(newItem) { cfg.taskEvals.push({ name: newItem }); buildDynamicHeader(); buildGradeTable(); saveData(); }
-      });
-      document.getElementById("addPracticeItem").addEventListener("click", () => {
-        const newItem = prompt("Nueva práctica:");
-        if(newItem) {
-          cfg.practiceEvals.push({ name: newItem });
-          teams[currentSubject].forEach(team => {
-            if (!team.partials) team.partials = {};
-            if (!team.partials[currentPartial]) { team.partials[currentPartial] = []; }
-            team.partials[currentPartial].push(0);
-          });
-          buildDynamicHeader();
-          buildTeamTable();
-          buildGradeTable();
-          saveData();
-        }
-      });
-      document.getElementById("saveRubric").addEventListener("click", () => {
-        cfg.rubric.exam = parseFloat(document.getElementById("rubricExam").value) || 0;
-        cfg.rubric.task = parseFloat(document.getElementById("rubricTask").value) || 0;
-        cfg.rubric.practice = parseFloat(document.getElementById("rubricPractice").value) || 0;
-        cfg.rubric.participation = parseFloat(document.getElementById("rubricPart").value) || 0;
-        modal.style.display = "none";
-        updateRubricDisplay();
-        buildDynamicHeader();
-        buildGradeTable();
-        saveData();
-      });
-    });
-    
+
     /* -----------------------------
        Agregar Evaluaciones desde el Área Principal
     ----------------------------- */
@@ -857,7 +863,7 @@
         saveData();
       }
     });
-    
+
     /* -----------------------------
        Agregar Alumno
     ----------------------------- */
@@ -883,7 +889,7 @@
          saveData();
       });
     });
-    
+
     /* -----------------------------
        Agregar Equipo
     ----------------------------- */
@@ -907,7 +913,7 @@
          saveData();
       });
     });
-    
+
     /* -----------------------------
        Editar Materia
     ----------------------------- */
@@ -917,8 +923,8 @@
         <label>Nombre: <input type="text" id="editSubjName" value="${subj.name}"></label><br>
         <label>Semestre: 
           <select id="editSubjSemester">
-            <option value="ene-jul" ${subj.semester==="ene-jul"?"selected":""}>ene-jul</option>
-            <option value="ago-dic" ${subj.semester==="ago-dic"?"selected":""}>ago-dic</option>
+            <option value="ene-jul" ${subj.semester === "ene-jul" ? "selected" : ""}>ene-jul</option>
+            <option value="ago-dic" ${subj.semester === "ago-dic" ? "selected" : ""}>ago-dic</option>
           </select>
         </label><br>
         <label>Año: <input type="number" id="editSubjYear" value="${subj.year}"></label><br>
@@ -934,7 +940,7 @@
         saveData();
       });
     });
-    
+
     /* -----------------------------
        Agregar Materia
     ----------------------------- */
@@ -972,7 +978,7 @@
         saveData();
       });
     });
-    
+
     /* -----------------------------
        Compartir Versión (Solo Lectura)
     ----------------------------- */
@@ -983,7 +989,7 @@
       url.searchParams.set("readonly", "true");
       prompt("Copia este enlace para compartir la versión de solo lectura:", url.toString());
     });
-    
+
     /* -----------------------------
        Exportar a Excel (celdas vacías = 0)
     ----------------------------- */
@@ -1007,7 +1013,7 @@
       a.click();
       URL.revokeObjectURL(url);
     });
-    
+
     /* -----------------------------
        Exportar a PDF (celdas vacías = 0)
     ----------------------------- */
@@ -1062,9 +1068,9 @@
       });
       doc.save("calificaciones_" + currentSubject + "_parcial_" + currentPartial + ".pdf");
     });
-    
+
     document.getElementById("printGrades").addEventListener("click", () => { window.print(); });
-    
+
     /* -----------------------------
        Cambios de Parcial y Materia
     ----------------------------- */
