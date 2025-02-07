@@ -283,114 +283,53 @@
     </main>
     <footer>Pagina creada y diseñada por Francisco López Velázquez</footer>
   </div>
-  
+
   <script>
     /* -----------------------------
-       Funciones de Modal: abrir y cerrar
+       Funciones para persistir datos en localStorage
+    ----------------------------- */
+    function saveData() {
+      localStorage.setItem("subjectsConfig", JSON.stringify(subjectsConfig));
+      localStorage.setItem("students", JSON.stringify(students));
+      localStorage.setItem("teams", JSON.stringify(teams));
+    }
+    function loadData() {
+      const storedSubjects = localStorage.getItem("subjectsConfig");
+      if (storedSubjects) {
+        const parsed = JSON.parse(storedSubjects);
+        for (let key in parsed) {
+          subjectsConfig[key] = parsed[key];
+        }
+      }
+      const storedStudents = localStorage.getItem("students");
+      if (storedStudents) {
+        const parsed = JSON.parse(storedStudents);
+        students.splice(0, students.length, ...parsed);
+      }
+      const storedTeams = localStorage.getItem("teams");
+      if (storedTeams) {
+        const parsed = JSON.parse(storedTeams);
+        for (let key in parsed) {
+          teams[key] = parsed[key];
+        }
+      }
+    }
+    // Intentamos cargar datos persistidos al inicio
+    loadData();
+
+    /* -----------------------------
+       Funciones de Modal (abrir y cerrar)
     ----------------------------- */
     const modal = document.getElementById("modalOverlay");
     function attachModalClose() {
       document.querySelectorAll(".modal .close").forEach(el => {
-        el.addEventListener("click", () => {
-          modal.style.display = "none";
-        });
+        el.addEventListener("click", () => { modal.style.display = "none"; });
       });
       window.addEventListener("click", (e) => {
         if(e.target === modal) { modal.style.display = "none"; }
       });
     }
     attachModalClose();
-    
-    /* -----------------------------
-       Datos: Materias, Alumnos y Equipos
-    ----------------------------- */
-    const subjectsConfig = {
-      circuitos: {
-        name: "Circuitos Eléctricos",
-        semester: "ene-jul",
-        year: 2023,
-        rubric: { exam: 45, task: 25, practice: 30, participation: 5 },
-        examEvals: [],
-        taskEvals: [],
-        practiceEvals: []
-      },
-      tt6: {
-        name: "TT6",
-        semester: "ene-jul",
-        year: 2023,
-        rubric: { exam: 45, task: 25, practice: 30, participation: 5 },
-        examEvals: [],
-        taskEvals: [],
-        practiceEvals: []
-      },
-      instalaciones: {
-        name: "Instalaciones y Control Eléctrico",
-        semester: "ago-dic",
-        year: 2023,
-        rubric: { exam: 45, task: 25, practice: 30, participation: 5 },
-        examEvals: [],
-        taskEvals: [],
-        practiceEvals: []
-      },
-      fisica4: {
-        name: "Física 4",
-        semester: "ago-dic",
-        year: 2023,
-        rubric: { exam: 45, task: 25, practice: 30, participation: 5 },
-        examEvals: [],
-        taskEvals: [],
-        practiceEvals: []
-      }
-    };
-    
-    const students = [
-      { listNumber: 1, name: "Juan Pérez", team: "E1", subject: "circuitos", partials: {} },
-      { listNumber: 2, name: "María García", team: "E2", subject: "circuitos", partials: {} },
-      { listNumber: 3, name: "Carlos López", team: "E1", subject: "tt6", partials: {} }
-    ];
-    
-    const teams = {
-      circuitos: [
-        { id: "E1", name: "Equipo E1", head: "Encargado 1", partials: {} },
-        { id: "E2", name: "Equipo E2", head: "Encargado 2", partials: {} }
-      ],
-      tt6: [
-        { id: "E1", name: "Equipo A", head: "Encargado A", partials: {} },
-        { id: "E2", name: "Equipo B", head: "Encargado B", partials: {} }
-      ],
-      instalaciones: [
-        { id: "E1", name: "Equipo X", head: "Encargado X", partials: {} },
-        { id: "E2", name: "Equipo Y", head: "Encargado Y", partials: {} }
-      ],
-      fisica4: [
-        { id: "E1", name: "Equipo F1", head: "Encargado F1", partials: {} },
-        { id: "E2", name: "Equipo F2", head: "Encargado F2", partials: {} }
-      ]
-    };
-    
-    /* -----------------------------
-       Inicializar Firebase
-    ----------------------------- */
-    const firebaseConfig = {
-      apiKey: "AIzaSyDsoLZHDpR8EEyvs5tJ7gF1tE7eKS-ZGcU",
-      authDomain: "controlescolar-a184f.firebaseapp.com",
-      projectId: "controlescolar-a184f",
-      storageBucket: "controlescolar-a184f.firebasestorage.app",
-      messagingSenderId: "213806947943",
-      appId: "1:213806947943:web:996ab97cdd805998f0bec2"
-    };
-    const appFirebase = firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-    
-    /* -----------------------------
-       Lectura de Parámetros de URL
-    ----------------------------- */
-    const urlParams = new URLSearchParams(window.location.search);
-    let readOnlyMode = urlParams.get("readonly") === "true";
-    let urlSubject = urlParams.get("subject");
-    let urlPartial = parseInt(urlParams.get("partial"));
-    let currentSubject = (urlSubject && subjectsConfig[urlSubject]) ? urlSubject : "circuitos";
-    let currentPartial = (!isNaN(urlPartial) && urlPartial > 0) ? urlPartial : 1;
     
     /* -----------------------------
        Funciones de Interfaz
@@ -509,6 +448,7 @@
                 if(practiceInputs[idx]) { practiceInputs[idx].value = newVal; recalculateRow(row); }
               }
             });
+            saveData();
           }
         });
       });
@@ -524,13 +464,13 @@
               <label>Encargado: <input type="text" id="editTeamHead" value="${team.head}"></label><br>
               <button id="saveTeam" class="btn">Guardar</button>`;
             showModal(content);
-            // Asignar evento al botón guardar
             document.getElementById("saveTeam").addEventListener("click", () => {
               team.name = document.getElementById("editTeamName").value.trim();
               team.head = document.getElementById("editTeamHead").value.trim();
               modal.style.display = "none";
               buildTeamTable();
               buildGradeTable();
+              saveData();
             });
           }
         });
@@ -543,6 +483,7 @@
             teams[currentSubject] = teams[currentSubject].filter(t => t.id !== teamId);
             buildTeamTable();
             buildGradeTable();
+            saveData();
           }
         });
       });
@@ -628,6 +569,7 @@
       attachTableListeners();
       recalculateAll();
       if(readOnlyMode) { setReadOnly(); }
+      saveData();
     }
     
     function recalculateRow(row) {
@@ -673,6 +615,7 @@
           const row = input.closest("tr");
           saveRowData(row);
           recalculateRow(row);
+          saveData();
         });
       });
       document.querySelectorAll(".student-team").forEach(select => {
@@ -682,6 +625,7 @@
           const student = students.find(s => s.listNumber == listNum);
           if(student) { student.team = e.target.value; }
           propagateTeamGradeForRow(row);
+          saveData();
         });
       });
       document.querySelectorAll(".student-name").forEach(cell => {
@@ -690,6 +634,7 @@
           const listNum = row.getAttribute("data-list");
           const student = students.find(s => s.listNumber == listNum);
           if(student) { student.name = e.target.textContent.trim(); }
+          saveData();
         });
       });
       document.querySelectorAll(".deduct-btn").forEach(btn => {
@@ -715,6 +660,7 @@
           if(confirm("¿Estás seguro de eliminar este alumno?")) {
             students.splice(students.findIndex(s => s.listNumber === listNum), 1);
             buildGradeTable();
+            saveData();
           }
         });
       });
@@ -735,6 +681,7 @@
       partialData.extraParcial = parseFloat(row.querySelector(".extra-parcial").value) || 0;
       partialData.participation = parseFloat(row.querySelector(".participation").value) || 0;
       partialData.absences = parseFloat(row.querySelector(".absences").value) || 0;
+      saveData();
     }
     
     function propagateTeamGradeForRow(row) {
@@ -747,14 +694,14 @@
         row.querySelectorAll(".practice-input").forEach((input, idx) => { input.value = teamObj.partials[currentPartial][idx] || 0; });
       }
       recalculateRow(row);
+      saveData();
     }
     
     /* -----------------------------
        Funciones de Modal para agregar/editar elementos
     ----------------------------- */
     function showModal(contentHTML) {
-      const modalBody = document.getElementById("modalBody");
-      modalBody.innerHTML = contentHTML;
+      document.getElementById("modalBody").innerHTML = contentHTML;
       modal.style.display = "block";
     }
     
@@ -784,6 +731,7 @@
           student.partials[currentPartial].deductions.push({ amount, reason, date });
           modal.style.display = "none";
           buildGradeTable();
+          saveData();
         });
       }
     }
@@ -823,7 +771,6 @@
         <br>
         <button id="saveRubric" class="btn">Guardar Rúbrica</button>`;
       showModal(content);
-      // Asignar los eventos para quitar y agregar evaluaciones
       document.querySelectorAll(".removeEval").forEach(btn => {
         btn.addEventListener("click", (e) => {
           const cat = e.target.getAttribute("data-cat");
@@ -835,15 +782,16 @@
           buildGradeTable();
           modal.style.display = "none";
           setTimeout(() => { document.getElementById("editRubric").click(); }, 200);
+          saveData();
         });
       });
       document.getElementById("addExamItem").addEventListener("click", () => {
         const newItem = prompt("Nuevo examen:");
-        if(newItem) { cfg.examEvals.push({ name: newItem }); buildDynamicHeader(); buildGradeTable(); }
+        if(newItem) { cfg.examEvals.push({ name: newItem }); buildDynamicHeader(); buildGradeTable(); saveData(); }
       });
       document.getElementById("addTaskItem").addEventListener("click", () => {
         const newItem = prompt("Nueva tarea:");
-        if(newItem) { cfg.taskEvals.push({ name: newItem }); buildDynamicHeader(); buildGradeTable(); }
+        if(newItem) { cfg.taskEvals.push({ name: newItem }); buildDynamicHeader(); buildGradeTable(); saveData(); }
       });
       document.getElementById("addPracticeItem").addEventListener("click", () => {
         const newItem = prompt("Nueva práctica:");
@@ -851,12 +799,13 @@
           cfg.practiceEvals.push({ name: newItem });
           teams[currentSubject].forEach(team => {
             if (!team.partials) team.partials = {};
-            if (!team.partials[currentPartial]) { team.partials[currentPartial] = Array(cfg.practiceEvals.length - 1).fill(0); }
+            if (!team.partials[currentPartial]) { team.partials[currentPartial] = []; }
             team.partials[currentPartial].push(0);
           });
           buildDynamicHeader();
           buildTeamTable();
           buildGradeTable();
+          saveData();
         }
       });
       document.getElementById("saveRubric").addEventListener("click", () => {
@@ -868,7 +817,45 @@
         updateRubricDisplay();
         buildDynamicHeader();
         buildGradeTable();
+        saveData();
       });
+    });
+    
+    /* -----------------------------
+       Agregar Evaluaciones desde el Área Principal
+    ----------------------------- */
+    document.getElementById("addExamEval").addEventListener("click", () => {
+      let newExam = prompt("Ingrese nombre del nuevo Examen:");
+      if(newExam) {
+        subjectsConfig[currentSubject].examEvals.push({ name: newExam });
+        buildDynamicHeader();
+        buildGradeTable();
+        saveData();
+      }
+    });
+    document.getElementById("addTaskEval").addEventListener("click", () => {
+      let newTask = prompt("Ingrese nombre de la nueva Tarea:");
+      if(newTask) {
+        subjectsConfig[currentSubject].taskEvals.push({ name: newTask });
+        buildDynamicHeader();
+        buildGradeTable();
+        saveData();
+      }
+    });
+    document.getElementById("addPracticeEval").addEventListener("click", () => {
+      let newPractice = prompt("Ingrese nombre de la nueva Práctica:");
+      if(newPractice) {
+        subjectsConfig[currentSubject].practiceEvals.push({ name: newPractice });
+        teams[currentSubject].forEach(team => {
+          if(!team.partials) team.partials = {};
+          if(!team.partials[currentPartial]) { team.partials[currentPartial] = []; }
+          team.partials[currentPartial].push(0);
+        });
+        buildDynamicHeader();
+        buildTeamTable();
+        buildGradeTable();
+        saveData();
+      }
     });
     
     /* -----------------------------
@@ -893,6 +880,7 @@
          students.push({ listNumber: listNum, name, team, subject: currentSubject, partials: {} });
          modal.style.display = "none";
          buildGradeTable();
+         saveData();
       });
     });
     
@@ -916,6 +904,7 @@
          modal.style.display = "none";
          buildTeamTable();
          buildGradeTable();
+         saveData();
       });
     });
     
@@ -942,6 +931,7 @@
         modal.style.display = "none";
         buildSubjectSelect();
         buildDynamicHeader();
+        saveData();
       });
     });
     
@@ -979,6 +969,7 @@
         teams[id] = [];
         buildSubjectSelect();
         modal.style.display = "none";
+        saveData();
       });
     });
     
