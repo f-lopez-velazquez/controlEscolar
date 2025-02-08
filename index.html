@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Control Escolar</title>
+  <title>Sistema de Calificaciones - Institución XYZ</title>
   <style>
     /* ===== ESTILOS GENERALES Y RESPONSIVOS ===== */
     * { box-sizing: border-box; }
@@ -286,7 +286,7 @@
 
   <script>
     /***********************
-     * 1. Variables Globales: Definir Datos
+     * 1. Variables Globales: Datos
      ***********************/
     const subjectsConfig = {
       circuitos: {
@@ -353,7 +353,7 @@
     };
 
     /***********************
-     * 2. Persistencia con localStorage
+     * 2. Persistencia: localStorage (para pruebas)
      ***********************/
     function saveData() {
       localStorage.setItem("subjectsConfig", JSON.stringify(subjectsConfig));
@@ -365,9 +365,7 @@
         const storedSubjects = localStorage.getItem("subjectsConfig");
         if (storedSubjects) {
           const parsed = JSON.parse(storedSubjects);
-          for (let key in parsed) {
-            subjectsConfig[key] = parsed[key];
-          }
+          for (let key in parsed) { subjectsConfig[key] = parsed[key]; }
         }
       } catch (error) {
         console.error("Error al cargar subjectsConfig:", error);
@@ -387,9 +385,7 @@
         const storedTeams = localStorage.getItem("teams");
         if (storedTeams) {
           const parsed = JSON.parse(storedTeams);
-          for (let key in parsed) {
-            teams[key] = parsed[key];
-          }
+          for (let key in parsed) { teams[key] = parsed[key]; }
         }
       } catch (error) {
         console.error("Error al cargar teams:", error);
@@ -399,7 +395,7 @@
     loadData();
 
     /***********************
-     * 3. Inicializar Firebase (usando la misma configuración que ya tienes)
+     * 3. Inicializar Firebase
      ***********************/
     const firebaseConfig = {
       apiKey: "AIzaSyDsoLZHDpR8EEyvs5tJ7gF1tE7eKS-ZGcU",
@@ -518,6 +514,8 @@
         teamTableBody.innerHTML += rowHTML;
       });
       document.querySelectorAll(".team-practice-input").forEach(input => {
+        input.onclick = null; // Removemos cualquier asignación previa
+        input.onclick = (e) => {}; // Sólo para asegurarnos
         input.addEventListener("input", (e) => {
           const teamId = e.target.getAttribute("data-team-id");
           const idx = parseInt(e.target.getAttribute("data-index"));
@@ -526,8 +524,8 @@
           const team = subjectTeams.find(t => t.id === teamId);
           if(team) {
             if (!team.partials) team.partials = {};
-            if (!team.partials[currentPartial]) { 
-              team.partials[currentPartial] = Array(subjectsConfig[currentSubject].practiceEvals.length).fill(0); 
+            if (!team.partials[currentPartial]) {
+              team.partials[currentPartial] = Array(subjectsConfig[currentSubject].practiceEvals.length).fill(0);
             }
             team.partials[currentPartial][idx] = newVal;
             // Actualizar en la tabla de alumnos
@@ -544,7 +542,8 @@
         });
       });
       document.querySelectorAll(".edit-team").forEach(btn => {
-        btn.addEventListener("click", (e) => {
+        btn.onclick = null;
+        btn.onclick = (e) => {
           const row = e.target.closest("tr");
           const teamId = row.getAttribute("data-team-id");
           const subjectTeams = teams[currentSubject];
@@ -555,19 +554,20 @@
               <label>Encargado: <input type="text" id="editTeamHead" value="${team.head}"></label><br>
               <button id="saveTeam" class="btn">Guardar</button>`;
             showModal(content);
-            document.getElementById("saveTeam").addEventListener("click", () => {
+            document.getElementById("saveTeam").onclick = () => {
               team.name = document.getElementById("editTeamName").value.trim();
               team.head = document.getElementById("editTeamHead").value.trim();
               modal.style.display = "none";
               buildTeamTable();
               buildGradeTable();
               saveData();
-            });
+            };
           }
-        });
+        };
       });
       document.querySelectorAll(".delete-team").forEach(btn => {
-        btn.addEventListener("click", (e) => {
+        btn.onclick = null;
+        btn.onclick = (e) => {
           const row = e.target.closest("tr");
           const teamId = row.getAttribute("data-team-id");
           if(confirm("¿Estás seguro de eliminar este equipo?")) {
@@ -576,7 +576,7 @@
             buildGradeTable();
             saveData();
           }
-        });
+        };
       });
     }
 
@@ -639,7 +639,6 @@
           rowHTML += `<td><input type="number" class="practice-input" data-index="${index}" min="0" max="10" step="0.1" value="${grade || 0}" readonly></td>`;
         });
         rowHTML += `<td class="practice-average">0</td>`;
-        // Extras y deducciones
         rowHTML += `
           <td><input type="number" class="extra-exam" min="0" max="2" step="0.1" value="${partialData.extraExam || 0}"></td>
           <td><input type="number" class="extra-task" min="0" max="2" step="0.1" value="${partialData.extraTask || 0}"></td>
@@ -789,8 +788,9 @@
     }
 
     /***********************
-     * Funciones de Modal para agregar/editar elementos
-    ***********************/
+     * 6. Funciones de Modal para Agregar/Editar Elementos
+     ***********************/
+    // Función para mostrar el modal con contenido y usar onclick en lugar de addEventListener
     function showModal(contentHTML) {
       document.getElementById("modalBody").innerHTML = contentHTML;
       modal.style.display = "block";
@@ -813,7 +813,7 @@
       }
       showModal(content);
       if(!viewOnly) {
-        document.getElementById("saveDed").addEventListener("click", () => {
+        document.getElementById("saveDed").onclick = () => {
           const amount = parseFloat(document.getElementById("dedAmount").value) || 0;
           const reason = document.getElementById("dedReason").value.trim();
           const date = document.getElementById("dedDate").value;
@@ -823,14 +823,100 @@
           modal.style.display = "none";
           buildGradeTable();
           saveData();
-        });
+        };
       }
     }
 
-    /* -----------------------------
-       Agregar Evaluaciones desde el Área Principal
-    ----------------------------- */
-    document.getElementById("addExamEval").addEventListener("click", () => {
+    // Botón Editar Rúbrica (en modal)
+    document.getElementById("editRubric").onclick = () => {
+      const cfg = subjectsConfig[currentSubject];
+      let content = `<h3>Editar Rúbrica</h3>
+        <h4>Porcentajes</h4>
+        <label>Exámenes (%): <input type="number" id="rubricExam" value="${cfg.rubric.exam}" min="0" max="100"></label><br>
+        <label>Tareas (%): <input type="number" id="rubricTask" value="${cfg.rubric.task}" min="0" max="100"></label><br>
+        <label>Prácticas (%): <input type="number" id="rubricPractice" value="${cfg.rubric.practice}" min="0" max="100"></label><br>
+        <label>Participación (%): <input type="number" id="rubricPart" value="${cfg.rubric.participation}" min="0" max="100"></label><br>
+        <h4>Evaluaciones</h4>
+        <div id="rubricEdits">
+          <h5>Exámenes</h5>
+          <ul id="examList">`;
+      cfg.examEvals.forEach((e, i) => {
+        content += `<li><input type="text" data-cat="exam" data-index="${i}" value="${e.name}"> <button class="removeEval btn" data-cat="exam" data-index="${i}">Quitar</button></li>`;
+      });
+      content += `</ul>
+          <button id="addExamItem" class="btn">Agregar Examen</button>
+          <h5>Tareas</h5>
+          <ul id="taskList">`;
+      cfg.taskEvals.forEach((e, i) => {
+        content += `<li><input type="text" data-cat="task" data-index="${i}" value="${e.name}"> <button class="removeEval btn" data-cat="task" data-index="${i}">Quitar</button></li>`;
+      });
+      content += `</ul>
+          <button id="addTaskItem" class="btn">Agregar Tarea</button>
+          <h5>Prácticas</h5>
+          <ul id="practiceList">`;
+      cfg.practiceEvals.forEach((e, i) => {
+        content += `<li><input type="text" data-cat="practice" data-index="${i}" value="${e.name}"> <button class="removeEval btn" data-cat="practice" data-index="${i}">Quitar</button></li>`;
+      });
+      content += `</ul>
+          <button id="addPracticeItem" class="btn">Agregar Práctica</button>
+        </div>
+        <br>
+        <button id="saveRubric" class="btn">Guardar Rúbrica</button>`;
+      showModal(content);
+      // Asignar los eventos usando .onclick para los botones dentro del modal
+      Array.from(document.querySelectorAll(".removeEval")).forEach(btn => {
+        btn.onclick = (e) => {
+          const cat = e.target.getAttribute("data-cat");
+          const index = parseInt(e.target.getAttribute("data-index"));
+          if(cat === "exam") { cfg.examEvals.splice(index, 1); }
+          else if(cat === "task") { cfg.taskEvals.splice(index, 1); }
+          else if(cat === "practice") { cfg.practiceEvals.splice(index, 1); }
+          buildDynamicHeader();
+          buildGradeTable();
+          modal.style.display = "none";
+          // Reabrir el modal para seguir editando
+          setTimeout(() => { document.getElementById("editRubric").onclick(); }, 200);
+          saveData();
+        };
+      });
+      document.getElementById("addExamItem").onclick = () => {
+        const newItem = prompt("Nuevo examen:");
+        if(newItem) { cfg.examEvals.push({ name: newItem }); buildDynamicHeader(); buildGradeTable(); saveData(); }
+      };
+      document.getElementById("addTaskItem").onclick = () => {
+        const newItem = prompt("Nueva tarea:");
+        if(newItem) { cfg.taskEvals.push({ name: newItem }); buildDynamicHeader(); buildGradeTable(); saveData(); }
+      };
+      document.getElementById("addPracticeItem").onclick = () => {
+        const newItem = prompt("Nueva práctica:");
+        if(newItem) {
+          cfg.practiceEvals.push({ name: newItem });
+          teams[currentSubject].forEach(team => {
+            if (!team.partials) team.partials = {};
+            if (!team.partials[currentPartial]) { team.partials[currentPartial] = []; }
+            team.partials[currentPartial].push(0);
+          });
+          buildDynamicHeader();
+          buildTeamTable();
+          buildGradeTable();
+          saveData();
+        }
+      };
+      document.getElementById("saveRubric").onclick = () => {
+        cfg.rubric.exam = parseFloat(document.getElementById("rubricExam").value) || 0;
+        cfg.rubric.task = parseFloat(document.getElementById("rubricTask").value) || 0;
+        cfg.rubric.practice = parseFloat(document.getElementById("rubricPractice").value) || 0;
+        cfg.rubric.participation = parseFloat(document.getElementById("rubricPart").value) || 0;
+        modal.style.display = "none";
+        updateRubricDisplay();
+        buildDynamicHeader();
+        buildGradeTable();
+        saveData();
+      };
+    };
+
+    /* Botones de Agregar Evaluación (desde el área principal) */
+    document.getElementById("addExamEval").onclick = () => {
       let newExam = prompt("Ingrese nombre del nuevo Examen:");
       if(newExam) {
         subjectsConfig[currentSubject].examEvals.push({ name: newExam });
@@ -838,8 +924,8 @@
         buildGradeTable();
         saveData();
       }
-    });
-    document.getElementById("addTaskEval").addEventListener("click", () => {
+    };
+    document.getElementById("addTaskEval").onclick = () => {
       let newTask = prompt("Ingrese nombre de la nueva Tarea:");
       if(newTask) {
         subjectsConfig[currentSubject].taskEvals.push({ name: newTask });
@@ -847,8 +933,8 @@
         buildGradeTable();
         saveData();
       }
-    });
-    document.getElementById("addPracticeEval").addEventListener("click", () => {
+    };
+    document.getElementById("addPracticeEval").onclick = () => {
       let newPractice = prompt("Ingrese nombre de la nueva Práctica:");
       if(newPractice) {
         subjectsConfig[currentSubject].practiceEvals.push({ name: newPractice });
@@ -862,12 +948,12 @@
         buildGradeTable();
         saveData();
       }
-    });
+    };
 
     /* -----------------------------
        Agregar Alumno
     ----------------------------- */
-    document.getElementById("addStudent").addEventListener("click", () => {
+    document.getElementById("addStudent").onclick = () => {
       let content = `<h3>Agregar Alumno</h3>
          <label>N° LS: <input type="number" id="newListNumber"></label><br>
          <label>Alumno: <input type="text" id="newStudentName"></label><br>
@@ -878,7 +964,7 @@
          </label><br>
          <button id="saveStudent" class="btn">Guardar</button>`;
       showModal(content);
-      document.getElementById("saveStudent").addEventListener("click", () => {
+      document.getElementById("saveStudent").onclick = () => {
          const listNum = parseInt(document.getElementById("newListNumber").value);
          const name = document.getElementById("newStudentName").value.trim();
          const team = document.getElementById("newStudentTeam").value;
@@ -887,20 +973,20 @@
          modal.style.display = "none";
          buildGradeTable();
          saveData();
-      });
-    });
+      };
+    };
 
     /* -----------------------------
        Agregar Equipo
     ----------------------------- */
-    document.getElementById("addTeam").addEventListener("click", () => {
+    document.getElementById("addTeam").onclick = () => {
       let content = `<h3>Agregar Equipo</h3>
          <label>ID: <input type="text" id="newTeamId"></label><br>
          <label>Nombre: <input type="text" id="newTeamName"></label><br>
          <label>Encargado: <input type="text" id="newTeamHead"></label><br>
          <button id="saveTeamNew" class="btn">Guardar</button>`;
       showModal(content);
-      document.getElementById("saveTeamNew").addEventListener("click", () => {
+      document.getElementById("saveTeamNew").onclick = () => {
          const id = document.getElementById("newTeamId").value.trim();
          const name = document.getElementById("newTeamName").value.trim();
          const head = document.getElementById("newTeamHead").value.trim();
@@ -911,26 +997,26 @@
          buildTeamTable();
          buildGradeTable();
          saveData();
-      });
-    });
+      };
+    };
 
     /* -----------------------------
        Editar Materia
     ----------------------------- */
-    document.getElementById("editSubject").addEventListener("click", () => {
+    document.getElementById("editSubject").onclick = () => {
       const subj = subjectsConfig[currentSubject];
       let content = `<h3>Editar Materia</h3>
         <label>Nombre: <input type="text" id="editSubjName" value="${subj.name}"></label><br>
         <label>Semestre: 
           <select id="editSubjSemester">
-            <option value="ene-jul" ${subj.semester === "ene-jul" ? "selected" : ""}>ene-jul</option>
-            <option value="ago-dic" ${subj.semester === "ago-dic" ? "selected" : ""}>ago-dic</option>
+            <option value="ene-jul" ${subj.semester==="ene-jul"?"selected":""}>ene-jul</option>
+            <option value="ago-dic" ${subj.semester==="ago-dic"?"selected":""}>ago-dic</option>
           </select>
         </label><br>
         <label>Año: <input type="number" id="editSubjYear" value="${subj.year}"></label><br>
         <button id="saveSubjectEd" class="btn">Guardar</button>`;
       showModal(content);
-      document.getElementById("saveSubjectEd").addEventListener("click", () => {
+      document.getElementById("saveSubjectEd").onclick = () => {
         subj.name = document.getElementById("editSubjName").value.trim();
         subj.semester = document.getElementById("editSubjSemester").value;
         subj.year = parseInt(document.getElementById("editSubjYear").value);
@@ -938,13 +1024,13 @@
         buildSubjectSelect();
         buildDynamicHeader();
         saveData();
-      });
-    });
+      };
+    };
 
     /* -----------------------------
        Agregar Materia
     ----------------------------- */
-    document.getElementById("addSubject").addEventListener("click", () => {
+    document.getElementById("addSubject").onclick = () => {
       let content = `<h3>Agregar Materia</h3>
         <label>ID: <input type="text" id="newSubjectId"></label><br>
         <label>Nombre: <input type="text" id="newSubjectName"></label><br>
@@ -957,7 +1043,7 @@
         <label>Año: <input type="number" id="newSubjectYear" value="2023"></label><br>
         <button id="saveSubject" class="btn">Guardar Materia</button>`;
       showModal(content);
-      document.getElementById("saveSubject").addEventListener("click", () => {
+      document.getElementById("saveSubject").onclick = () => {
         const id = document.getElementById("newSubjectId").value.trim();
         const name = document.getElementById("newSubjectName").value.trim();
         const semester = document.getElementById("newSubjectSemester").value;
@@ -976,24 +1062,24 @@
         buildSubjectSelect();
         modal.style.display = "none";
         saveData();
-      });
-    });
+      };
+    };
 
     /* -----------------------------
        Compartir Versión (Solo Lectura)
     ----------------------------- */
-    document.getElementById("shareVersion").addEventListener("click", () => {
+    document.getElementById("shareVersion").onclick = () => {
       const url = new URL(window.location.href);
       url.searchParams.set("subject", currentSubject);
       url.searchParams.set("partial", currentPartial);
       url.searchParams.set("readonly", "true");
       prompt("Copia este enlace para compartir la versión de solo lectura:", url.toString());
-    });
+    };
 
     /* -----------------------------
        Exportar a Excel (celdas vacías = 0)
     ----------------------------- */
-    document.getElementById("exportExcel").addEventListener("click", () => {
+    document.getElementById("exportExcel").onclick = () => {
       const table = document.getElementById("gradeTable");
       let csv = "";
       for (let row of table.rows) {
@@ -1012,12 +1098,12 @@
       a.download = "calificaciones_" + currentSubject + "_parcial_" + currentPartial + ".xls";
       a.click();
       URL.revokeObjectURL(url);
-    });
+    };
 
     /* -----------------------------
        Exportar a PDF (celdas vacías = 0)
     ----------------------------- */
-    document.getElementById("exportPDF").addEventListener("click", () => {
+    document.getElementById("exportPDF").onclick = () => {
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF('landscape', 'pt', 'a4');
       doc.setFontSize(10);
@@ -1067,9 +1153,9 @@
         columnStyles: { text: { cellWidth: 'auto' } }
       });
       doc.save("calificaciones_" + currentSubject + "_parcial_" + currentPartial + ".pdf");
-    });
+    };
 
-    document.getElementById("printGrades").addEventListener("click", () => { window.print(); });
+    document.getElementById("printGrades").onclick = () => { window.print(); };
 
     /* -----------------------------
        Cambios de Parcial y Materia
@@ -1102,20 +1188,20 @@
       if (!readOnlyMode) { url.searchParams.delete("readonly"); }
       window.history.pushState({}, '', url.toString());
     }
-    
-    /* -----------------------------
-       Carga Inicial
-    ----------------------------- */
+
+    /***********************
+     * 6. Carga Inicial
+     ***********************/
     buildSubjectSelect();
     updateRubricDisplay();
     updatePartialDisplay();
     buildDynamicHeader();
     buildTeamTable();
     buildGradeTable();
-    
-    /* -----------------------------
-       Inicio de Sesión con Firebase
-    ----------------------------- */
+
+    /***********************
+     * 7. Inicio de Sesión con Firebase
+     ***********************/
     window.addEventListener("load", () => {
       if (readOnlyMode) {
         updateURLParams();
@@ -1133,7 +1219,7 @@
             loginModal.style.display = "block";
           }
         });
-        document.getElementById("loginBtn").addEventListener("click", () => {
+        document.getElementById("loginBtn").onclick = () => {
           const email = document.getElementById("loginUser").value.trim();
           const password = document.getElementById("loginPass").value;
           auth.signInWithEmailAndPassword(email, password)
@@ -1142,10 +1228,10 @@
               document.getElementById("appContainer").style.display = "block";
             })
             .catch((error) => { alert("Error: " + error.message); });
-        });
+        };
       }
     });
-    
+
     function setReadOnly() {
       document.querySelectorAll("input, select, button").forEach(el => { el.disabled = true; });
       const notice = document.createElement("p");
