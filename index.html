@@ -42,7 +42,7 @@
     }
     .subject-select label,
     .rubric-display { font-weight: bold; }
-    /* Se asocian los inputs a sus etiquetas con "for" */
+    /* Se asocian los inputs a sus etiquetas mediante "for" para evitar advertencias */
     .subject-select label { margin-right: 5px; }
     .subject-select select { margin-right: 5px; }
     .subject-select button { margin-right: 5px; padding: 5px 10px; font-size: 0.9em; }
@@ -172,7 +172,7 @@
       .btn, .cred-btn { padding: 6px 10px; font-size: 0.8em; }
     }
   </style>
-  <!-- Incluir Firebase y dependencias (compat) -->
+  <!-- Incluir Firebase y dependencias (versión compat) -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
@@ -293,6 +293,7 @@
     </footer>
   </div>
 
+  <!-- Todo el código se envuelve en una IIFE para evitar conflictos -->
   <script>
     (function() {
       /***********************
@@ -425,12 +426,13 @@
         }
       }
       let saveTimeout; // Declarada UNA sola vez
+      // Aumentamos el tiempo de debounce a 2000 ms para reducir la cantidad de escrituras
       function debounceSaveData() {
         clearTimeout(saveTimeout);
         saveTimeout = setTimeout(() => {
           console.log("Guardando datos en Firestore...");
           saveData();
-        }, 500);
+        }, 2000);
       }
       function saveData() {
         saveSubjects();
