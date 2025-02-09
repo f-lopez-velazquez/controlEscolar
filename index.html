@@ -58,6 +58,16 @@
     .partial-tabs button:hover { background: #003d80; }
     .rubric-display button,
     .cred-btn { margin-left: 10px; padding: 5px 10px; font-size: 0.9rem; cursor: pointer; }
+    /* Botón para cerrar sesión */
+    #signOutBtn {
+      background: #dc3545;
+      color: #fff;
+      border: none;
+      padding: 5px 10px;
+      margin-left: 10px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
     main { padding: 10px 0; }
     .eval-controls, .student-controls, .action-section { text-align: center; margin: 15px 0; }
     .btn {
@@ -167,10 +177,9 @@
       .btn, .cred-btn { padding: 6px 10px; font-size: 0.8em; }
     }
   </style>
-  <!-- Incluir Firebase y dependencias (versión compat para usar la API "namespaced") -->
+  <!-- Incluir Firebase y dependencias (compat) -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-  <!-- Incluir Firestore (compat) -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
@@ -190,7 +199,7 @@
       <span class="close">&times;</span>
       <h2>Iniciar Sesión</h2>
       <label>Usuario (correo):</label>
-      <input type="text" id="loginUser" placeholder="ej. admin@ejemplo.com">
+      <input type="text" id="loginUser" placeholder="ej. fco.lopezvelazquez@gmail.com">
       <label>Contraseña:</label>
       <input type="password" id="loginPass" placeholder="Ingrese contraseña">
       <button id="loginBtn" class="btn">Acceder</button>
@@ -220,6 +229,10 @@
         <div class="rubric-display">
           Rúbrica: Exámenes: <span id="weightExam">45%</span>, Tareas: <span id="weightTask">25%</span>, Prácticas: <span id="weightPractice">30%</span>, Participación: <span id="weightPart">5%</span>
           <button id="editRubric" class="btn">Editar Rúbrica</button>
+        </div>
+        <!-- Botón para cerrar sesión, visible solo para el propietario -->
+        <div id="signOutContainer" style="display: none;">
+          <button id="signOutBtn">Cerrar sesión</button>
         </div>
       </div>
     </header>
@@ -290,7 +303,7 @@
     /***********************
      * 1. Variables Globales: Datos
      ***********************/
-    // Ahora, cada materia tiene un objeto "parcials" para cada parcial.
+    // Cada materia tiene un objeto "parcials" para cada parcial.
     const subjectsConfig = {
       circuitos: {
         name: "Circuitos Eléctricos",
@@ -392,7 +405,7 @@
     let urlPartial = parseInt(urlParams.get("partial"));
     let currentSubject = (urlSubject && subjectsConfig[urlSubject]) ? urlSubject : "circuitos";
     let currentPartial = (!isNaN(urlPartial) && urlPartial > 0) ? urlPartial : 1;
-    let isOwner = false; // Se determinará tras autenticarse
+    let isOwner = false; // Se definirá según el usuario autenticado
 
     /***********************
      * 4. Persistencia en Firestore
@@ -478,7 +491,7 @@
     function updatePartialDisplay() {
       document.getElementById("currentPartialDisplay").textContent = currentPartial;
     }
-    // Usamos las evaluaciones del parcial actual
+    // Aquí usamos las evaluaciones del parcial actual
     function buildDynamicHeader() {
       const headerRow = document.getElementById("dynamicHeader");
       headerRow.innerHTML = "";
@@ -687,7 +700,6 @@
       if(readOnlyMode) { setReadOnly(); }
       saveData();
     }
-
     function recalculateRow(row) {
       const rubric = subjectsConfig[currentSubject].rubric;
       let examSum = 0, examCount = 0;
@@ -720,11 +732,9 @@
       row.querySelector(".total-partial").textContent = totalPartial.toFixed(2);
       if(student) { student.partials[currentPartial].total = totalPartial; }
     }
-
     function recalculateAll() {
       document.querySelectorAll("#gradeTable tbody tr").forEach(row => recalculateRow(row));
     }
-
     function attachTableListeners() {
       document.querySelectorAll("#gradeTable tbody input").forEach(input => {
         input.addEventListener("input", () => {
@@ -781,7 +791,6 @@
         });
       });
     }
-
     function saveRowData(row) {
       const listNum = row.getAttribute("data-list");
       const student = students.find(s => s.listNumber == listNum);
@@ -799,7 +808,6 @@
       partialData.absences = parseFloat(row.querySelector(".absences").value) || 0;
       saveData();
     }
-
     function propagateTeamGradeForRow(row) {
       const listNum = row.getAttribute("data-list");
       const student = students.find(s => s.listNumber == listNum);
@@ -935,7 +943,7 @@
         }
       };
       document.getElementById("saveRubric").onclick = () => {
-        // La rúbrica se mantiene global para la materia
+        // La rúbrica es global para la materia (no se edita por parcial)
         subjectsConfig[currentSubject].rubric.exam = parseFloat(document.getElementById("rubricExam").value) || 0;
         subjectsConfig[currentSubject].rubric.task = parseFloat(document.getElementById("rubricTask").value) || 0;
         subjectsConfig[currentSubject].rubric.practice = parseFloat(document.getElementById("rubricPractice").value) || 0;
@@ -1187,7 +1195,6 @@
       if (!readOnlyMode) { url.searchParams.delete("readonly"); }
       window.history.pushState({}, '', url.toString());
     }
-    // Se asegura de que el aviso de modo solo lectura se inserte solo una vez
     function setReadOnly() {
       document.querySelectorAll("input, select, button").forEach(el => { el.disabled = true; });
       if (!document.getElementById("readOnlyNotice")) {
@@ -1202,7 +1209,7 @@
     }
 
     /***********************
-     * 6. Carga Inicial y Realtime (Firestore)
+     * 6. Carga Inicial y Escucha Realtime (Firestore)
      ***********************/
     attachRealtimeListeners();
     function attachRealtimeListeners() {
@@ -1240,7 +1247,7 @@
     buildGradeTable();
 
     /***********************
-     * 7. Inicio de Sesión con Firebase Authentication
+     * 7. Inicio de Sesión con Firebase Authentication y Restricción de Edición
      ***********************/
     window.addEventListener("load", () => {
       if (readOnlyMode) {
@@ -1252,12 +1259,15 @@
         loginModal.style.display = "block";
         auth.onAuthStateChanged((user) => {
           if (user) {
-            // Solo el usuario "admin@ejemplo.com" podrá editar
-            if(user.email === "admin@ejemplo.com") {
+            // Verificamos que el usuario autenticado sea el propietario
+            if(user.email === "fco.lopezvelazquez@gmail.com") {
               isOwner = true;
+              // Hacemos visibles los botones de edición y el botón para cerrar sesión
+              document.getElementById("signOutContainer").style.display = "block";
             } else {
               isOwner = false;
               setReadOnly();
+              document.getElementById("signOutContainer").style.display = "none";
             }
             loginModal.style.display = "none";
             document.getElementById("appContainer").style.display = "block";
@@ -1278,6 +1288,16 @@
         };
       }
     });
+
+    // Botón para cerrar sesión
+    document.getElementById("signOutBtn").onclick = () => {
+      auth.signOut()
+        .then(() => {
+          // Después de cerrar sesión, recargamos la página para que se active el modo solo lectura
+          window.location.reload();
+        })
+        .catch(err => console.error("Error al cerrar sesión", err));
+    };
   </script>
 </body>
 </html>
