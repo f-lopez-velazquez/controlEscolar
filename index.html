@@ -293,7 +293,6 @@
     </footer>
   </div>
 
-  <!-- Todo el código se envuelve en una IIFE para evitar conflictos -->
   <script>
     (function() {
       /***********************
@@ -425,7 +424,7 @@
           });
         }
       }
-      let saveTimeout; // Declarada una sola vez
+      let saveTimeout; // Declarada UNA sola vez
       function debounceSaveData() {
         clearTimeout(saveTimeout);
         saveTimeout = setTimeout(() => {
@@ -542,6 +541,7 @@
                 team.partials[currentPartial] = Array(subjectsConfig[currentSubject].parcials[currentPartial].practiceEvals.length).fill(0);
               }
               team.partials[currentPartial][idx] = newVal;
+              console.log("Team " + teamId + " práctica " + idx + " actualizada a: " + newVal);
               document.querySelectorAll("#gradeTable tbody tr").forEach(row => {
                 const stuTeamSelect = row.querySelector(".student-team");
                 const stuTeam = stuTeamSelect ? stuTeamSelect.value : "";
@@ -571,7 +571,8 @@
               document.getElementById("saveTeam").onclick = () => {
                 team.name = document.getElementById("editTeamName").value.trim();
                 team.head = document.getElementById("editTeamHead").value.trim();
-                modal.style.display = "none";
+                console.log("Equipo " + teamId + " editado.");
+                modalElement.style.display = "none";
                 buildTeamTable();
                 buildGradeTable();
                 debounceSaveData();
@@ -585,6 +586,7 @@
             const teamId = row.getAttribute("data-team-id");
             if(confirm("¿Estás seguro de eliminar este equipo?")) {
               teams[currentSubject] = teams[currentSubject].filter(t => t.id !== teamId);
+              console.log("Equipo " + teamId + " eliminado.");
               buildTeamTable();
               buildGradeTable();
               debounceSaveData();
@@ -798,8 +800,7 @@
       /***********************
        * 6. Funciones de Modal para Agregar/Editar Elementos
        ***********************/
-      // Declaramos la variable modal UNA sola vez
-      const modalElement = document.getElementById("modalOverlay");
+      const modalElement = document.getElementById("modalOverlay"); // Declaramos modal UNA sola vez
       function showModal(contentHTML) {
         document.getElementById("modalBody").innerHTML = contentHTML;
         modalElement.style.display = "block";
@@ -864,10 +865,12 @@
               if(user.email === "fco.lopezvelazquez@gmail.com") {
                 isOwner = true;
                 document.getElementById("signOutContainer").style.display = "block";
+                console.log("Usuario propietario autenticado.");
               } else {
                 isOwner = false;
                 setReadOnly();
                 document.getElementById("signOutContainer").style.display = "none";
+                console.log("Usuario no propietario; modo solo lectura.");
               }
               loginModal.style.display = "none";
               document.getElementById("appContainer").style.display = "block";
@@ -879,6 +882,7 @@
           document.getElementById("loginBtn").onclick = () => {
             const email = document.getElementById("loginUser").value.trim();
             const password = document.getElementById("loginPass").value;
+            console.log("Intentando iniciar sesión con: " + email);
             auth.signInWithEmailAndPassword(email, password)
               .then(() => {
                 document.getElementById("loginModal").style.display = "none";
@@ -949,7 +953,7 @@
         }
       }
 
-      // Carga inicial
+      // Llamadas de carga inicial
       buildSubjectSelect();
       updateRubricDisplay();
       updatePartialDisplay();
