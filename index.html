@@ -20,6 +20,20 @@
       max-width: 1400px;
       padding: 20px;
       box-shadow: 0 0 15px rgba(0,0,0,0.15);
+      position: relative;
+    }
+    /* Indicador de guardado (progreso) */
+    #saveProgress {
+      display: none;
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: rgba(255, 255, 0, 0.8);
+      padding: 10px;
+      text-align: center;
+      font-weight: bold;
+      z-index: 1100;
     }
     header {
       border-bottom: 2px solid #003366;
@@ -42,7 +56,6 @@
     }
     .subject-select label,
     .rubric-display { font-weight: bold; }
-    /* Se asocian los inputs a sus etiquetas mediante "for" */
     .subject-select label { margin-right: 5px; }
     .subject-select select { margin-right: 5px; }
     .subject-select button { margin-right: 5px; padding: 5px 10px; font-size: 0.9em; }
@@ -60,7 +73,6 @@
     .partial-tabs button:hover { background: #003d80; }
     .rubric-display button,
     .cred-btn { margin-left: 10px; padding: 5px 10px; font-size: 0.9rem; cursor: pointer; }
-    /* Botón para cerrar sesión */
     #signOutBtn {
       background: #dc3545;
       color: #fff;
@@ -180,6 +192,9 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body>
+  <!-- Indicador de guardado -->
+  <div id="saveProgress">Guardando cambios...</div>
+  
   <!-- Modal General -->
   <div id="modalOverlay" class="modal">
     <div class="modal-content">
@@ -194,9 +209,9 @@
       <span class="close">&times;</span>
       <h2>Iniciar Sesión</h2>
       <label for="loginUser">Usuario (correo):</label>
-      <input type="text" id="loginUser" placeholder="ej. fco.lopezvelazquez@gmail.com">
+      <input type="text" id="loginUser" name="loginUser" placeholder="ej. fco.lopezvelazquez@gmail.com">
       <label for="loginPass">Contraseña:</label>
-      <input type="password" id="loginPass" placeholder="Ingrese contraseña">
+      <input type="password" id="loginPass" name="loginPass" placeholder="Ingrese contraseña">
       <button id="loginBtn" class="btn">Acceder</button>
       <button id="configCred" class="cred-btn">Configurar Credenciales</button>
       <p style="text-align:center; font-size:0.8em; margin-top:10px;">
@@ -283,7 +298,7 @@
           </table>
         </div>
       </section>
-      <!-- Botón para guardar cambios manualmente -->
+      <!-- Botones de acción -->
       <section class="action-section">
         <button id="saveChanges" class="btn">Guardar Cambios</button>
         <button id="exportExcel" class="btn">Exportar Excel</button>
@@ -404,43 +419,53 @@
       /***********************
        * 4. Persistencia en Firestore
        ***********************/
+      // Cada función de guardado devuelve un Promise que se resuelve cuando finalizan todas las escrituras
       function saveSubjects() {
+        let promises = [];
         for (const key in subjectsConfig) {
-          db.collection("subjects").doc(key).set(subjectsConfig[key])
-            .then(() => console.log("Subject " + key + " guardado"))
-            .catch(err => console.error("Error guardando subject", key, err));
+          promises.push(
+            db.collection("subjects").doc(key).set(subjectsConfig[key])
+              .then(() => console.log("Subject " + key + " guardado"))
+              .catch(err => console.error("Error guardando subject", key, err))
+          );
         }
+        return Promise.all(promises);
       }
       function saveStudents() {
-        students.forEach(student => {
+        let promises = students.map(student =>
           db.collection("students").doc("stu_" + student.listNumber).set(student)
             .then(() => console.log("Student " + student.listNumber + " guardado"))
-            .catch(err => console.error("Error guardando student", student.listNumber, err));
-        });
+            .catch(err => console.error("Error guardando student", student.listNumber, err))
+        );
+        return Promise.all(promises);
       }
       function saveTeams() {
+        let promises = [];
         for (const subject in teams) {
           teams[subject].forEach(team => {
             const docId = subject + "_" + team.id;
-            db.collection("teams").doc(docId).set({ ...team, subject: subject })
-              .then(() => console.log("Team " + docId + " guardado"))
-              .catch(err => console.error("Error guardando team", docId, err));
+            promises.push(
+              db.collection("teams").doc(docId).set({ ...team, subject: subject })
+                .then(() => console.log("Team " + docId + " guardado"))
+                .catch(err => console.error("Error guardando team", docId, err))
+            );
           });
         }
+        return Promise.all(promises);
       }
       let saveTimeout; // Declarada UNA sola vez
-      // Aquí usamos un debounce de 500 ms; puedes aumentar este tiempo si lo consideras necesario.
-      function debounceSaveData() {
-        clearTimeout(saveTimeout);
-        saveTimeout = setTimeout(() => {
-          console.log("Guardando datos en Firestore...");
-          saveData();
-        }, 500);
-      }
+      // En esta versión se elimina el debounce automático en los eventos y se usa el botón "Guardar Cambios"
       function saveData() {
-        saveSubjects();
-        saveStudents();
-        saveTeams();
+        showProgress();
+        Promise.all([saveSubjects(), saveStudents(), saveTeams()])
+          .then(() => {
+            console.log("Todos los datos guardados");
+            hideProgress();
+          })
+          .catch(err => {
+            console.error("Error en guardar datos", err);
+            hideProgress();
+          });
       }
 
       /***********************
@@ -555,7 +580,6 @@
                   if(practiceInputs[idx]) { practiceInputs[idx].value = newVal; recalculateRow(row); }
                 }
               });
-              debounceSaveData();
             }
           });
         });
@@ -579,8 +603,6 @@
                 console.log("Equipo " + teamId + " editado.");
                 modal.style.display = "none";
                 buildTeamTable();
-                buildGradeTable();
-                debounceSaveData();
               };
             }
           };
@@ -591,10 +613,7 @@
             const teamId = row.getAttribute("data-team-id");
             if(confirm("¿Estás seguro de eliminar este equipo?")) {
               teams[currentSubject] = teams[currentSubject].filter(t => t.id !== teamId);
-              console.log("Equipo " + teamId + " eliminado.");
               buildTeamTable();
-              buildGradeTable();
-              debounceSaveData();
             }
           };
         });
@@ -679,7 +698,6 @@
         attachTableListeners();
         recalculateAll();
         if(readOnlyMode) { setReadOnly(); }
-        debounceSaveData();
       }
       function recalculateRow(row) {
         const rubric = subjectsConfig[currentSubject].rubric;
@@ -722,7 +740,6 @@
             const row = input.closest("tr");
             saveRowData(row);
             recalculateRow(row);
-            debounceSaveData();
           });
         });
         document.querySelectorAll(".student-team").forEach(select => {
@@ -732,7 +749,6 @@
             const student = students.find(s => s.listNumber == listNum);
             if(student) { student.team = e.target.value; }
             propagateTeamGradeForRow(row);
-            debounceSaveData();
           });
         });
         document.querySelectorAll(".student-name").forEach(cell => {
@@ -741,7 +757,6 @@
             const listNum = row.getAttribute("data-list");
             const student = students.find(s => s.listNumber == listNum);
             if(student) { student.name = e.target.textContent.trim(); }
-            debounceSaveData();
           });
         });
         document.querySelectorAll(".deduct-btn").forEach(btn => {
@@ -767,7 +782,6 @@
             if(confirm("¿Estás seguro de eliminar este alumno?")) {
               students.splice(students.findIndex(s => s.listNumber === listNum), 1);
               buildGradeTable();
-              debounceSaveData();
             }
           });
         });
@@ -787,7 +801,6 @@
         partialData.extraParcial = parseFloat(row.querySelector(".extra-parcial").value) || 0;
         partialData.participation = parseFloat(row.querySelector(".participation").value) || 0;
         partialData.absences = parseFloat(row.querySelector(".absences").value) || 0;
-        debounceSaveData();
       }
       function propagateTeamGradeForRow(row) {
         const listNum = row.getAttribute("data-list");
@@ -799,13 +812,12 @@
           row.querySelectorAll(".practice-input").forEach((input, idx) => { input.value = teamObj.partials[currentPartial][idx] || 0; });
         }
         recalculateRow(row);
-        debounceSaveData();
       }
 
       /***********************
        * 6. Funciones de Modal para Agregar/Editar Elementos
        ***********************/
-      const modal = document.getElementById("modalOverlay"); // Declaramos modal UNA sola vez
+      const modal = document.getElementById("modalOverlay");
       function showModal(contentHTML) {
         document.getElementById("modalBody").innerHTML = contentHTML;
         modal.style.display = "block";
@@ -849,7 +861,6 @@
             student.partials[currentPartial].deductions.push({ amount, reason, date });
             modal.style.display = "none";
             buildGradeTable();
-            debounceSaveData();
           };
         }
       }
@@ -955,6 +966,21 @@
         }
       }
 
+      /***********************
+       * 9. Botón Guardar Cambios (manual) para persistir en Firestore
+       ***********************/
+      // Funciones para mostrar y ocultar el indicador de guardado (progreso)
+      function showProgress() {
+        document.getElementById("saveProgress").style.display = "block";
+      }
+      function hideProgress() {
+        document.getElementById("saveProgress").style.display = "none";
+      }
+      document.getElementById("saveChanges").addEventListener("click", () => {
+        console.log("Botón Guardar Cambios pulsado.");
+        saveData();
+      });
+
       // Llamadas de carga inicial
       buildSubjectSelect();
       updateRubricDisplay();
@@ -962,14 +988,6 @@
       buildDynamicHeader();
       buildTeamTable();
       buildGradeTable();
-
-      /***********************
-       * 9. Botón Guardar Cambios (manual) para persistir en Firestore
-       ***********************/
-      document.getElementById("saveChanges").addEventListener("click", () => {
-        console.log("Botón Guardar Cambios pulsado.");
-        saveData();
-      });
     })();
   </script>
 </body>
