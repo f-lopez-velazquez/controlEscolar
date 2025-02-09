@@ -42,6 +42,8 @@
     }
     .subject-select label,
     .rubric-display { font-weight: bold; }
+    /* Para solucionar el aviso de label, se asocian los inputs mediante el atributo "for" */
+    .subject-select label { margin-right: 5px; }
     .subject-select select { margin-right: 5px; }
     .subject-select button { margin-right: 5px; padding: 5px 10px; font-size: 0.9em; }
     .partial-tabs button {
@@ -177,7 +179,7 @@
       .btn, .cred-btn { padding: 6px 10px; font-size: 0.8em; }
     }
   </style>
-  <!-- Incluir Firebase y dependencias (versión compat) -->
+  <!-- Incluir Firebase y dependencias (compat) -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
@@ -198,9 +200,10 @@
     <div class="modal-content">
       <span class="close">&times;</span>
       <h2>Iniciar Sesión</h2>
-      <label>Usuario (correo):</label>
+      <!-- Se asocian las etiquetas con los inputs mediante "for" -->
+      <label for="loginUser">Usuario (correo):</label>
       <input type="text" id="loginUser" placeholder="ej. fco.lopezvelazquez@gmail.com">
-      <label>Contraseña:</label>
+      <label for="loginPass">Contraseña:</label>
       <input type="password" id="loginPass" placeholder="Ingrese contraseña">
       <button id="loginBtn" class="btn">Acceder</button>
       <button id="configCred" class="cred-btn">Configurar Credenciales</button>
@@ -299,11 +302,12 @@
     <footer>Pagina creada y diseñada por Francisco López Velázquez</footer>
   </div>
 
+  <!-- Todo el código se envuelve en una IIFE para evitar conflictos -->
   <script>
+  (function() {
     /***********************
      * 1. Variables Globales: Datos
      ***********************/
-    // Cada materia tiene sus propios parcials con evaluaciones independientes.
     const subjectsConfig = {
       circuitos: {
         name: "Circuitos Eléctricos",
@@ -383,7 +387,6 @@
     /***********************
      * 2. Firebase Configuración y Firestore
      ***********************/
-    // Reemplaza estos valores con la configuración de tu proyecto Firebase.
     const firebaseConfig = {
       apiKey: "AIzaSyDsoLZHDpR8EEyvs5tJ7gF1tE7eKS-ZGcU",
       authDomain: "controlescolar-a184f.firebaseapp.com",
@@ -431,8 +434,7 @@
         });
       }
     }
-    // Se utiliza debounce para reducir la cantidad de escrituras
-    let saveTimeout;
+    let saveTimeout; // Declarada UNA sola vez
     function debounceSaveData() {
       clearTimeout(saveTimeout);
       saveTimeout = setTimeout(() => {
@@ -443,35 +445,6 @@
       saveSubjects();
       saveStudents();
       saveTeams();
-    }
-
-    // Escucha en tiempo real para actualizar la interfaz
-    function attachRealtimeListeners() {
-      db.collection("subjects").onSnapshot(snapshot => {
-        snapshot.forEach(doc => {
-          subjectsConfig[doc.id] = doc.data();
-        });
-        buildSubjectSelect();
-        updateRubricDisplay();
-        buildDynamicHeader();
-      });
-      db.collection("students").onSnapshot(snapshot => {
-        students.length = 0;
-        snapshot.forEach(doc => {
-          students.push(doc.data());
-        });
-        buildGradeTable();
-      });
-      db.collection("teams").onSnapshot(snapshot => {
-        for (const subject in teams) { teams[subject] = []; }
-        snapshot.forEach(doc => {
-          const data = doc.data();
-          const subject = data.subject;
-          if (!teams[subject]) teams[subject] = [];
-          teams[subject].push(data);
-        });
-        buildTeamTable();
-      });
     }
 
     /***********************
@@ -499,7 +472,6 @@
     function updatePartialDisplay() {
       document.getElementById("currentPartialDisplay").textContent = currentPartial;
     }
-    // Cada parcial tiene sus propias evaluaciones
     function buildDynamicHeader() {
       const headerRow = document.getElementById("dynamicHeader");
       headerRow.innerHTML = "";
@@ -578,7 +550,6 @@
               team.partials[currentPartial] = Array(subjectsConfig[currentSubject].parcials[currentPartial].practiceEvals.length).fill(0);
             }
             team.partials[currentPartial][idx] = newVal;
-            // Actualizar en la tabla de alumnos
             document.querySelectorAll("#gradeTable tbody tr").forEach(row => {
               const stuTeamSelect = row.querySelector(".student-team");
               const stuTeam = stuTeamSelect ? stuTeamSelect.value : "";
@@ -599,8 +570,8 @@
           const team = subjectTeams.find(t => t.id === teamId);
           if(team) {
             let content = `<h3>Editar Equipo</h3>
-              <label>Nombre: <input type="text" id="editTeamName" value="${team.name}"></label><br>
-              <label>Encargado: <input type="text" id="editTeamHead" value="${team.head}"></label><br>
+              <label for="editTeamName">Nombre:</label> <input type="text" id="editTeamName" value="${team.name}"><br>
+              <label for="editTeamHead">Encargado:</label> <input type="text" id="editTeamHead" value="${team.head}"><br>
               <button id="saveTeam" class="btn">Guardar</button>`;
             showModal(content);
             document.getElementById("saveTeam").onclick = () => {
@@ -659,7 +630,8 @@
           <td>${student.listNumber}</td>
           <td contenteditable="true" class="student-name">${student.name}</td>
           <td>
-            <select class="student-team">
+            <label for="studentTeam_${student.listNumber}">Equipo:</label>
+            <select class="student-team" id="studentTeam_${student.listNumber}">
               ${teams[currentSubject].map(team => `<option value="${team.id}" ${team.id === student.team ? "selected" : ""}>${team.name}</option>`).join('')}
             </select>
           </td>`;
@@ -832,7 +804,7 @@
     /***********************
      * 6. Funciones de Modal para Agregar/Editar Elementos
      ***********************/
-    // ¡IMPORTANTE! Declaramos la variable modal UNA sola vez
+    // Declaramos la variable "modal" UNA sola vez
     const modal = document.getElementById("modalOverlay");
     function showModal(contentHTML) {
       document.getElementById("modalBody").innerHTML = contentHTML;
@@ -850,9 +822,12 @@
     };
     function openDeductionModal(student, viewOnly = false) {
       let content = `<h3>Deducciones para ${student.name}</h3>
-        <label>Monto (-): <input type="number" id="dedAmount" step="0.1"></label><br>
-        <label>Motivo: <input type="text" id="dedReason"></label><br>
-        <label>Fecha: <input type="date" id="dedDate"></label><br>`;
+        <label for="dedAmount">Monto (-):</label>
+        <input type="number" id="dedAmount" step="0.1"><br>
+        <label for="dedReason">Motivo:</label>
+        <input type="text" id="dedReason"><br>
+        <label for="dedDate">Fecha:</label>
+        <input type="date" id="dedDate"><br>`;
       if(!viewOnly) { content += `<button id="saveDed" class="btn">Agregar Deducción</button>`; }
       if(student.partials[currentPartial].deductions && student.partials[currentPartial].deductions.length > 0) {
         content += `<h4>Deducciones Registradas:</h4><ul>`;
@@ -883,10 +858,14 @@
       const cfg = subjectsConfig[currentSubject].parcials[currentPartial];
       let content = `<h3>Editar Rúbrica (Parcial ${currentPartial})</h3>
         <h4>Porcentajes</h4>
-        <label>Exámenes (%): <input type="number" id="rubricExam" value="${subjectsConfig[currentSubject].rubric.exam}" min="0" max="100"></label><br>
-        <label>Tareas (%): <input type="number" id="rubricTask" value="${subjectsConfig[currentSubject].rubric.task}" min="0" max="100"></label><br>
-        <label>Prácticas (%): <input type="number" id="rubricPractice" value="${subjectsConfig[currentSubject].rubric.practice}" min="0" max="100"></label><br>
-        <label>Participación (%): <input type="number" id="rubricPart" value="${subjectsConfig[currentSubject].rubric.participation}" min="0" max="100"></label><br>
+        <label for="rubricExam">Exámenes (%):</label>
+        <input type="number" id="rubricExam" value="${subjectsConfig[currentSubject].rubric.exam}" min="0" max="100"><br>
+        <label for="rubricTask">Tareas (%):</label>
+        <input type="number" id="rubricTask" value="${subjectsConfig[currentSubject].rubric.task}" min="0" max="100"><br>
+        <label for="rubricPractice">Prácticas (%):</label>
+        <input type="number" id="rubricPractice" value="${subjectsConfig[currentSubject].rubric.practice}" min="0" max="100"><br>
+        <label for="rubricPart">Participación (%):</label>
+        <input type="number" id="rubricPart" value="${subjectsConfig[currentSubject].rubric.participation}" min="0" max="100"><br>
         <h4>Evaluaciones</h4>
         <div id="rubricEdits">
           <h5>Exámenes</h5>
@@ -952,7 +931,6 @@
         }
       };
       document.getElementById("saveRubric").onclick = () => {
-        // La rúbrica es global para la materia
         subjectsConfig[currentSubject].rubric.exam = parseFloat(document.getElementById("rubricExam").value) || 0;
         subjectsConfig[currentSubject].rubric.task = parseFloat(document.getElementById("rubricTask").value) || 0;
         subjectsConfig[currentSubject].rubric.practice = parseFloat(document.getElementById("rubricPractice").value) || 0;
@@ -999,13 +977,14 @@
     };
     document.getElementById("addStudent").onclick = () => {
       let content = `<h3>Agregar Alumno</h3>
-         <label>N° LS: <input type="number" id="newListNumber"></label><br>
-         <label>Alumno: <input type="text" id="newStudentName"></label><br>
-         <label>Equipo: 
-             <select id="newStudentTeam">
+         <label for="newListNumber">N° LS:</label>
+         <input type="number" id="newListNumber"><br>
+         <label for="newStudentName">Alumno:</label>
+         <input type="text" id="newStudentName"><br>
+         <label for="newStudentTeam">Equipo:</label>
+         <select id="newStudentTeam">
                 ${teams[currentSubject].map(team => `<option value="${team.id}">${team.name}</option>`).join('')}
-             </select>
-         </label><br>
+         </select><br>
          <button id="saveStudent" class="btn">Guardar</button>`;
       showModal(content);
       document.getElementById("saveStudent").onclick = () => {
@@ -1021,9 +1000,12 @@
     };
     document.getElementById("addTeam").onclick = () => {
       let content = `<h3>Agregar Equipo</h3>
-         <label>ID: <input type="text" id="newTeamId"></label><br>
-         <label>Nombre: <input type="text" id="newTeamName"></label><br>
-         <label>Encargado: <input type="text" id="newTeamHead"></label><br>
+         <label for="newTeamId">ID:</label>
+         <input type="text" id="newTeamId"><br>
+         <label for="newTeamName">Nombre:</label>
+         <input type="text" id="newTeamName"><br>
+         <label for="newTeamHead">Encargado:</label>
+         <input type="text" id="newTeamHead"><br>
          <button id="saveTeamNew" class="btn">Guardar</button>`;
       showModal(content);
       document.getElementById("saveTeamNew").onclick = () => {
@@ -1042,14 +1024,15 @@
     document.getElementById("editSubject").onclick = () => {
       const subj = subjectsConfig[currentSubject];
       let content = `<h3>Editar Materia</h3>
-        <label>Nombre: <input type="text" id="editSubjName" value="${subj.name}"></label><br>
-        <label>Semestre: 
-          <select id="editSubjSemester">
+        <label for="editSubjName">Nombre:</label>
+        <input type="text" id="editSubjName" value="${subj.name}"><br>
+        <label for="editSubjSemester">Semestre:</label>
+        <select id="editSubjSemester">
             <option value="ene-jul" ${subj.semester==="ene-jul"?"selected":""}>ene-jul</option>
             <option value="ago-dic" ${subj.semester==="ago-dic"?"selected":""}>ago-dic</option>
-          </select>
-        </label><br>
-        <label>Año: <input type="number" id="editSubjYear" value="${subj.year}"></label><br>
+        </select><br>
+        <label for="editSubjYear">Año:</label>
+        <input type="number" id="editSubjYear" value="${subj.year}"><br>
         <button id="saveSubjectEd" class="btn">Guardar</button>`;
       showModal(content);
       document.getElementById("saveSubjectEd").onclick = () => {
@@ -1064,15 +1047,17 @@
     };
     document.getElementById("addSubject").onclick = () => {
       let content = `<h3>Agregar Materia</h3>
-        <label>ID: <input type="text" id="newSubjectId"></label><br>
-        <label>Nombre: <input type="text" id="newSubjectName"></label><br>
-        <label>Semestre: 
-          <select id="newSubjectSemester">
+        <label for="newSubjectId">ID:</label>
+        <input type="text" id="newSubjectId"><br>
+        <label for="newSubjectName">Nombre:</label>
+        <input type="text" id="newSubjectName"><br>
+        <label for="newSubjectSemester">Semestre:</label>
+        <select id="newSubjectSemester">
             <option value="ene-jul">ene-jul</option>
             <option value="ago-dic">ago-dic</option>
-          </select>
-        </label><br>
-        <label>Año: <input type="number" id="newSubjectYear" value="2023"></label><br>
+        </select><br>
+        <label for="newSubjectYear">Año:</label>
+        <input type="number" id="newSubjectYear" value="2023"><br>
         <button id="saveSubject" class="btn">Guardar Materia</button>`;
       showModal(content);
       document.getElementById("saveSubject").onclick = () => {
@@ -1204,7 +1189,6 @@
       if (!readOnlyMode) { url.searchParams.delete("readonly"); }
       window.history.pushState({}, '', url.toString());
     }
-    // Se asegura de que el aviso de modo solo lectura se inserte solo una vez
     function setReadOnly() {
       document.querySelectorAll("input, select, button").forEach(el => { el.disabled = true; });
       if (!document.getElementById("readOnlyNotice")) {
@@ -1216,14 +1200,6 @@
         notice.style.color = "#900";
         document.getElementById("appContainer").insertBefore(notice, document.getElementById("appContainer").firstChild);
       }
-    }
-    // Función de debounce para reducir escrituras
-    let saveTimeout;
-    function debounceSaveData() {
-      clearTimeout(saveTimeout);
-      saveTimeout = setTimeout(() => {
-        saveData();
-      }, 500);
     }
 
     /***********************
@@ -1277,7 +1253,6 @@
         loginModal.style.display = "block";
         auth.onAuthStateChanged((user) => {
           if (user) {
-            // Solo el propietario (fco.lopezvelazquez@gmail.com) puede editar
             if(user.email === "fco.lopezvelazquez@gmail.com") {
               isOwner = true;
               document.getElementById("signOutContainer").style.display = "block";
@@ -1305,6 +1280,7 @@
         };
       }
     });
+
     // Botón para cerrar sesión (visible solo para el propietario)
     document.getElementById("signOutBtn").onclick = () => {
       auth.signOut()
@@ -1313,6 +1289,7 @@
         })
         .catch(err => console.error("Error al cerrar sesión", err));
     };
+  })();
   </script>
 </body>
 </html>
