@@ -73,6 +73,7 @@
     .partial-tabs button:hover { background: #003d80; }
     .rubric-display button,
     .cred-btn { margin-left: 10px; padding: 5px 10px; font-size: 0.9rem; cursor: pointer; }
+    /* Botón para cerrar sesión */
     #signOutBtn {
       background: #dc3545;
       color: #fff;
@@ -184,132 +185,13 @@
       .btn, .cred-btn { padding: 6px 10px; font-size: 0.8em; }
     }
   </style>
-  <!-- Cargar dependencias externas una sola vez, con defer -->
+  <!-- Cargar dependencias externas UNA SOLA VEZ, con defer -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js" defer></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js" defer></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js" defer></script>
-</head>
-<body>
-  <!-- Indicador de guardado -->
-  <div id="saveProgress">Guardando cambios...</div>
-  
-  <!-- Modal General -->
-  <div id="modalOverlay" class="modal">
-    <div class="modal-content">
-      <span class="close">&times;</span>
-      <div id="modalBody"></div>
-    </div>
-  </div>
-
-  <!-- Modal de Login -->
-  <div id="loginModal" class="modal">
-    <div class="modal-content">
-      <span class="close">&times;</span>
-      <h2>Iniciar Sesión</h2>
-      <label for="loginUser">Usuario (correo):</label>
-      <input type="text" id="loginUser" name="loginUser" placeholder="ej. fco.lopezvelazquez@gmail.com">
-      <label for="loginPass">Contraseña:</label>
-      <input type="password" id="loginPass" name="loginPass" placeholder="Ingrese contraseña">
-      <button id="loginBtn" class="btn">Acceder</button>
-      <button id="configCred" class="cred-btn">Configurar Credenciales</button>
-      <p style="text-align:center; font-size:0.8em; margin-top:10px;">
-        Creada y diseñada por Francisco López Velázquez
-      </p>
-    </div>
-  </div>
-
-  <!-- Contenedor principal -->
-  <div class="container" id="appContainer" style="display:none;">
-    <header>
-      <h1>Sistema de Calificaciones</h1>
-      <div class="header-controls">
-        <div class="subject-select">
-          <label for="subjectSelect">Materia:</label>
-          <select id="subjectSelect"></select>
-          <button id="addSubject" class="cred-btn">Agregar Materia</button>
-          <button id="editSubject" class="cred-btn">Editar Materia</button>
-          <button id="shareVersion" class="cred-btn">Compartir Versión</button>
-        </div>
-        <div class="partial-tabs">
-          <button class="tab-btn" data-partial="1">Parcial 1</button>
-          <button class="tab-btn" data-partial="2">Parcial 2</button>
-          <button class="tab-btn" data-partial="3">Parcial 3</button>
-          <button class="tab-btn" data-partial="4">Parcial 4</button>
-        </div>
-        <div class="rubric-display">
-          Rúbrica: Exámenes: <span id="weightExam">45%</span>, Tareas: <span id="weightTask">25%</span>,
-          Prácticas: <span id="weightPractice">30%</span>, Participación: <span id="weightPart">5%</span>
-          <button id="editRubric" class="btn">Editar Rúbrica</button>
-        </div>
-        <!-- Botón para cerrar sesión (solo visible para el propietario) -->
-        <div id="signOutContainer" style="display: none;">
-          <button id="signOutBtn">Cerrar sesión</button>
-        </div>
-      </div>
-    </header>
-    
-    <main>
-      <section class="eval-controls">
-        <button id="addExamEval" class="btn">Agregar Ex</button>
-        <button id="addTaskEval" class="btn">Agregar Ta</button>
-        <button id="addPracticeEval" class="btn">Agregar Pr</button>
-      </section>
-      <section class="student-controls">
-        <button id="addStudent" class="btn">Agregar Alumno</button>
-      </section>
-      <section class="team-section">
-        <h2>Equipos (Prácticas)</h2>
-        <div class="table-container">
-          <button id="addTeam" class="btn">Agregar Equipo</button>
-          <table id="teamTable">
-            <thead id="teamHeader"></thead>
-            <tbody></tbody>
-          </table>
-        </div>
-      </section>
-      <section class="grade-section">
-        <h2>Calificaciones - Parcial <span id="currentPartialDisplay">1</span></h2>
-        <div class="table-container">
-          <table id="gradeTable">
-            <thead>
-              <tr id="groupHeaderRow">
-                <th rowspan="2">N° LS</th>
-                <th rowspan="2">Alumno</th>
-                <th rowspan="2">Equipo</th>
-                <th class="exam-group" colspan="0">Exámenes</th>
-                <th class="task-group" colspan="0">Tareas</th>
-                <th class="practice-group" colspan="0">Prácticas</th>
-                <th rowspan="2">Extra Ex.</th>
-                <th rowspan="2">Extra Ta.</th>
-                <th rowspan="2">Extra Pr.</th>
-                <th rowspan="2">Extra Parcial</th>
-                <th rowspan="2">Extra Total</th>
-                <th rowspan="2">Participación (5%)</th>
-                <th rowspan="2">Faltas</th>
-                <th rowspan="2">Deducciones</th>
-                <th rowspan="2">Total Parcial</th>
-                <th rowspan="2">Acciones</th>
-              </tr>
-              <tr id="dynamicHeader"></tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-        </div>
-      </section>
-      <!-- Botones de acción -->
-      <section class="action-section">
-        <button id="saveChanges" class="btn">Guardar Cambios</button>
-        <button id="exportExcel" class="btn">Exportar Excel</button>
-        <button id="exportPDF" class="btn">Exportar PDF</button>
-        <button id="printGrades" class="btn">Imprimir Parcial</button>
-      </section>
-    </main>
-    <footer>Pagina creada y diseñada por Francisco López Velázquez</footer>
-  </div>
-
-  <!-- Nuestro código personalizado se ejecutará al cargar la página -->
+  <!-- Nuestro código personalizado -->
   <script defer>
     window.addEventListener("load", function() {
       (function() {
@@ -454,7 +336,7 @@
           }
           return Promise.all(promises);
         }
-        let saveTimeout; // Declarada UNA sola vez
+        let saveTimeout;
         function debounceSaveData() {
           clearTimeout(saveTimeout);
           saveTimeout = setTimeout(() => {
@@ -564,6 +446,7 @@
                         </td></tr>`;
             teamTableBody.innerHTML += rowHTML;
           });
+          // Delegación para editar/eliminar equipos
           document.addEventListener("click", function(e) {
             if(e.target.matches(".edit-team")) {
               const row = e.target.closest("tr");
@@ -744,7 +627,7 @@
         function recalculateAll() {
           document.querySelectorAll("#gradeTable tbody tr").forEach(row => recalculateRow(row));
         }
-        // Usamos event delegation para elementos estáticos
+        // Delegación para elementos estáticos
         document.addEventListener("click", function(e) {
           // Agregar Materia
           if(e.target.matches("#addSubject")) {
@@ -811,7 +694,7 @@
               debounceSaveData();
             };
           }
-          // Compartir Versión
+          // Compartir Versión (modo solo lectura)
           if(e.target.matches("#shareVersion")) {
             const url = new URL(window.location.href);
             url.searchParams.set("subject", currentSubject);
@@ -1244,5 +1127,123 @@
       })();
     });
   </script>
+</head>
+<body>
+  <!-- Indicador de guardado -->
+  <div id="saveProgress">Guardando cambios...</div>
+  
+  <!-- Modal General -->
+  <div id="modalOverlay" class="modal">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <div id="modalBody"></div>
+    </div>
+  </div>
+
+  <!-- Modal de Login -->
+  <div id="loginModal" class="modal">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <h2>Iniciar Sesión</h2>
+      <label for="loginUser">Usuario (correo):</label>
+      <input type="text" id="loginUser" name="loginUser" placeholder="ej. fco.lopezvelazquez@gmail.com">
+      <label for="loginPass">Contraseña:</label>
+      <input type="password" id="loginPass" name="loginPass" placeholder="Ingrese contraseña">
+      <button id="loginBtn" class="btn">Acceder</button>
+      <button id="configCred" class="cred-btn">Configurar Credenciales</button>
+      <p style="text-align:center; font-size:0.8em; margin-top:10px;">
+        Creada y diseñada por Francisco López Velázquez
+      </p>
+    </div>
+  </div>
+
+  <!-- Contenedor principal -->
+  <div class="container" id="appContainer" style="display:none;">
+    <header>
+      <h1>Sistema de Calificaciones</h1>
+      <div class="header-controls">
+        <div class="subject-select">
+          <label for="subjectSelect">Materia:</label>
+          <select id="subjectSelect"></select>
+          <button id="addSubject" class="cred-btn">Agregar Materia</button>
+          <button id="editSubject" class="cred-btn">Editar Materia</button>
+          <button id="shareVersion" class="cred-btn">Compartir Versión</button>
+        </div>
+        <div class="partial-tabs">
+          <button class="tab-btn" data-partial="1">Parcial 1</button>
+          <button class="tab-btn" data-partial="2">Parcial 2</button>
+          <button class="tab-btn" data-partial="3">Parcial 3</button>
+          <button class="tab-btn" data-partial="4">Parcial 4</button>
+        </div>
+        <div class="rubric-display">
+          Rúbrica: Exámenes: <span id="weightExam">45%</span>, Tareas: <span id="weightTask">25%</span>,
+          Prácticas: <span id="weightPractice">30%</span>, Participación: <span id="weightPart">5%</span>
+          <button id="editRubric" class="btn">Editar Rúbrica</button>
+        </div>
+        <!-- Botón para cerrar sesión (solo visible para el propietario) -->
+        <div id="signOutContainer" style="display: none;">
+          <button id="signOutBtn">Cerrar sesión</button>
+        </div>
+      </div>
+    </header>
+    
+    <main>
+      <section class="eval-controls">
+        <button id="addExamEval" class="btn">Agregar Ex</button>
+        <button id="addTaskEval" class="btn">Agregar Ta</button>
+        <button id="addPracticeEval" class="btn">Agregar Pr</button>
+      </section>
+      <section class="student-controls">
+        <button id="addStudent" class="btn">Agregar Alumno</button>
+      </section>
+      <section class="team-section">
+        <h2>Equipos (Prácticas)</h2>
+        <div class="table-container">
+          <button id="addTeam" class="btn">Agregar Equipo</button>
+          <table id="teamTable">
+            <thead id="teamHeader"></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+      <section class="grade-section">
+        <h2>Calificaciones - Parcial <span id="currentPartialDisplay">1</span></h2>
+        <div class="table-container">
+          <table id="gradeTable">
+            <thead>
+              <tr id="groupHeaderRow">
+                <th rowspan="2">N° LS</th>
+                <th rowspan="2">Alumno</th>
+                <th rowspan="2">Equipo</th>
+                <th class="exam-group" colspan="0">Exámenes</th>
+                <th class="task-group" colspan="0">Tareas</th>
+                <th class="practice-group" colspan="0">Prácticas</th>
+                <th rowspan="2">Extra Ex.</th>
+                <th rowspan="2">Extra Ta.</th>
+                <th rowspan="2">Extra Pr.</th>
+                <th rowspan="2">Extra Parcial</th>
+                <th rowspan="2">Extra Total</th>
+                <th rowspan="2">Participación (5%)</th>
+                <th rowspan="2">Faltas</th>
+                <th rowspan="2">Deducciones</th>
+                <th rowspan="2">Total Parcial</th>
+                <th rowspan="2">Acciones</th>
+              </tr>
+              <tr id="dynamicHeader"></tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+      <!-- Botones de acción -->
+      <section class="action-section">
+        <button id="saveChanges" class="btn">Guardar Cambios</button>
+        <button id="exportExcel" class="btn">Exportar Excel</button>
+        <button id="exportPDF" class="btn">Exportar PDF</button>
+        <button id="printGrades" class="btn">Imprimir Parcial</button>
+      </section>
+    </main>
+    <footer>Pagina creada y diseñada por Francisco López Velázquez</footer>
+  </div>
 </body>
 </html>
