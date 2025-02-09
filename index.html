@@ -56,6 +56,7 @@
     }
     .subject-select label,
     .rubric-display { font-weight: bold; }
+    /* Se asocian los inputs a sus etiquetas mediante "for" */
     .subject-select label { margin-right: 5px; }
     .subject-select select { margin-right: 5px; }
     .subject-select button { margin-right: 5px; padding: 5px 10px; font-size: 0.9em; }
@@ -73,6 +74,7 @@
     .partial-tabs button:hover { background: #003d80; }
     .rubric-display button,
     .cred-btn { margin-left: 10px; padding: 5px 10px; font-size: 0.9rem; cursor: pointer; }
+    /* Botón para cerrar sesión */
     #signOutBtn {
       background: #dc3545;
       color: #fff;
@@ -184,7 +186,7 @@
       .btn, .cred-btn { padding: 6px 10px; font-size: 0.8em; }
     }
   </style>
-  <!-- Incluir Firebase y dependencias (compat) -->
+  <!-- Incluir Firebase y dependencias (versión compat) -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
@@ -419,7 +421,6 @@
       /***********************
        * 4. Persistencia en Firestore
        ***********************/
-      // Cada función de guardado devuelve un Promise que se resuelve cuando finalizan todas las escrituras
       function saveSubjects() {
         let promises = [];
         for (const key in subjectsConfig) {
@@ -454,7 +455,7 @@
         return Promise.all(promises);
       }
       let saveTimeout; // Declarada UNA sola vez
-      // En esta versión se elimina el debounce automático en los eventos y se usa el botón "Guardar Cambios"
+      // En esta versión se dispara el guardado solo al pulsar el botón "Guardar Cambios"
       function saveData() {
         showProgress();
         Promise.all([saveSubjects(), saveStudents(), saveTeams()])
@@ -558,6 +559,7 @@
                       </td></tr>`;
           teamTableBody.innerHTML += rowHTML;
         });
+        // Se usan eventos delegados para los botones dentro de la tabla dinámica:
         document.querySelectorAll(".team-practice-input").forEach(input => {
           input.addEventListener("input", (e) => {
             const teamId = e.target.getAttribute("data-team-id");
@@ -580,11 +582,12 @@
                   if(practiceInputs[idx]) { practiceInputs[idx].value = newVal; recalculateRow(row); }
                 }
               });
+              debounceSaveData();
             }
           });
         });
-        document.querySelectorAll(".edit-team").forEach(btn => {
-          btn.onclick = (e) => {
+        document.addEventListener("click", function(e) {
+          if(e.target.matches(".edit-team")) {
             const row = e.target.closest("tr");
             const teamId = row.getAttribute("data-team-id");
             const subjectTeams = teams[currentSubject];
@@ -603,19 +606,21 @@
                 console.log("Equipo " + teamId + " editado.");
                 modal.style.display = "none";
                 buildTeamTable();
+                buildGradeTable();
+                debounceSaveData();
               };
             }
-          };
-        });
-        document.querySelectorAll(".delete-team").forEach(btn => {
-          btn.onclick = (e) => {
+          }
+          if(e.target.matches(".delete-team")) {
             const row = e.target.closest("tr");
             const teamId = row.getAttribute("data-team-id");
             if(confirm("¿Estás seguro de eliminar este equipo?")) {
               teams[currentSubject] = teams[currentSubject].filter(t => t.id !== teamId);
               buildTeamTable();
+              buildGradeTable();
+              debounceSaveData();
             }
-          };
+          }
         });
       }
       function buildGradeTable() {
@@ -698,6 +703,7 @@
         attachTableListeners();
         recalculateAll();
         if(readOnlyMode) { setReadOnly(); }
+        debounceSaveData();
       }
       function recalculateRow(row) {
         const rubric = subjectsConfig[currentSubject].rubric;
@@ -734,6 +740,241 @@
       function recalculateAll() {
         document.querySelectorAll("#gradeTable tbody tr").forEach(row => recalculateRow(row));
       }
+      // Usamos event delegation para los botones y elementos estáticos (header, etc.)
+      document.addEventListener("click", function(e) {
+        // Botón Agregar Materia
+        if(e.target.matches("#addSubject")) {
+          let content = `<h3>Agregar Materia</h3>
+            <label for="newSubjectId">ID:</label>
+            <input type="text" id="newSubjectId"><br>
+            <label for="newSubjectName">Nombre:</label>
+            <input type="text" id="newSubjectName"><br>
+            <label for="newSubjectSemester">Semestre:</label>
+            <select id="newSubjectSemester">
+              <option value="ene-jul">ene-jul</option>
+              <option value="ago-dic">ago-dic</option>
+            </select><br>
+            <label for="newSubjectYear">Año:</label>
+            <input type="number" id="newSubjectYear" value="2023"><br>
+            <button id="saveSubject" class="btn">Guardar Materia</button>`;
+          showModal(content);
+          document.getElementById("saveSubject").onclick = () => {
+            const id = document.getElementById("newSubjectId").value.trim();
+            const name = document.getElementById("newSubjectName").value.trim();
+            const semester = document.getElementById("newSubjectSemester").value;
+            const year = parseInt(document.getElementById("newSubjectYear").value);
+            if(!id || !name || !semester || isNaN(year)) { alert("Complete todos los campos."); return; }
+            subjectsConfig[id] = {
+              name: name,
+              semester: semester,
+              year: year,
+              rubric: { exam: 45, task: 25, practice: 30, participation: 5 },
+              parcials: {
+                "1": { examEvals: [], taskEvals: [], practiceEvals: [] },
+                "2": { examEvals: [], taskEvals: [], practiceEvals: [] },
+                "3": { examEvals: [], taskEvals: [], practiceEvals: [] },
+                "4": { examEvals: [], taskEvals: [], practiceEvals: [] }
+              }
+            };
+            teams[id] = [];
+            buildSubjectSelect();
+            modal.style.display = "none";
+            debounceSaveData();
+          };
+        }
+        // Botón Editar Materia
+        if(e.target.matches("#editSubject")) {
+          const subj = subjectsConfig[currentSubject];
+          let content = `<h3>Editar Materia</h3>
+            <label for="editSubjName">Nombre:</label>
+            <input type="text" id="editSubjName" value="${subj.name}"><br>
+            <label for="editSubjSemester">Semestre:</label>
+            <select id="editSubjSemester">
+              <option value="ene-jul" ${subj.semester==="ene-jul"?"selected":""}>ene-jul</option>
+              <option value="ago-dic" ${subj.semester==="ago-dic"?"selected":""}>ago-dic</option>
+            </select><br>
+            <label for="editSubjYear">Año:</label>
+            <input type="number" id="editSubjYear" value="${subj.year}"><br>
+            <button id="saveSubjectEd" class="btn">Guardar</button>`;
+          showModal(content);
+          document.getElementById("saveSubjectEd").onclick = () => {
+            subj.name = document.getElementById("editSubjName").value.trim();
+            subj.semester = document.getElementById("editSubjSemester").value;
+            subj.year = parseInt(document.getElementById("editSubjYear").value);
+            modal.style.display = "none";
+            buildSubjectSelect();
+            buildDynamicHeader();
+            debounceSaveData();
+          };
+        }
+        // Botón Compartir Versión (genera URL de solo lectura)
+        if(e.target.matches("#shareVersion")) {
+          const url = new URL(window.location.href);
+          url.searchParams.set("subject", currentSubject);
+          url.searchParams.set("partial", currentPartial);
+          url.searchParams.set("readonly", "true");
+          prompt("Copia este enlace para compartir la versión de solo lectura:", url.toString());
+        }
+        // Botones Agregar Evaluación
+        if(e.target.matches("#addExamEval")) {
+          let newExam = prompt("Ingrese nombre del nuevo Examen:");
+          if(newExam) {
+            subjectsConfig[currentSubject].parcials[currentPartial].examEvals.push({ name: newExam });
+            buildDynamicHeader();
+            buildGradeTable();
+            debounceSaveData();
+          }
+        }
+        if(e.target.matches("#addTaskEval")) {
+          let newTask = prompt("Ingrese nombre de la nueva Tarea:");
+          if(newTask) {
+            subjectsConfig[currentSubject].parcials[currentPartial].taskEvals.push({ name: newTask });
+            buildDynamicHeader();
+            buildGradeTable();
+            debounceSaveData();
+          }
+        }
+        if(e.target.matches("#addPracticeEval")) {
+          let newPractice = prompt("Ingrese nombre de la nueva Práctica:");
+          if(newPractice) {
+            subjectsConfig[currentSubject].parcials[currentPartial].practiceEvals.push({ name: newPractice });
+            teams[currentSubject].forEach(team => {
+              if (!team.partials) team.partials = {};
+              if (!team.partials[currentPartial]) { team.partials[currentPartial] = []; }
+              team.partials[currentPartial].push(0);
+            });
+            buildDynamicHeader();
+            buildTeamTable();
+            buildGradeTable();
+            debounceSaveData();
+          }
+        }
+        // Botón Agregar Alumno
+        if(e.target.matches("#addStudent")) {
+          let content = `<h3>Agregar Alumno</h3>
+            <label for="newListNumber">N° LS:</label>
+            <input type="number" id="newListNumber"><br>
+            <label for="newStudentName">Alumno:</label>
+            <input type="text" id="newStudentName"><br>
+            <label for="newStudentTeam">Equipo:</label>
+            <select id="newStudentTeam">
+              ${teams[currentSubject].map(team => `<option value="${team.id}">${team.name}</option>`).join('')}
+            </select><br>
+            <button id="saveStudent" class="btn">Guardar</button>`;
+          showModal(content);
+          document.getElementById("saveStudent").onclick = () => {
+            const listNum = parseInt(document.getElementById("newListNumber").value);
+            const name = document.getElementById("newStudentName").value.trim();
+            const team = document.getElementById("newStudentTeam").value;
+            if(!listNum || !name) { alert("Complete todos los campos."); return; }
+            students.push({ listNumber: listNum, name, team, subject: currentSubject, partials: {} });
+            modal.style.display = "none";
+            buildGradeTable();
+            debounceSaveData();
+          };
+        }
+        // Botón Agregar Equipo
+        if(e.target.matches("#addTeam")) {
+          let content = `<h3>Agregar Equipo</h3>
+            <label for="newTeamId">ID:</label>
+            <input type="text" id="newTeamId"><br>
+            <label for="newTeamName">Nombre:</label>
+            <input type="text" id="newTeamName"><br>
+            <label for="newTeamHead">Encargado:</label>
+            <input type="text" id="newTeamHead"><br>
+            <button id="saveTeamNew" class="btn">Guardar</button>`;
+          showModal(content);
+          document.getElementById("saveTeamNew").onclick = () => {
+            const id = document.getElementById("newTeamId").value.trim();
+            const name = document.getElementById("newTeamName").value.trim();
+            const head = document.getElementById("newTeamHead").value.trim();
+            if(!id || !name || !head) { alert("Complete todos los campos."); return; }
+            if(!teams[currentSubject]) teams[currentSubject] = [];
+            teams[currentSubject].push({ id, name, head, partials: {} });
+            modal.style.display = "none";
+            buildTeamTable();
+            buildGradeTable();
+            debounceSaveData();
+          };
+        }
+        // Botón Exportar Excel
+        if(e.target.matches("#exportExcel")) {
+          const table = document.getElementById("gradeTable");
+          let csv = "";
+          for (let row of table.rows) {
+            let rowData = [];
+            for (let cell of row.cells) {
+              let text = cell.innerText.trim();
+              if (!text) text = "0";
+              rowData.push('"' + text + '"');
+            }
+            csv += rowData.join(",") + "\n";
+          }
+          const blob = new Blob([csv], { type: "application/vnd.ms-excel" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = "calificaciones_" + currentSubject + "_parcial_" + currentPartial + ".xls";
+          a.click();
+          URL.revokeObjectURL(url);
+        }
+        // Botón Exportar PDF
+        if(e.target.matches("#exportPDF")) {
+          const { jsPDF } = window.jspdf;
+          const doc = new jsPDF('landscape', 'pt', 'a4');
+          doc.setFontSize(10);
+          doc.text("Calificaciones - " + subjectsConfig[currentSubject].name + " - Parcial " + currentPartial, 40, 30);
+          const headerCells = ["N° LS", "Alumno", "Equipo"];
+          const cfg = subjectsConfig[currentSubject].parcials[currentPartial];
+          cfg.examEvals.forEach(e => headerCells.push(e.name));
+          headerCells.push("P-EX");
+          cfg.taskEvals.forEach(e => headerCells.push(e.name));
+          headerCells.push("P-TA");
+          cfg.practiceEvals.forEach(e => headerCells.push(e.name));
+          headerCells.push("P-PR");
+          headerCells.push("ExE");
+          headerCells.push("ExT");
+          headerCells.push("ExP");
+          headerCells.push("ExP-Gen");
+          headerCells.push("ExTOT");
+          headerCells.push("Par");
+          headerCells.push("Faltas");
+          headerCells.push("Ded");
+          headerCells.push("TOT");
+          headerCells.push("Firma");
+          const headers = [headerCells];
+          const data = [];
+          document.querySelectorAll("#gradeTable tbody tr").forEach(row => {
+            const rowData = [];
+            const cells = Array.from(row.querySelectorAll("td"));
+            cells.slice(0, cells.length - 1).forEach(cell => {
+              let text = cell.innerText.trim();
+              if (!text) text = "0";
+              rowData.push(text);
+            });
+            rowData.push("____________________________");
+            data.push(rowData);
+          });
+          doc.autoTable({
+            head: headers,
+            body: data,
+            startY: 50,
+            theme: 'grid',
+            styles: { fontSize: 7, cellPadding: 4, halign: 'center', valign: 'middle' },
+            headStyles: { fillColor: [0, 51, 102] },
+            columnStyles: { text: { cellWidth: 'auto' } }
+          });
+          doc.save("calificaciones_" + currentSubject + "_parcial_" + currentPartial + ".pdf");
+        }
+        // Botón Imprimir Parcial
+        if(e.target.matches("#printGrades")) {
+          window.print();
+        }
+      });
+
+      /***********************
+       * Funciones para actualizar las tablas dinámicas
+       ***********************/
       function attachTableListeners() {
         document.querySelectorAll("#gradeTable tbody input").forEach(input => {
           input.addEventListener("input", () => {
@@ -815,7 +1056,7 @@
       }
 
       /***********************
-       * 6. Funciones de Modal para Agregar/Editar Elementos
+       * Funciones de Modal
        ***********************/
       const modal = document.getElementById("modalOverlay");
       function showModal(contentHTML) {
@@ -866,7 +1107,7 @@
       }
 
       /***********************
-       * 7. Autenticación y Restricción de Edición
+       * Autenticación y Modo de Edición
        ***********************/
       window.addEventListener("load", () => {
         if (readOnlyMode) {
@@ -915,7 +1156,7 @@
       };
 
       /***********************
-       * 8. Carga Inicial y Escucha Realtime (Firestore)
+       * Carga Inicial y Realtime (Firestore)
        ***********************/
       function attachRealtimeListeners() {
         db.collection("subjects").onSnapshot(snapshot => {
@@ -966,21 +1207,6 @@
         }
       }
 
-      /***********************
-       * 9. Botón Guardar Cambios (manual) para persistir en Firestore
-       ***********************/
-      // Funciones para mostrar y ocultar el indicador de guardado (progreso)
-      function showProgress() {
-        document.getElementById("saveProgress").style.display = "block";
-      }
-      function hideProgress() {
-        document.getElementById("saveProgress").style.display = "none";
-      }
-      document.getElementById("saveChanges").addEventListener("click", () => {
-        console.log("Botón Guardar Cambios pulsado.");
-        saveData();
-      });
-
       // Llamadas de carga inicial
       buildSubjectSelect();
       updateRubricDisplay();
@@ -988,6 +1214,14 @@
       buildDynamicHeader();
       buildTeamTable();
       buildGradeTable();
+
+      /***********************
+       * Botón Guardar Cambios (manual)
+       ***********************/
+      document.getElementById("saveChanges").addEventListener("click", () => {
+        console.log("Botón Guardar Cambios pulsado.");
+        saveData();
+      });
     })();
   </script>
 </body>
