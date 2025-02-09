@@ -20,6 +20,7 @@
       max-width: 1400px;
       padding: 20px;
       box-shadow: 0 0 15px rgba(0,0,0,0.15);
+      position: relative;
     }
     header {
       border-bottom: 2px solid #003366;
@@ -58,6 +59,8 @@
     .partial-tabs button:hover { background: #003d80; }
     .rubric-display button,
     .cred-btn { margin-left: 10px; padding: 5px 10px; font-size: 0.9rem; cursor: pointer; }
+    /* Contenedor para el botón Reset DB (visible sólo para el propietario) */
+    #resetDBContainer { display: none; }
     main { padding: 10px 0; }
     .eval-controls, .student-controls, .action-section { text-align: center; margin: 15px 0; }
     .btn {
@@ -102,11 +105,9 @@
       border: 1px solid #aaa;
       border-radius: 3px;
     }
-    /* Resaltar columnas principales */
     .exam-average, .task-average, .practice-average, .total-partial {
       background-color: #d1e7dd;
     }
-    /* ===== REGLAS PARA IMPRESIÓN Y PDF ===== */
     @media print {
       body { background: #fff; }
       .container { box-shadow: none; }
@@ -158,7 +159,6 @@
       font-size: 0.8em;
       color: #555;
     }
-    /* RESPONSIVIDAD */
     @media (max-width: 768px) {
       .container { margin: 10px; padding: 10px; }
       header h1 { font-size: 1.5em; }
@@ -167,10 +167,9 @@
       .btn, .cred-btn { padding: 6px 10px; font-size: 0.8em; }
     }
   </style>
-  <!-- Incluir Firebase y dependencias (compat para usar la API "namespaced") -->
+  <!-- Incluir Firebase y dependencias (compat) -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-  <!-- Incluir Firestore (compat) -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
@@ -220,6 +219,10 @@
         <div class="rubric-display">
           Rúbrica: Exámenes: <span id="weightExam">45%</span>, Tareas: <span id="weightTask">25%</span>, Prácticas: <span id="weightPractice">30%</span>, Participación: <span id="weightPart">5%</span>
           <button id="editRubric" class="btn">Editar Rúbrica</button>
+        </div>
+        <!-- Botón para Resetear DB (visible sólo para el propietario) -->
+        <div id="resetDBContainer">
+          <button id="resetDBBtn" class="cred-btn" style="background: #dc3545;">Reset DB</button>
         </div>
       </div>
     </header>
@@ -290,43 +293,55 @@
     /***********************
      * 1. Variables Globales: Datos
      ***********************/
-    // Estructuras de datos iniciales
+    // Cada materia tiene su objeto "parcials" para evaluaciones por parcial
     const subjectsConfig = {
       circuitos: {
         name: "Circuitos Eléctricos",
         semester: "ene-jul",
         year: 2023,
         rubric: { exam: 45, task: 25, practice: 30, participation: 5 },
-        examEvals: [],
-        taskEvals: [],
-        practiceEvals: []
+        parcials: {
+          "1": { examEvals: [], taskEvals: [], practiceEvals: [] },
+          "2": { examEvals: [], taskEvals: [], practiceEvals: [] },
+          "3": { examEvals: [], taskEvals: [], practiceEvals: [] },
+          "4": { examEvals: [], taskEvals: [], practiceEvals: [] }
+        }
       },
       tt6: {
         name: "TT6",
         semester: "ene-jul",
         year: 2023,
         rubric: { exam: 45, task: 25, practice: 30, participation: 5 },
-        examEvals: [],
-        taskEvals: [],
-        practiceEvals: []
+        parcials: {
+          "1": { examEvals: [], taskEvals: [], practiceEvals: [] },
+          "2": { examEvals: [], taskEvals: [], practiceEvals: [] },
+          "3": { examEvals: [], taskEvals: [], practiceEvals: [] },
+          "4": { examEvals: [], taskEvals: [], practiceEvals: [] }
+        }
       },
       instalaciones: {
         name: "Instalaciones y Control Eléctrico",
         semester: "ago-dic",
         year: 2023,
         rubric: { exam: 45, task: 25, practice: 30, participation: 5 },
-        examEvals: [],
-        taskEvals: [],
-        practiceEvals: []
+        parcials: {
+          "1": { examEvals: [], taskEvals: [], practiceEvals: [] },
+          "2": { examEvals: [], taskEvals: [], practiceEvals: [] },
+          "3": { examEvals: [], taskEvals: [], practiceEvals: [] },
+          "4": { examEvals: [], taskEvals: [], practiceEvals: [] }
+        }
       },
       fisica4: {
         name: "Física 4",
         semester: "ago-dic",
         year: 2023,
         rubric: { exam: 45, task: 25, practice: 30, participation: 5 },
-        examEvals: [],
-        taskEvals: [],
-        practiceEvals: []
+        parcials: {
+          "1": { examEvals: [], taskEvals: [], practiceEvals: [] },
+          "2": { examEvals: [], taskEvals: [], practiceEvals: [] },
+          "3": { examEvals: [], taskEvals: [], practiceEvals: [] },
+          "4": { examEvals: [], taskEvals: [], practiceEvals: [] }
+        }
       }
     };
 
@@ -356,35 +371,9 @@
     };
 
     /***********************
-     * 2. Firebase Configuración y Firestore
+     * 2. Persistencia: Firestore
      ***********************/
-    // Configuración de Firebase (usa tus propios datos si fuera necesario)
-    const firebaseConfig = {
-      apiKey: "AIzaSyDsoLZHDpR8EEyvs5tJ7gF1tE7eKS-ZGcU",
-      authDomain: "controlescolar-a184f.firebaseapp.com",
-      projectId: "controlescolar-a184f",
-      storageBucket: "controlescolar-a184f.firebasestorage.app",
-      messagingSenderId: "213806947943",
-      appId: "1:213806947943:web:996ab97cdd805998f0bec2"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-    const db = firebase.firestore();
-
-    /***********************
-     * 3. Variables de Estado
-     ***********************/
-    const urlParams = new URLSearchParams(window.location.search);
-    let readOnlyMode = urlParams.get("readonly") === "true";
-    let urlSubject = urlParams.get("subject");
-    let urlPartial = parseInt(urlParams.get("partial"));
-    let currentSubject = (urlSubject && subjectsConfig[urlSubject]) ? urlSubject : "circuitos";
-    let currentPartial = (!isNaN(urlPartial) && urlPartial > 0) ? urlPartial : 1;
-
-    /***********************
-     * 4. Persistencia en Firestore
-     ***********************/
-    // Guarda cada colección en Firestore
+    // Funciones para guardar en Firestore
     function saveSubjects() {
       for (const key in subjectsConfig) {
         db.collection("subjects").doc(key).set(subjectsConfig[key])
@@ -412,38 +401,34 @@
       saveTeams();
     }
 
-    // Escucha en tiempo real para actualizar la UI (ideal para el modo solo lectura y para múltiples clientes)
-    function attachRealtimeListeners() {
-      db.collection("subjects").onSnapshot(snapshot => {
-        snapshot.forEach(doc => {
-          subjectsConfig[doc.id] = doc.data();
-        });
-        buildSubjectSelect();
-        updateRubricDisplay();
-        buildDynamicHeader();
-      });
-      db.collection("students").onSnapshot(snapshot => {
-        students.length = 0;
-        snapshot.forEach(doc => {
-          students.push(doc.data());
-        });
-        buildGradeTable();
-      });
-      db.collection("teams").onSnapshot(snapshot => {
-        // Reinicia los equipos para cada materia
-        for (const subject in teams) { teams[subject] = []; }
-        snapshot.forEach(doc => {
-          const data = doc.data();
-          const subject = data.subject;
-          if (!teams[subject]) teams[subject] = [];
-          teams[subject].push(data);
-        });
-        buildTeamTable();
-      });
-    }
+    /***********************
+     * 3. Inicializar Firebase y Firestore
+     ***********************/
+    const firebaseConfig = {
+      apiKey: "AIzaSyDsoLZHDpR8EEyvs5tJ7gF1tE7eKS-ZGcU",
+      authDomain: "controlescolar-a184f.firebaseapp.com",
+      projectId: "controlescolar-a184f",
+      storageBucket: "controlescolar-a184f.firebasestorage.app",
+      messagingSenderId: "213806947943",
+      appId: "1:213806947943:web:996ab97cdd805998f0bec2"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
 
     /***********************
-     * 5. Funciones de Interfaz (Construcción de selectores, tablas, etc.)
+     * 4. Variables de Estado
+     ***********************/
+    const urlParams = new URLSearchParams(window.location.search);
+    let readOnlyMode = urlParams.get("readonly") === "true";
+    let urlSubject = urlParams.get("subject");
+    let urlPartial = parseInt(urlParams.get("partial"));
+    // Si no se indica, se usa "circuitos" y parcial 1
+    let currentSubject = (urlSubject && subjectsConfig[urlSubject]) ? urlSubject : "circuitos";
+    let currentPartial = (!isNaN(urlPartial) && urlPartial > 0) ? urlPartial : 1;
+
+    /***********************
+     * 5. Funciones de Interfaz
      ***********************/
     function buildSubjectSelect() {
       const select = document.getElementById("subjectSelect");
@@ -457,6 +442,7 @@
       }
       select.value = currentSubject;
     }
+
     function updateRubricDisplay() {
       const cfg = subjectsConfig[currentSubject];
       document.getElementById("weightExam").textContent = cfg.rubric.exam + "%";
@@ -464,11 +450,14 @@
       document.getElementById("weightPractice").textContent = cfg.rubric.practice + "%";
       document.getElementById("weightPart").textContent = cfg.rubric.participation + "%";
     }
+
     function updatePartialDisplay() {
       document.getElementById("currentPartialDisplay").textContent = currentPartial;
     }
+
+    // Las evaluaciones se toman del parcial actual
     function buildGroupHeader() {
-      const cfg = subjectsConfig[currentSubject];
+      const cfg = subjectsConfig[currentSubject].parcials[currentPartial];
       const examColspan = cfg.examEvals.length + 1;
       const taskColspan = cfg.taskEvals.length + 1;
       const practiceColspan = cfg.practiceEvals.length + 1;
@@ -476,10 +465,11 @@
       document.querySelector(".task-group").setAttribute("colspan", taskColspan);
       document.querySelector(".practice-group").setAttribute("colspan", practiceColspan);
     }
+
     function buildDynamicHeader() {
       const headerRow = document.getElementById("dynamicHeader");
       headerRow.innerHTML = "";
-      const cfg = subjectsConfig[currentSubject];
+      const cfg = subjectsConfig[currentSubject].parcials[currentPartial];
       cfg.examEvals.forEach(evalObj => {
         const th = document.createElement("th");
         th.textContent = evalObj.name;
@@ -506,12 +496,13 @@
       headerRow.appendChild(thPracticeAvg);
       buildGroupHeader();
     }
+
     function buildTeamTable() {
       const teamTableHead = document.getElementById("teamHeader");
       const teamTableBody = document.querySelector("#teamTable tbody");
       teamTableHead.innerHTML = "";
       teamTableBody.innerHTML = "";
-      const cfg = subjectsConfig[currentSubject];
+      const cfg = subjectsConfig[currentSubject].parcials[currentPartial];
       let headerHTML = "<tr><th>Equipo</th><th>Encargado</th>";
       cfg.practiceEvals.forEach(evalObj => { headerHTML += `<th>${evalObj.name}</th>`; });
       headerHTML += "<th>Acciones</th></tr>";
@@ -542,7 +533,7 @@
           if(team) {
             if (!team.partials) team.partials = {};
             if (!team.partials[currentPartial]) {
-              team.partials[currentPartial] = Array(subjectsConfig[currentSubject].practiceEvals.length).fill(0);
+              team.partials[currentPartial] = Array(subjectsConfig[currentSubject].parcials[currentPartial].practiceEvals.length).fill(0);
             }
             team.partials[currentPartial][idx] = newVal;
             // Actualizar en la tabla de alumnos
@@ -594,10 +585,11 @@
         };
       });
     }
+
     function buildGradeTable() {
       const tbody = document.getElementById("gradeTable").querySelector("tbody");
       tbody.innerHTML = "";
-      const cfg = subjectsConfig[currentSubject];
+      const cfg = subjectsConfig[currentSubject].parcials[currentPartial];
       const filteredStudents = students.filter(s => s.subject === currentSubject);
       filteredStudents.forEach(student => {
         if (!student.partials[currentPartial]) {
@@ -675,6 +667,7 @@
       if(readOnlyMode) { setReadOnly(); }
       saveData();
     }
+
     function recalculateRow(row) {
       const rubric = subjectsConfig[currentSubject].rubric;
       let examSum = 0, examCount = 0;
@@ -707,9 +700,11 @@
       row.querySelector(".total-partial").textContent = totalPartial.toFixed(2);
       if(student) { student.partials[currentPartial].total = totalPartial; }
     }
+
     function recalculateAll() {
       document.querySelectorAll("#gradeTable tbody tr").forEach(row => recalculateRow(row));
     }
+
     function attachTableListeners() {
       document.querySelectorAll("#gradeTable tbody input").forEach(input => {
         input.addEventListener("input", () => {
@@ -766,6 +761,7 @@
         });
       });
     }
+
     function saveRowData(row) {
       const listNum = row.getAttribute("data-list");
       const student = students.find(s => s.listNumber == listNum);
@@ -783,6 +779,7 @@
       partialData.absences = parseFloat(row.querySelector(".absences").value) || 0;
       saveData();
     }
+
     function propagateTeamGradeForRow(row) {
       const listNum = row.getAttribute("data-list");
       const student = students.find(s => s.listNumber == listNum);
@@ -790,7 +787,9 @@
       const subjectTeams = teams[currentSubject];
       const teamObj = subjectTeams.find(t => t.id === student.team);
       if(teamObj && teamObj.partials && teamObj.partials[currentPartial]) {
-        row.querySelectorAll(".practice-input").forEach((input, idx) => { input.value = teamObj.partials[currentPartial][idx] || 0; });
+        row.querySelectorAll(".practice-input").forEach((input, idx) => { 
+          input.value = teamObj.partials[currentPartial][idx] || 0; 
+        });
       }
       recalculateRow(row);
       saveData();
@@ -804,7 +803,6 @@
       document.getElementById("modalBody").innerHTML = contentHTML;
       modal.style.display = "block";
     }
-    // Cerrar modal al hacer clic en "×" o fuera del contenido
     document.querySelectorAll(".modal .close").forEach(closeBtn => {
       closeBtn.onclick = function() {
         this.parentElement.parentElement.style.display = "none";
@@ -845,7 +843,9 @@
         };
       }
     }
+
     document.getElementById("editRubric").onclick = () => {
+      // La rúbrica se mantiene a nivel de materia; las evaluaciones se editan por parcial
       const cfg = subjectsConfig[currentSubject];
       let content = `<h3>Editar Rúbrica</h3>
         <h4>Porcentajes</h4>
@@ -853,25 +853,26 @@
         <label>Tareas (%): <input type="number" id="rubricTask" value="${cfg.rubric.task}" min="0" max="100"></label><br>
         <label>Prácticas (%): <input type="number" id="rubricPractice" value="${cfg.rubric.practice}" min="0" max="100"></label><br>
         <label>Participación (%): <input type="number" id="rubricPart" value="${cfg.rubric.participation}" min="0" max="100"></label><br>
-        <h4>Evaluaciones</h4>
+        <h4>Evaluaciones (Parcial ${currentPartial})</h4>
         <div id="rubricEdits">
           <h5>Exámenes</h5>
           <ul id="examList">`;
-      cfg.examEvals.forEach((e, i) => {
+      const currParcial = subjectsConfig[currentSubject].parcials[currentPartial];
+      currParcial.examEvals.forEach((e, i) => {
         content += `<li><input type="text" data-cat="exam" data-index="${i}" value="${e.name}"> <button class="removeEval btn" data-cat="exam" data-index="${i}">Quitar</button></li>`;
       });
       content += `</ul>
           <button id="addExamItem" class="btn">Agregar Examen</button>
           <h5>Tareas</h5>
           <ul id="taskList">`;
-      cfg.taskEvals.forEach((e, i) => {
+      currParcial.taskEvals.forEach((e, i) => {
         content += `<li><input type="text" data-cat="task" data-index="${i}" value="${e.name}"> <button class="removeEval btn" data-cat="task" data-index="${i}">Quitar</button></li>`;
       });
       content += `</ul>
           <button id="addTaskItem" class="btn">Agregar Tarea</button>
           <h5>Prácticas</h5>
           <ul id="practiceList">`;
-      cfg.practiceEvals.forEach((e, i) => {
+      currParcial.practiceEvals.forEach((e, i) => {
         content += `<li><input type="text" data-cat="practice" data-index="${i}" value="${e.name}"> <button class="removeEval btn" data-cat="practice" data-index="${i}">Quitar</button></li>`;
       });
       content += `</ul>
@@ -884,9 +885,9 @@
         btn.onclick = (e) => {
           const cat = e.target.getAttribute("data-cat");
           const index = parseInt(e.target.getAttribute("data-index"));
-          if(cat === "exam") { cfg.examEvals.splice(index, 1); }
-          else if(cat === "task") { cfg.taskEvals.splice(index, 1); }
-          else if(cat === "practice") { cfg.practiceEvals.splice(index, 1); }
+          if(cat === "exam") { currParcial.examEvals.splice(index, 1); }
+          else if(cat === "task") { currParcial.taskEvals.splice(index, 1); }
+          else if(cat === "practice") { currParcial.practiceEvals.splice(index, 1); }
           buildDynamicHeader();
           buildGradeTable();
           modal.style.display = "none";
@@ -896,16 +897,16 @@
       });
       document.getElementById("addExamItem").onclick = () => {
         const newItem = prompt("Nuevo examen:");
-        if(newItem) { cfg.examEvals.push({ name: newItem }); buildDynamicHeader(); buildGradeTable(); saveData(); }
+        if(newItem) { currParcial.examEvals.push({ name: newItem }); buildDynamicHeader(); buildGradeTable(); saveData(); }
       };
       document.getElementById("addTaskItem").onclick = () => {
         const newItem = prompt("Nueva tarea:");
-        if(newItem) { cfg.taskEvals.push({ name: newItem }); buildDynamicHeader(); buildGradeTable(); saveData(); }
+        if(newItem) { currParcial.taskEvals.push({ name: newItem }); buildDynamicHeader(); buildGradeTable(); saveData(); }
       };
       document.getElementById("addPracticeItem").onclick = () => {
         const newItem = prompt("Nueva práctica:");
         if(newItem) {
-          cfg.practiceEvals.push({ name: newItem });
+          currParcial.practiceEvals.push({ name: newItem });
           teams[currentSubject].forEach(team => {
             if (!team.partials) team.partials = {};
             if (!team.partials[currentPartial]) { team.partials[currentPartial] = []; }
@@ -929,10 +930,11 @@
         saveData();
       };
     };
+
     document.getElementById("addExamEval").onclick = () => {
       let newExam = prompt("Ingrese nombre del nuevo Examen:");
       if(newExam) {
-        subjectsConfig[currentSubject].examEvals.push({ name: newExam });
+        subjectsConfig[currentSubject].parcials[currentPartial].examEvals.push({ name: newExam });
         buildDynamicHeader();
         buildGradeTable();
         saveData();
@@ -941,7 +943,7 @@
     document.getElementById("addTaskEval").onclick = () => {
       let newTask = prompt("Ingrese nombre de la nueva Tarea:");
       if(newTask) {
-        subjectsConfig[currentSubject].taskEvals.push({ name: newTask });
+        subjectsConfig[currentSubject].parcials[currentPartial].taskEvals.push({ name: newTask });
         buildDynamicHeader();
         buildGradeTable();
         saveData();
@@ -950,7 +952,7 @@
     document.getElementById("addPracticeEval").onclick = () => {
       let newPractice = prompt("Ingrese nombre de la nueva Práctica:");
       if(newPractice) {
-        subjectsConfig[currentSubject].practiceEvals.push({ name: newPractice });
+        subjectsConfig[currentSubject].parcials[currentPartial].practiceEvals.push({ name: newPractice });
         teams[currentSubject].forEach(team => {
           if(!team.partials) team.partials = {};
           if(!team.partials[currentPartial]) { team.partials[currentPartial] = []; }
@@ -1051,9 +1053,12 @@
           semester: semester,
           year: year,
           rubric: { exam: 45, task: 25, practice: 30, participation: 5 },
-          examEvals: [],
-          taskEvals: [],
-          practiceEvals: []
+          parcials: {
+            "1": { examEvals: [], taskEvals: [], practiceEvals: [] },
+            "2": { examEvals: [], taskEvals: [], practiceEvals: [] },
+            "3": { examEvals: [], taskEvals: [], practiceEvals: [] },
+            "4": { examEvals: [], taskEvals: [], practiceEvals: [] }
+          }
         };
         teams[id] = [];
         buildSubjectSelect();
@@ -1093,10 +1098,8 @@
       const doc = new jsPDF('landscape', 'pt', 'a4');
       doc.setFontSize(10);
       doc.text("Calificaciones - " + subjectsConfig[currentSubject].name + " - Parcial " + currentPartial, 40, 30);
-      const headerCells = [
-        "N° LS", "Alumno", "Equipo"
-      ];
-      const cfg = subjectsConfig[currentSubject];
+      const headerCells = [ "N° LS", "Alumno", "Equipo" ];
+      const cfg = subjectsConfig[currentSubject].parcials[currentPartial];
       cfg.examEvals.forEach(e => headerCells.push(e.name));
       headerCells.push("P-EX");
       cfg.taskEvals.forEach(e => headerCells.push(e.name));
@@ -1177,9 +1180,9 @@
     }
 
     /***********************
-     * 6. Carga Inicial y Realtime
+     * 6. Carga Inicial y Realtime (Firestore)
      ***********************/
-    // En lugar de usar localStorage, usamos Firestore para cargar y escuchar los cambios
+    // Se usan listeners de Firestore para actualizar la interfaz en tiempo real
     attachRealtimeListeners();
     function attachRealtimeListeners() {
       db.collection("subjects").onSnapshot(snapshot => {
@@ -1198,7 +1201,6 @@
         buildGradeTable();
       });
       db.collection("teams").onSnapshot(snapshot => {
-        // Reiniciamos los equipos para cada materia
         for (const subject in teams) { teams[subject] = []; }
         snapshot.forEach(doc => {
           const data = doc.data();
@@ -1209,7 +1211,6 @@
         buildTeamTable();
       });
     }
-    // Llamamos a funciones iniciales
     buildSubjectSelect();
     updateRubricDisplay();
     updatePartialDisplay();
@@ -1218,7 +1219,7 @@
     buildGradeTable();
 
     /***********************
-     * 7. Inicio de Sesión con Firebase
+     * 7. Autenticación y Restricción de Edición
      ***********************/
     window.addEventListener("load", () => {
       if (readOnlyMode) {
@@ -1232,6 +1233,13 @@
           if (user) {
             loginModal.style.display = "none";
             document.getElementById("appContainer").style.display = "block";
+            // Si el usuario es el propietario, se muestra el botón para Resetear DB
+            if(user.email === "fco.lopezvelazquez@gmail.com") {
+              document.getElementById("resetDBContainer").style.display = "block";
+            } else {
+              setReadOnly();
+              document.getElementById("resetDBContainer").style.display = "none";
+            }
           } else {
             document.getElementById("appContainer").style.display = "none";
             loginModal.style.display = "block";
@@ -1249,6 +1257,37 @@
         };
       }
     });
+
+    /***********************
+     * 8. Botón para Resetear la Base de Datos en Firestore (sólo para el propietario)
+     ***********************/
+    document.getElementById("resetDBBtn").onclick = () => {
+      if(confirm("¿Estás seguro de borrar TODOS los datos de Firestore? Esta acción no se podrá deshacer.")) {
+        // Borrar documentos en "subjects"
+        db.collection("subjects").get().then(snapshot => {
+          snapshot.forEach(doc => {
+            doc.ref.delete();
+          });
+        });
+        // Borrar documentos en "students"
+        db.collection("students").get().then(snapshot => {
+          snapshot.forEach(doc => {
+            doc.ref.delete();
+          });
+        });
+        // Borrar documentos en "teams"
+        db.collection("teams").get().then(snapshot => {
+          snapshot.forEach(doc => {
+            doc.ref.delete();
+          });
+        }).then(() => {
+          alert("Base de datos borrada. Recarga la página para reiniciar los datos.");
+          window.location.reload();
+        }).catch(err => {
+          console.error("Error al resetear la base de datos:", err);
+        });
+      }
+    };
   </script>
 </body>
 </html>
