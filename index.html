@@ -2,67 +2,124 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Control Escolar</title>
+  <title>Sistema de Calificaciones - Institución XYZ</title>
   <style>
-    /* Diseño profesional e institucional: azul y blanco */
+    /* ===== ESTILOS GENERALES Y RESPONSIVOS ===== */
+    * { box-sizing: border-box; }
     body {
-      font-family: Arial, sans-serif;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(to bottom, #cce0ff, #e6e6e6);
       margin: 0;
       padding: 0;
-      background-color: #f5f5f5;
+      color: #333;
+    }
+    .container {
+      background: #fff;
+      border-radius: 8px;
+      margin: 20px auto;
+      max-width: 1400px;
+      padding: 20px;
+      box-shadow: 0 0 15px rgba(0,0,0,0.15);
     }
     header {
-      background-color: #003366;
-      color: white;
-      padding: 1rem;
+      border-bottom: 2px solid #003366;
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+    }
+    header h1 {
       text-align: center;
-    }
-    main {
-      padding: 1rem;
-    }
-    section {
-      margin-bottom: 2rem;
-      background: white;
-      padding: 1rem;
-      border-radius: 5px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    h2 {
       color: #003366;
+      margin: 0;
+      font-size: 2em;
+    }
+    .header-controls {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .subject-select label,
+    .rubric-display { font-weight: bold; }
+    .subject-select select { margin-right: 5px; }
+    .subject-select button { margin-right: 5px; padding: 5px 10px; font-size: 0.9em; }
+    .partial-tabs button {
+      background: #0056b3;
+      color: #fff;
+      border: none;
+      padding: 8px 16px;
+      margin: 0 5px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    .partial-tabs button.active,
+    .partial-tabs button:hover { background: #003d80; }
+    .rubric-display button,
+    .cred-btn { margin-left: 10px; padding: 5px 10px; font-size: 0.9rem; cursor: pointer; }
+    main { padding: 10px 0; }
+    .eval-controls, .student-controls, .action-section { text-align: center; margin: 15px 0; }
+    .btn {
+      background: #007bff;
+      color: #fff;
+      border: none;
+      padding: 8px 12px;
+      margin: 5px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    .btn:hover { background: #0056b3; }
+    /* ===== TABLAS ===== */
+    .table-container {
+      overflow-x: auto;
+      background: #fff;
+      border-radius: 4px;
+      margin-bottom: 20px;
     }
     table {
       width: 100%;
       border-collapse: collapse;
-      margin-bottom: 1rem;
+      min-width: 1200px;
     }
-    table, th, td {
-      border: 1px solid #ddd;
+    table, th, td { border: 1px solid #ccc; }
+    th {
+      background: #003366;
+      color: #fff;
+      padding: 10px;
+      text-align: center;
+      white-space: nowrap;
     }
-    th, td {
-      padding: 0.5rem;
-      text-align: left;
+    td {
+      padding: 8px;
+      text-align: center;
+      white-space: nowrap;
     }
-    button {
-      background-color: #003366;
-      color: white;
-      border: none;
-      padding: 0.5rem 1rem;
-      margin: 0.2rem;
-      border-radius: 3px;
-      cursor: pointer;
-    }
-    button:disabled {
-      background-color: #aaa;
-      cursor: not-allowed;
-    }
-    input, select {
-      padding: 0.5rem;
-      margin: 0.2rem;
-      border: 1px solid #ccc;
+    td input, td select {
+      padding: 4px;
+      text-align: center;
+      border: 1px solid #aaa;
       border-radius: 3px;
     }
-    /* Estilos para modales */
+    /* Resaltar columnas principales */
+    .exam-average, .task-average, .practice-average, .total-partial {
+      background-color: #d1e7dd;
+    }
+    /* ===== REGLAS PARA IMPRESIÓN Y PDF ===== */
+    @media print {
+      body { background: #fff; }
+      .container { box-shadow: none; }
+      .table-container { overflow: visible; }
+      td::after {
+        content: "";
+        display: block;
+        border-bottom: 1px dashed #000;
+        margin-top: 5px;
+      }
+      @page { size: A4 landscape; margin: 20mm; }
+    }
+    /* ===== MODAL ===== */
     .modal {
       display: none;
       position: fixed;
@@ -71,804 +128,1134 @@
       top: 0;
       width: 100%;
       height: 100%;
-      overflow: auto;
-      background-color: rgba(0, 0, 0, 0.4);
+      background: rgba(0,0,0,0.5);
     }
     .modal-content {
-      background-color: #fefefe;
+      background: #fff;
       margin: 10% auto;
-      padding: 1rem;
-      border: 1px solid #888;
-      width: 80%;
+      padding: 20px;
+      border-radius: 8px;
       max-width: 500px;
-      border-radius: 5px;
+      position: relative;
+      box-shadow: 0 0 10px rgba(0,0,0,0.3);
     }
     .close {
-      color: #aaa;
-      float: right;
-      font-size: 1.5rem;
-      font-weight: bold;
+      position: absolute;
+      right: 15px;
+      top: 10px;
+      font-size: 24px;
       cursor: pointer;
+      color: #333;
     }
-    /* Estilos para impresión en A4 */
-    @media print {
-      body * {
-        visibility: hidden;
-      }
-      #printable, #printable * {
-        visibility: visible;
-      }
-      #printable {
-        position: absolute;
-        left: 0;
-        top: 0;
-        width: 100%;
-      }
+    /* LOGIN MODAL */
+    #loginModal .modal-content { max-width: 400px; }
+    #loginModal h2 { margin-top: 0; text-align: center; }
+    #loginModal input { width: 100%; padding: 8px; margin: 10px 0; }
+    /* PIE DE PÁGINA */
+    footer {
+      text-align: center;
+      margin-top: 20px;
+      font-size: 0.8em;
+      color: #555;
+    }
+    /* RESPONSIVIDAD */
+    @media (max-width: 768px) {
+      .container { margin: 10px; padding: 10px; }
+      header h1 { font-size: 1.5em; }
+      .partial-tabs button { padding: 6px 10px; font-size: 0.9em; }
+      th, td { font-size: 0.8em; padding: 6px; }
+      .btn, .cred-btn { padding: 6px 10px; font-size: 0.8em; }
     }
   </style>
+  <!-- Incluir Firebase y dependencias -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body>
-  <header>
-    <h1>Control Escolar</h1>
-    <!-- Selección de materia y parcial -->
-    <div>
-      <label for="subjectSelect">Materia:</label>
-      <select id="subjectSelect"></select>
-      <label for="partialSelect">Parcial:</label>
-      <select id="partialSelect">
-        <option value="1">Parcial 1</option>
-        <option value="2">Parcial 2</option>
-        <option value="3">Parcial 3</option>
-        <option value="4">Parcial 4</option>
-      </select>
-      <span id="userStatus"></span>
-    </div>
-  </header>
-  <main>
-    <!-- Gestión de Materias -->
-    <section id="subjectsSection">
-      <h2>Materias</h2>
-      <button id="addSubjectBtn">Agregar Materia</button>
-      <div id="subjectsList"></div>
-    </section>
-    <!-- Gestión de Evaluaciones -->
-    <section id="evaluationsSection">
-      <h2>Evaluaciones</h2>
-      <button id="addExamBtn">Agregar Ex</button>
-      <button id="addTaskBtn">Agregar Ta</button>
-      <button id="addPracticeBtn">Agregar Pr</button>
-    </section>
-    <!-- Gestión de Alumnos -->
-    <section id="studentsSection">
-      <h2>Alumnos</h2>
-      <button id="addStudentBtn">Agregar Alumno</button>
-      <div id="studentsTableContainer">
-        <table id="gradesTable">
-          <thead id="gradesHeader"></thead>
-          <tbody id="gradesBody"></tbody>
-        </table>
-      </div>
-    </section>
-    <!-- Gestión de Equipos -->
-    <section id="teamsSection">
-      <h2>Equipos</h2>
-      <button id="addTeamBtn">Agregar Equipo</button>
-      <div id="teamsTableContainer">
-        <table id="teamsTable">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Nombre</th>
-              <th>Encargado</th>
-              <th>Acciones</th>
-            </tr>
-          </thead>
-          <tbody id="teamsBody"></tbody>
-        </table>
-      </div>
-    </section>
-    <!-- Deducciones -->
-    <section id="deductionsSection">
-      <h2>Deducciones</h2>
-      <button id="addDeductionBtn">Agregar Deducción</button>
-      <div id="deductionsTableContainer">
-        <table id="deductionsTable">
-          <thead>
-            <tr>
-              <th>Motivo</th>
-              <th>Fecha</th>
-              <th>Cantidad</th>
-              <th>Acciones</th>
-            </tr>
-          </thead>
-          <tbody id="deductionsBody"></tbody>
-        </table>
-      </div>
-    </section>
-    <!-- Exportación y Presentación -->
-    <section id="exportSection">
-      <h2>Exportación y Presentación</h2>
-      <button id="exportExcelBtn">Exportar a Excel</button>
-      <button id="exportPDFBtn">Exportar a PDF</button>
-      <button id="printPartialBtn">Imprimir Parcial</button>
-      <button id="shareVersionBtn">Compartir Versión</button>
-    </section>
-  </main>
-  
-  <!-- Modal genérico -->
-  <div id="modal" class="modal">
+  <!-- Modal General -->
+  <div id="modalOverlay" class="modal">
     <div class="modal-content">
-      <span class="close" id="modalCloseBtn">&times;</span>
+      <span class="close">&times;</span>
       <div id="modalBody"></div>
     </div>
   </div>
-  
+
   <!-- Modal de Login -->
   <div id="loginModal" class="modal">
     <div class="modal-content">
+      <span class="close">&times;</span>
       <h2>Iniciar Sesión</h2>
-      <input type="email" id="loginEmail" placeholder="Correo electrónico">
-      <input type="password" id="loginPassword" placeholder="Contraseña">
-      <button id="loginSubmitBtn">Login</button>
+      <label>Usuario (correo):</label>
+      <input type="text" id="loginUser" placeholder="ej. admin@ejemplo.com">
+      <label>Contraseña:</label>
+      <input type="password" id="loginPass" placeholder="Ingrese contraseña">
+      <button id="loginBtn" class="btn">Acceder</button>
+      <button id="configCred" class="cred-btn">Configurar Credenciales</button>
+      <p style="text-align:center; font-size:0.8em; margin-top:10px;">Creada y diseñada por Francisco López Velázquez</p>
     </div>
   </div>
-  
-  <!-- Firebase App y Auth (versiones compat para disponer de la variable global "firebase") -->
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
-  <!-- jsPDF y AutoTable -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
-  <!-- SheetJS para Excel -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
-  
+
+  <!-- Contenedor principal -->
+  <div class="container" id="appContainer" style="display:none;">
+    <header>
+      <h1>Sistema de Calificaciones</h1>
+      <div class="header-controls">
+        <div class="subject-select">
+          <label for="subjectSelect">Materia:</label>
+          <select id="subjectSelect"></select>
+          <button id="addSubject" class="cred-btn">Agregar Materia</button>
+          <button id="editSubject" class="cred-btn">Editar Materia</button>
+          <button id="shareVersion" class="cred-btn">Compartir Versión</button>
+        </div>
+        <div class="partial-tabs">
+          <button class="tab-btn" data-partial="1">Parcial 1</button>
+          <button class="tab-btn" data-partial="2">Parcial 2</button>
+          <button class="tab-btn" data-partial="3">Parcial 3</button>
+          <button class="tab-btn" data-partial="4">Parcial 4</button>
+        </div>
+        <div class="rubric-display">
+          Rúbrica: Exámenes: <span id="weightExam">45%</span>, Tareas: <span id="weightTask">25%</span>, Prácticas: <span id="weightPractice">30%</span>, Participación: <span id="weightPart">5%</span>
+          <button id="editRubric" class="btn">Editar Rúbrica</button>
+        </div>
+      </div>
+    </header>
+    
+    <main>
+      <!-- Controles para agregar evaluaciones -->
+      <section class="eval-controls">
+        <button id="addExamEval" class="btn">Agregar Ex</button>
+        <button id="addTaskEval" class="btn">Agregar Ta</button>
+        <button id="addPracticeEval" class="btn">Agregar Pr</button>
+      </section>
+      <!-- Administración de alumnos -->
+      <section class="student-controls">
+        <button id="addStudent" class="btn">Agregar Alumno</button>
+      </section>
+      <!-- Tabla de equipos -->
+      <section class="team-section">
+        <h2>Equipos (Prácticas)</h2>
+        <div class="table-container">
+          <button id="addTeam" class="btn">Agregar Equipo</button>
+          <table id="teamTable">
+            <thead id="teamHeader"></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+      <!-- Tabla de calificaciones -->
+      <section class="grade-section">
+        <h2>Calificaciones - Parcial <span id="currentPartialDisplay">1</span></h2>
+        <div class="table-container">
+          <table id="gradeTable">
+            <thead>
+              <tr id="groupHeaderRow">
+                <th rowspan="2">N° LS</th>
+                <th rowspan="2">Alumno</th>
+                <th rowspan="2">Equipo</th>
+                <th class="exam-group" colspan="0">Exámenes</th>
+                <th class="task-group" colspan="0">Tareas</th>
+                <th class="practice-group" colspan="0">Prácticas</th>
+                <th rowspan="2">Extra Ex.</th>
+                <th rowspan="2">Extra Ta.</th>
+                <th rowspan="2">Extra Pr.</th>
+                <th rowspan="2">Extra Parcial</th>
+                <th rowspan="2">Extra Total</th>
+                <th rowspan="2">Participación (5%)</th>
+                <th rowspan="2">Faltas</th>
+                <th rowspan="2">Deducciones</th>
+                <th rowspan="2">Total Parcial</th>
+                <th rowspan="2">Acciones</th>
+              </tr>
+              <tr id="dynamicHeader"></tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+      <!-- Botones de acción -->
+      <section class="action-section">
+        <button id="exportExcel" class="btn">Exportar Excel</button>
+        <button id="exportPDF" class="btn">Exportar PDF</button>
+        <button id="printGrades" class="btn">Imprimir Parcial</button>
+      </section>
+    </main>
+    <footer>Pagina creada y diseñada por Francisco López Velázquez</footer>
+  </div>
+
   <script>
-    // Ejecutar todo el código cuando el DOM esté listo
-    document.addEventListener("DOMContentLoaded", () => {
-      /* ---------------------- VARIABLES GLOBALES Y CONFIGURACIÓN ---------------------- */
-      // Modo solo lectura si en la URL se incluye ?readonly=true
-      let readOnly = new URLSearchParams(window.location.search).get('readonly') === 'true';
-      let currentSubjectId = null;
-      let currentPartial = "1";
-      let currentUser = null;
-      
-      // Estructura de datos
-      let data = {
-        subjects: {},
-        students: []
-      };
-      
-      // Rúbrica por defecto
-      const defaultRubric = {
-        exams: 45,
-        tasks: 25,
-        practices: 30,
-        participation: 5
-      };
-      
-      // Configuración de Firebase
-      const firebaseConfig = {
-        apiKey: "AIzaSyDsoLZHDpR8EEyvs5tJ7gF1tE7eKS-ZGcU",
-        authDomain: "controlescolar-a184f.firebaseapp.com",
-        projectId: "controlescolar-a184f",
-        storageBucket: "controlescolar-a184f.firebasestorage.app",
-        messagingSenderId: "213806947943",
-        appId: "1:213806947943:web:996ab97cdd805998f0bec2"
-      };
-      firebase.initializeApp(firebaseConfig);
-      const auth = firebase.auth();
-      
-      /* ---------------------- SELECCIÓN DE ELEMENTOS DE LA INTERFAZ ---------------------- */
-      const subjectSelect = document.getElementById("subjectSelect");
-      const partialSelect = document.getElementById("partialSelect");
-      const subjectsListDiv = document.getElementById("subjectsList");
-      const gradesHeader = document.getElementById("gradesHeader");
-      const gradesBody = document.getElementById("gradesBody");
-      const teamsBody = document.getElementById("teamsBody");
-      const deductionsBody = document.getElementById("deductionsBody");
-      const userStatus = document.getElementById("userStatus");
-      
-      // Botones principales
-      const addSubjectBtn = document.getElementById("addSubjectBtn");
-      const addExamBtn = document.getElementById("addExamBtn");
-      const addTaskBtn = document.getElementById("addTaskBtn");
-      const addPracticeBtn = document.getElementById("addPracticeBtn");
-      const addStudentBtn = document.getElementById("addStudentBtn");
-      const addTeamBtn = document.getElementById("addTeamBtn");
-      const addDeductionBtn = document.getElementById("addDeductionBtn");
-      const exportExcelBtn = document.getElementById("exportExcelBtn");
-      const exportPDFBtn = document.getElementById("exportPDFBtn");
-      const printPartialBtn = document.getElementById("printPartialBtn");
-      const shareVersionBtn = document.getElementById("shareVersionBtn");
-      
-      // Modales
-      const modal = document.getElementById("modal");
-      const modalBody = document.getElementById("modalBody");
-      const modalCloseBtn = document.getElementById("modalCloseBtn");
-      const loginModal = document.getElementById("loginModal");
-      const loginEmail = document.getElementById("loginEmail");
-      const loginPassword = document.getElementById("loginPassword");
-      const loginSubmitBtn = document.getElementById("loginSubmitBtn");
-      
-      /* ---------------------- FUNCIONES DE MODO EDICIÓN Y MODALES ---------------------- */
-      // Actualiza la interfaz según el modo de edición o solo lectura
-      function updateEditMode() {
-        if(readOnly) {
-          document.querySelectorAll("button").forEach(btn => btn.disabled = true);
-          userStatus.textContent = "Modo Solo Lectura";
-        } else {
-          userStatus.textContent = currentUser ? `Usuario: ${currentUser.email}` : "No autenticado";
+    /***********************
+     * 1. Variables Globales: Datos
+     ***********************/
+    const subjectsConfig = {
+      circuitos: {
+        name: "Circuitos Eléctricos",
+        semester: "ene-jul",
+        year: 2023,
+        rubric: { exam: 45, task: 25, practice: 30, participation: 5 },
+        examEvals: [],
+        taskEvals: [],
+        practiceEvals: []
+      },
+      tt6: {
+        name: "TT6",
+        semester: "ene-jul",
+        year: 2023,
+        rubric: { exam: 45, task: 25, practice: 30, participation: 5 },
+        examEvals: [],
+        taskEvals: [],
+        practiceEvals: []
+      },
+      instalaciones: {
+        name: "Instalaciones y Control Eléctrico",
+        semester: "ago-dic",
+        year: 2023,
+        rubric: { exam: 45, task: 25, practice: 30, participation: 5 },
+        examEvals: [],
+        taskEvals: [],
+        practiceEvals: []
+      },
+      fisica4: {
+        name: "Física 4",
+        semester: "ago-dic",
+        year: 2023,
+        rubric: { exam: 45, task: 25, practice: 30, participation: 5 },
+        examEvals: [],
+        taskEvals: [],
+        practiceEvals: []
+      }
+    };
+
+    const students = [
+      { listNumber: 1, name: "Juan Pérez", team: "E1", subject: "circuitos", partials: {} },
+      { listNumber: 2, name: "María García", team: "E2", subject: "circuitos", partials: {} },
+      { listNumber: 3, name: "Carlos López", team: "E1", subject: "tt6", partials: {} }
+    ];
+
+    const teams = {
+      circuitos: [
+        { id: "E1", name: "Equipo E1", head: "Encargado 1", partials: {} },
+        { id: "E2", name: "Equipo E2", head: "Encargado 2", partials: {} }
+      ],
+      tt6: [
+        { id: "E1", name: "Equipo A", head: "Encargado A", partials: {} },
+        { id: "E2", name: "Equipo B", head: "Encargado B", partials: {} }
+      ],
+      instalaciones: [
+        { id: "E1", name: "Equipo X", head: "Encargado X", partials: {} },
+        { id: "E2", name: "Equipo Y", head: "Encargado Y", partials: {} }
+      ],
+      fisica4: [
+        { id: "E1", name: "Equipo F1", head: "Encargado F1", partials: {} },
+        { id: "E2", name: "Equipo F2", head: "Encargado F2", partials: {} }
+      ]
+    };
+
+    /***********************
+     * 2. Persistencia: localStorage (para pruebas)
+     ***********************/
+    function saveData() {
+      localStorage.setItem("subjectsConfig", JSON.stringify(subjectsConfig));
+      localStorage.setItem("students", JSON.stringify(students));
+      localStorage.setItem("teams", JSON.stringify(teams));
+    }
+    function loadData() {
+      try {
+        const storedSubjects = localStorage.getItem("subjectsConfig");
+        if (storedSubjects) {
+          const parsed = JSON.parse(storedSubjects);
+          for (let key in parsed) { subjectsConfig[key] = parsed[key]; }
         }
+      } catch (error) {
+        console.error("Error al cargar subjectsConfig:", error);
+        localStorage.removeItem("subjectsConfig");
       }
-      
-      // Funciones para mostrar y ocultar el modal genérico
-      function showModal(contentHTML) {
-        modalBody.innerHTML = contentHTML;
-        modal.style.display = "block";
+      try {
+        const storedStudents = localStorage.getItem("students");
+        if (storedStudents) {
+          const parsed = JSON.parse(storedStudents);
+          students.splice(0, students.length, ...parsed);
+        }
+      } catch (error) {
+        console.error("Error al cargar students:", error);
+        localStorage.removeItem("students");
       }
-      function hideModal() {
-        modal.style.display = "none";
+      try {
+        const storedTeams = localStorage.getItem("teams");
+        if (storedTeams) {
+          const parsed = JSON.parse(storedTeams);
+          for (let key in parsed) { teams[key] = parsed[key]; }
+        }
+      } catch (error) {
+        console.error("Error al cargar teams:", error);
+        localStorage.removeItem("teams");
       }
-      modalCloseBtn.addEventListener("click", hideModal);
-      window.addEventListener("click", (event) => {
-        if(event.target === modal) hideModal();
-        if(event.target === loginModal) loginModal.style.display = "none";
+    }
+    loadData();
+
+    /***********************
+     * 3. Inicializar Firebase
+     ***********************/
+    const firebaseConfig = {
+      apiKey: "AIzaSyDsoLZHDpR8EEyvs5tJ7gF1tE7eKS-ZGcU",
+      authDomain: "controlescolar-a184f.firebaseapp.com",
+      projectId: "controlescolar-a184f",
+      storageBucket: "controlescolar-a184f.firebasestorage.app",
+      messagingSenderId: "213806947943",
+      appId: "1:213806947943:web:996ab97cdd805998f0bec2"
+    };
+    const appFirebase = firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+
+    /***********************
+     * 4. Variables de Estado
+     ***********************/
+    const urlParams = new URLSearchParams(window.location.search);
+    let readOnlyMode = urlParams.get("readonly") === "true";
+    let urlSubject = urlParams.get("subject");
+    let urlPartial = parseInt(urlParams.get("partial"));
+    let currentSubject = (urlSubject && subjectsConfig[urlSubject]) ? urlSubject : "circuitos";
+    let currentPartial = (!isNaN(urlPartial) && urlPartial > 0) ? urlPartial : 1;
+
+    /***********************
+     * 5. Funciones de Interfaz
+     ***********************/
+    function buildSubjectSelect() {
+      const select = document.getElementById("subjectSelect");
+      select.innerHTML = "";
+      for (let key in subjectsConfig) {
+        const subj = subjectsConfig[key];
+        const option = document.createElement("option");
+        option.value = key;
+        option.textContent = `${subj.name} (${subj.semester}, ${subj.year})`;
+        select.appendChild(option);
+      }
+      select.value = currentSubject;
+    }
+
+    function updateRubricDisplay() {
+      const cfg = subjectsConfig[currentSubject];
+      document.getElementById("weightExam").textContent = cfg.rubric.exam + "%";
+      document.getElementById("weightTask").textContent = cfg.rubric.task + "%";
+      document.getElementById("weightPractice").textContent = cfg.rubric.practice + "%";
+      document.getElementById("weightPart").textContent = cfg.rubric.participation + "%";
+    }
+
+    function updatePartialDisplay() {
+      document.getElementById("currentPartialDisplay").textContent = currentPartial;
+    }
+
+    function buildGroupHeader() {
+      const cfg = subjectsConfig[currentSubject];
+      const examColspan = cfg.examEvals.length + 1;
+      const taskColspan = cfg.taskEvals.length + 1;
+      const practiceColspan = cfg.practiceEvals.length + 1;
+      document.querySelector(".exam-group").setAttribute("colspan", examColspan);
+      document.querySelector(".task-group").setAttribute("colspan", taskColspan);
+      document.querySelector(".practice-group").setAttribute("colspan", practiceColspan);
+    }
+
+    function buildDynamicHeader() {
+      const headerRow = document.getElementById("dynamicHeader");
+      headerRow.innerHTML = "";
+      const cfg = subjectsConfig[currentSubject];
+      cfg.examEvals.forEach(evalObj => {
+        const th = document.createElement("th");
+        th.textContent = evalObj.name;
+        headerRow.appendChild(th);
       });
-      
-      /* ---------------------- PERSISTENCIA DE DATOS (localStorage) ---------------------- */
-      function loadData() {
-        const stored = localStorage.getItem("schoolData");
-        if(stored) {
-          try { data = JSON.parse(stored); } 
-          catch(e) { console.error("Error al leer los datos:", e); }
+      const thExamAvg = document.createElement("th");
+      thExamAvg.textContent = "Promedio Exámenes";
+      headerRow.appendChild(thExamAvg);
+      cfg.taskEvals.forEach(evalObj => {
+        const th = document.createElement("th");
+        th.textContent = evalObj.name;
+        headerRow.appendChild(th);
+      });
+      const thTaskAvg = document.createElement("th");
+      thTaskAvg.textContent = "Promedio Tareas";
+      headerRow.appendChild(thTaskAvg);
+      cfg.practiceEvals.forEach(evalObj => {
+        const th = document.createElement("th");
+        th.textContent = evalObj.name;
+        headerRow.appendChild(th);
+      });
+      const thPracticeAvg = document.createElement("th");
+      thPracticeAvg.textContent = "Promedio Prácticas";
+      headerRow.appendChild(thPracticeAvg);
+      buildGroupHeader();
+    }
+
+    function buildTeamTable() {
+      const teamTableHead = document.getElementById("teamHeader");
+      const teamTableBody = document.querySelector("#teamTable tbody");
+      teamTableHead.innerHTML = "";
+      teamTableBody.innerHTML = "";
+      const cfg = subjectsConfig[currentSubject];
+      let headerHTML = "<tr><th>Equipo</th><th>Encargado</th>";
+      cfg.practiceEvals.forEach(evalObj => { headerHTML += `<th>${evalObj.name}</th>`; });
+      headerHTML += "<th>Acciones</th></tr>";
+      teamTableHead.innerHTML = headerHTML;
+      const subjectTeams = teams[currentSubject] || [];
+      subjectTeams.forEach(team => {
+        if (!team.partials) team.partials = {};
+        if (!team.partials[currentPartial]) {
+          team.partials[currentPartial] = Array(cfg.practiceEvals.length).fill(0);
         }
-      }
-      function saveData() {
-        try { localStorage.setItem("schoolData", JSON.stringify(data)); }
-        catch(e) { console.error("Error al guardar los datos:", e); }
-      }
-      
-      /* ---------------------- ACTUALIZACIÓN DE LA INTERFAZ ---------------------- */
-      // Actualiza el selector de materias
-      function updateSubjectSelector() {
-        subjectSelect.innerHTML = "";
-        for (const subjId in data.subjects) {
-          const option = document.createElement("option");
-          option.value = subjId;
-          option.textContent = data.subjects[subjId].name;
-          subjectSelect.appendChild(option);
-        }
-        if(subjectSelect.options.length > 0) currentSubjectId = subjectSelect.options[0].value;
-      }
-      // Muestra el listado de materias con opción de editar
-      function updateSubjectsList() {
-        subjectsListDiv.innerHTML = "";
-        for (const subjId in data.subjects) {
-          const subj = data.subjects[subjId];
-          const div = document.createElement("div");
-          div.textContent = `${subj.name} (${subj.semester}, ${subj.year})`;
-          if(!readOnly) {
-            const editBtn = document.createElement("button");
-            editBtn.textContent = "Editar";
-            editBtn.addEventListener("click", () => { openEditSubjectModal(subjId); });
-            div.appendChild(editBtn);
-          }
-          subjectsListDiv.appendChild(div);
-        }
-      }
-      // Reconstruye los encabezados de la tabla de calificaciones
-      function updateEvaluationsHeader() {
-        gradesHeader.innerHTML = "";
-        const headerRow = document.createElement("tr");
-        ["Lista", "Nombre"].forEach(text => {
-          const th = document.createElement("th");
-          th.textContent = text;
-          headerRow.appendChild(th);
+        let rowHTML = `<tr data-team-id="${team.id}"><td>${team.name}</td><td>${team.head}</td>`;
+        team.partials[currentPartial].forEach((val, idx) => {
+          rowHTML += `<td><input type="number" class="team-practice-input" data-team-id="${team.id}" data-index="${idx}" min="0" max="10" step="0.1" value="${val || 0}"></td>`;
         });
-        if(currentSubjectId && data.subjects[currentSubjectId]) {
-          const subj = data.subjects[currentSubjectId];
-          const partialEvals = subj.evaluations[currentPartial] || { exams: [], tasks: [], practices: [] };
-          partialEvals.exams.forEach(evalName => {
-            const th = document.createElement("th");
-            th.textContent = evalName;
-            headerRow.appendChild(th);
-          });
-          partialEvals.tasks.forEach(evalName => {
-            const th = document.createElement("th");
-            th.textContent = evalName;
-            headerRow.appendChild(th);
-          });
-          partialEvals.practices.forEach(evalName => {
-            const th = document.createElement("th");
-            th.textContent = evalName;
-            headerRow.appendChild(th);
-          });
-          const thTotal = document.createElement("th");
-          thTotal.textContent = "Total";
-          headerRow.appendChild(thTotal);
-        }
-        gradesHeader.appendChild(headerRow);
-      }
-      // Actualiza la tabla de alumnos
-      function updateStudentsTable() {
-        gradesBody.innerHTML = "";
-        data.students.forEach(student => {
-          if(student.subjectId === currentSubjectId) {
-            const tr = document.createElement("tr");
-            const tdList = document.createElement("td");
-            tdList.textContent = student.listNumber;
-            tr.appendChild(tdList);
-            const tdName = document.createElement("td");
-            tdName.textContent = student.name;
-            tr.appendChild(tdName);
-            const partialData = student.partials[currentPartial] || { grades: { exams:{}, tasks:{}, practices:{} }, extras: { extraParcial:0 }, deductions: [] };
-            let total = 0;
-            if(currentSubjectId && data.subjects[currentSubjectId]) {
-              const subj = data.subjects[currentSubjectId];
-              const rubric = subj.rubric;
-              const partialEvals = subj.evaluations[currentPartial] || { exams: [], tasks: [], practices: [] };
-              partialEvals.exams.forEach(evalName => {
-                const grade = partialData.grades.exams[evalName] || 0;
-                total += grade * (rubric.exams / 100);
-                const td = document.createElement("td");
-                td.textContent = grade;
-                tr.appendChild(td);
-              });
-              partialEvals.tasks.forEach(evalName => {
-                const grade = partialData.grades.tasks[evalName] || 0;
-                total += grade * (rubric.tasks / 100);
-                const td = document.createElement("td");
-                td.textContent = grade;
-                tr.appendChild(td);
-              });
-              partialEvals.practices.forEach(evalName => {
-                const grade = partialData.grades.practices[evalName] || 0;
-                total += grade * (rubric.practices / 100);
-                const td = document.createElement("td");
-                td.textContent = grade;
-                tr.appendChild(td);
-              });
+        rowHTML += `<td>
+                      <button class="edit-team btn">Editar</button>
+                      <button class="delete-team btn">Eliminar</button>
+                    </td></tr>`;
+        teamTableBody.innerHTML += rowHTML;
+      });
+      // Asignar eventos para los inputs de equipos
+      document.querySelectorAll(".team-practice-input").forEach(input => {
+        input.addEventListener("input", (e) => {
+          const teamId = e.target.getAttribute("data-team-id");
+          const idx = parseInt(e.target.getAttribute("data-index"));
+          const newVal = parseFloat(e.target.value) || 0;
+          const subjectTeams = teams[currentSubject];
+          const team = subjectTeams.find(t => t.id === teamId);
+          if(team) {
+            if (!team.partials) team.partials = {};
+            if (!team.partials[currentPartial]) {
+              team.partials[currentPartial] = Array(subjectsConfig[currentSubject].practiceEvals.length).fill(0);
             }
-            // Sumar extras y restar deducciones
-            const extras = partialData.extras.extraParcial || 0;
-            let deductions = 0;
-            partialData.deductions.forEach(d => { deductions += d.cantidad; });
-            total = total + extras - deductions;
-            const tdTotal = document.createElement("td");
-            tdTotal.textContent = total.toFixed(2);
-            tr.appendChild(tdTotal);
-            if(!readOnly) {
-              const tdActions = document.createElement("td");
-              const editBtn = document.createElement("button");
-              editBtn.textContent = "Editar";
-              editBtn.addEventListener("click", () => { openEditStudentModal(student.id); });
-              tdActions.appendChild(editBtn);
-              const deleteBtn = document.createElement("button");
-              deleteBtn.textContent = "Eliminar";
-              deleteBtn.addEventListener("click", () => { deleteStudent(student.id); });
-              tdActions.appendChild(deleteBtn);
-              tr.appendChild(tdActions);
-            }
-            gradesBody.appendChild(tr);
-          }
-        });
-      }
-      // Actualiza la tabla de equipos
-      function updateTeamsTable() {
-        teamsBody.innerHTML = "";
-        if(currentSubjectId && data.subjects[currentSubjectId]) {
-          const subj = data.subjects[currentSubjectId];
-          const teams = subj.teams[currentPartial] || [];
-          teams.forEach(team => {
-            const tr = document.createElement("tr");
-            const tdId = document.createElement("td");
-            tdId.textContent = team.id;
-            tr.appendChild(tdId);
-            const tdName = document.createElement("td");
-            tdName.textContent = team.name;
-            tr.appendChild(tdName);
-            const tdEncargado = document.createElement("td");
-            tdEncargado.textContent = team.encargado;
-            tr.appendChild(tdEncargado);
-            const tdActions = document.createElement("td");
-            if(!readOnly) {
-              const editBtn = document.createElement("button");
-              editBtn.textContent = "Editar";
-              editBtn.addEventListener("click", () => { openEditTeamModal(team.id); });
-              tdActions.appendChild(editBtn);
-              const deleteBtn = document.createElement("button");
-              deleteBtn.textContent = "Eliminar";
-              deleteBtn.addEventListener("click", () => { deleteTeam(team.id); });
-              tdActions.appendChild(deleteBtn);
-            }
-            tr.appendChild(tdActions);
-            teamsBody.appendChild(tr);
-          });
-        }
-      }
-      // Actualiza la tabla de deducciones
-      function updateDeductionsTable() {
-        deductionsBody.innerHTML = "";
-        data.students.forEach(student => {
-          if(student.subjectId === currentSubjectId) {
-            const partialData = student.partials[currentPartial];
-            if(partialData && partialData.deductions) {
-              partialData.deductions.forEach((ded, idx) => {
-                const tr = document.createElement("tr");
-                const tdMotivo = document.createElement("td");
-                tdMotivo.textContent = ded.motivo;
-                tr.appendChild(tdMotivo);
-                const tdFecha = document.createElement("td");
-                tdFecha.textContent = ded.fecha;
-                tr.appendChild(tdFecha);
-                const tdCantidad = document.createElement("td");
-                tdCantidad.textContent = ded.cantidad;
-                tr.appendChild(tdCantidad);
-                const tdActions = document.createElement("td");
-                if(!readOnly) {
-                  const deleteBtn = document.createElement("button");
-                  deleteBtn.textContent = "Eliminar";
-                  deleteBtn.addEventListener("click", () => { deleteDeduction(student.id, idx); });
-                  tdActions.appendChild(deleteBtn);
-                }
-                tr.appendChild(tdActions);
-                deductionsBody.appendChild(tr);
-              });
-            }
-          }
-        });
-      }
-      
-      /* ---------------------- FUNCIONES PARA ABRIR MODALES DE AGREGAR/EDITAR ---------------------- */
-      // Agregar o editar materia
-      function openEditSubjectModal(subjId = null) {
-        let subj = { name: "", semester: "", year: "", rubric: defaultRubric };
-        if(subjId) { subj = data.subjects[subjId]; }
-        let html = `
-          <h3>${subjId ? "Editar Materia" : "Agregar Materia"}</h3>
-          <label>Nombre: <input type="text" id="subjectName" value="${subj.name}"></label><br>
-          <label>Semestre: <input type="text" id="subjectSemester" value="${subj.semester}"></label><br>
-          <label>Año: <input type="number" id="subjectYear" value="${subj.year || new Date().getFullYear()}"></label><br>
-          <button id="saveSubjectBtn">${subjId ? "Guardar" : "Agregar"}</button>
-        `;
-        showModal(html);
-        document.getElementById("saveSubjectBtn").addEventListener("click", () => {
-          const name = document.getElementById("subjectName").value;
-          const semester = document.getElementById("subjectSemester").value;
-          const year = parseInt(document.getElementById("subjectYear").value);
-          if(subjId) {
-            data.subjects[subjId].name = name;
-            data.subjects[subjId].semester = semester;
-            data.subjects[subjId].year = year;
-          } else {
-            const newId = "subj_" + Date.now();
-            data.subjects[newId] = {
-              id: newId,
-              name: name,
-              semester: semester,
-              year: year,
-              rubric: defaultRubric,
-              evaluations: {
-                "1": { exams: [], tasks: [], practices: [] },
-                "2": { exams: [], tasks: [], practices: [] },
-                "3": { exams: [], tasks: [], practices: [] },
-                "4": { exams: [], tasks: [], practices: [] }
-              },
-              teams: {
-                "1": [],
-                "2": [],
-                "3": [],
-                "4": []
+            team.partials[currentPartial][idx] = newVal;
+            // Actualizar en la tabla de alumnos
+            document.querySelectorAll("#gradeTable tbody tr").forEach(row => {
+              const stuTeamSelect = row.querySelector(".student-team");
+              const stuTeam = stuTeamSelect ? stuTeamSelect.value : "";
+              if(stuTeam === teamId) {
+                const practiceInputs = row.querySelectorAll(".practice-input");
+                if(practiceInputs[idx]) { practiceInputs[idx].value = newVal; recalculateRow(row); }
               }
+            });
+            saveData();
+          }
+        });
+      });
+      // Editar equipo
+      document.querySelectorAll(".edit-team").forEach(btn => {
+        btn.onclick = (e) => {
+          const row = e.target.closest("tr");
+          const teamId = row.getAttribute("data-team-id");
+          const subjectTeams = teams[currentSubject];
+          const team = subjectTeams.find(t => t.id === teamId);
+          if(team) {
+            let content = `<h3>Editar Equipo</h3>
+              <label>Nombre: <input type="text" id="editTeamName" value="${team.name}"></label><br>
+              <label>Encargado: <input type="text" id="editTeamHead" value="${team.head}"></label><br>
+              <button id="saveTeam" class="btn">Guardar</button>`;
+            showModal(content);
+            document.getElementById("saveTeam").onclick = () => {
+              team.name = document.getElementById("editTeamName").value.trim();
+              team.head = document.getElementById("editTeamHead").value.trim();
+              modal.style.display = "none";
+              buildTeamTable();
+              buildGradeTable();
+              saveData();
             };
           }
-          saveData();
-          hideModal();
-          updateSubjectSelector();
-          updateSubjectsList();
-          updateEvaluationsHeader();
-          updateStudentsTable();
-          updateTeamsTable();
-          updateDeductionsTable();
-        });
-      }
-      // Agregar evaluación (examen, tarea o práctica)
-      function openAddEvaluationModal(type) {
-        let promptText = "";
-        if(type === "exam") promptText = "Nombre del Examen:";
-        if(type === "task") promptText = "Nombre de la Tarea:";
-        if(type === "practice") promptText = "Nombre de la Práctica:";
-        const evalName = prompt(promptText);
-        if(evalName && currentSubjectId) {
-          const subj = data.subjects[currentSubjectId];
-          if(!subj.evaluations[currentPartial]) { subj.evaluations[currentPartial] = { exams: [], tasks: [], practices: [] }; }
-          subj.evaluations[currentPartial][ type === "exam" ? "exams" : (type === "task" ? "tasks" : "practices") ].push(evalName);
-          saveData();
-          updateEvaluationsHeader();
-          updateStudentsTable();
-        }
-      }
-      // Editar alumno
-      function openEditStudentModal(studentId) {
-        const student = data.students.find(s => s.id === studentId);
-        if(!student) return;
-        let html = `
-          <h3>Editar Alumno</h3>
-          <label>Número de Lista: <input type="number" id="studentList" value="${student.listNumber}"></label><br>
-          <label>Nombre: <input type="text" id="studentName" value="${student.name}"></label><br>
-          <label>Equipo (ID): <input type="text" id="studentTeam" value="${student.teamId || ""}"></label><br>
-          <button id="saveStudentBtn">Guardar</button>
-        `;
-        showModal(html);
-        document.getElementById("saveStudentBtn").addEventListener("click", () => {
-          student.listNumber = parseInt(document.getElementById("studentList").value);
-          student.name = document.getElementById("studentName").value;
-          student.teamId = document.getElementById("studentTeam").value;
-          saveData();
-          hideModal();
-          updateStudentsTable();
-        });
-      }
-      // Agregar alumno
-      function openAddStudentModal() {
-        let html = `
-          <h3>Agregar Alumno</h3>
-          <label>Número de Lista: <input type="number" id="studentList"></label><br>
-          <label>Nombre: <input type="text" id="studentName"></label><br>
-          <label>Materia: <select id="studentSubject"></select></label><br>
-          <label>Equipo (ID): <input type="text" id="studentTeam"></label><br>
-          <button id="addStudentConfirmBtn">Agregar</button>
-        `;
-        showModal(html);
-        const subjectSelectInput = document.getElementById("studentSubject");
-        for(let subjId in data.subjects) {
-          const option = document.createElement("option");
-          option.value = subjId;
-          option.textContent = data.subjects[subjId].name;
-          subjectSelectInput.appendChild(option);
-        }
-        document.getElementById("addStudentConfirmBtn").addEventListener("click", () => {
-          const listNumber = parseInt(document.getElementById("studentList").value);
-          const name = document.getElementById("studentName").value;
-          const subjectId = document.getElementById("studentSubject").value;
-          const teamId = document.getElementById("studentTeam").value;
-          const newStudent = {
-            id: "stud_" + Date.now(),
-            listNumber: listNumber,
-            name: name,
-            subjectId: subjectId,
-            teamId: teamId,
-            partials: {
-              "1": { grades: { exams:{}, tasks:{}, practices:{} }, extras: { extraParcial:0 }, deductions: [] },
-              "2": { grades: { exams:{}, tasks:{}, practices:{} }, extras: { extraParcial:0 }, deductions: [] },
-              "3": { grades: { exams:{}, tasks:{}, practices:{} }, extras: { extraParcial:0 }, deductions: [] },
-              "4": { grades: { exams:{}, tasks:{}, practices:{} }, extras: { extraParcial:0 }, deductions: [] }
-            }
-          };
-          data.students.push(newStudent);
-          saveData();
-          hideModal();
-          updateStudentsTable();
-        });
-      }
-      // Editar equipo
-      function openEditTeamModal(teamId) {
-        const subj = data.subjects[currentSubjectId];
-        let team = null;
-        subj.teams[currentPartial].forEach(t => { if(t.id === teamId) team = t; });
-        if(!team) return;
-        let html = `
-          <h3>Editar Equipo</h3>
-          <label>ID: <input type="text" id="teamId" value="${team.id}" disabled></label><br>
-          <label>Nombre: <input type="text" id="teamName" value="${team.name}"></label><br>
-          <label>Encargado: <input type="text" id="teamEncargado" value="${team.encargado}"></label><br>
-          <button id="saveTeamBtn">Guardar</button>
-        `;
-        showModal(html);
-        document.getElementById("saveTeamBtn").addEventListener("click", () => {
-          team.name = document.getElementById("teamName").value;
-          team.encargado = document.getElementById("teamEncargado").value;
-          saveData();
-          hideModal();
-          updateTeamsTable();
-        });
-      }
-      // Agregar equipo
-      function openAddTeamModal() {
-        let html = `
-          <h3>Agregar Equipo</h3>
-          <label>ID: <input type="text" id="teamId"></label><br>
-          <label>Nombre: <input type="text" id="teamName"></label><br>
-          <label>Encargado: <input type="text" id="teamEncargado"></label><br>
-          <button id="addTeamConfirmBtn">Agregar</button>
-        `;
-        showModal(html);
-        document.getElementById("addTeamConfirmBtn").addEventListener("click", () => {
-          const id = document.getElementById("teamId").value;
-          const name = document.getElementById("teamName").value;
-          const encargado = document.getElementById("teamEncargado").value;
-          if(currentSubjectId) {
-            const subj = data.subjects[currentSubjectId];
-            if(!subj.teams[currentPartial]) { subj.teams[currentPartial] = []; }
-            subj.teams[currentPartial].push({ id, name, encargado, evaluations: { practices: [] } });
+        };
+      });
+      // Eliminar equipo
+      document.querySelectorAll(".delete-team").forEach(btn => {
+        btn.onclick = (e) => {
+          const row = e.target.closest("tr");
+          const teamId = row.getAttribute("data-team-id");
+          if(confirm("¿Estás seguro de eliminar este equipo?")) {
+            teams[currentSubject] = teams[currentSubject].filter(t => t.id !== teamId);
+            buildTeamTable();
+            buildGradeTable();
             saveData();
-            hideModal();
-            updateTeamsTable();
+          }
+        };
+      });
+    }
+
+    function buildGradeTable() {
+      const tbody = document.getElementById("gradeTable").querySelector("tbody");
+      tbody.innerHTML = "";
+      const cfg = subjectsConfig[currentSubject];
+      const filteredStudents = students.filter(s => s.subject === currentSubject);
+      filteredStudents.forEach(student => {
+        if (!student.partials[currentPartial]) {
+          student.partials[currentPartial] = {
+            exams: Array(cfg.examEvals.length).fill(0),
+            tasks: Array(cfg.taskEvals.length).fill(0),
+            practices: Array(cfg.practiceEvals.length).fill(0),
+            extraExam: 0,
+            extraTask: 0,
+            extraPractice: 0,
+            extraParcial: 0,
+            participation: 0,
+            absences: 0,
+            deductions: [],
+            total: 0
+          };
+        } else {
+          while (student.partials[currentPartial].exams.length < cfg.examEvals.length) { student.partials[currentPartial].exams.push(0); }
+          while (student.partials[currentPartial].tasks.length < cfg.taskEvals.length) { student.partials[currentPartial].tasks.push(0); }
+          while (student.partials[currentPartial].practices.length < cfg.practiceEvals.length) { student.partials[currentPartial].practices.push(0); }
+          if (student.partials[currentPartial].extraParcial === undefined) { student.partials[currentPartial].extraParcial = 0; }
+          if (!student.partials[currentPartial].deductions) { student.partials[currentPartial].deductions = []; }
+        }
+        const partialData = student.partials[currentPartial];
+        let rowHTML = `<tr data-list="${student.listNumber}">
+          <td>${student.listNumber}</td>
+          <td contenteditable="true" class="student-name">${student.name}</td>
+          <td>
+            <select class="student-team">
+              ${teams[currentSubject].map(team => `<option value="${team.id}" ${team.id === student.team ? "selected" : ""}>${team.name}</option>`).join('')}
+            </select>
+          </td>`;
+        cfg.examEvals.forEach((evalObj, index) => {
+          let val = partialData.exams[index];
+          if(val === "" || val == null) { val = 0; }
+          rowHTML += `<td><input type="number" class="exam-input" data-index="${index}" min="0" max="10" step="0.1" value="${val}"></td>`;
+        });
+        rowHTML += `<td class="exam-average">0</td>`;
+        cfg.taskEvals.forEach((evalObj, index) => {
+          let val = partialData.tasks[index];
+          if(val === "" || val == null) { val = 0; }
+          rowHTML += `<td><input type="number" class="task-input" data-index="${index}" min="0" max="10" step="0.1" value="${val}"></td>`;
+        });
+        rowHTML += `<td class="task-average">0</td>`;
+        cfg.practiceEvals.forEach((evalObj, index) => {
+          const subjectTeams = teams[currentSubject];
+          const teamObj = subjectTeams.find(t => t.id === student.team);
+          let grade = 0;
+          if(teamObj && teamObj.partials && teamObj.partials[currentPartial] && teamObj.partials[currentPartial][index] !== undefined) { 
+            grade = teamObj.partials[currentPartial][index]; 
+          }
+          partialData.practices[index] = grade;
+          rowHTML += `<td><input type="number" class="practice-input" data-index="${index}" min="0" max="10" step="0.1" value="${grade || 0}" readonly></td>`;
+        });
+        rowHTML += `<td class="practice-average">0</td>`;
+        rowHTML += `
+          <td><input type="number" class="extra-exam" min="0" max="2" step="0.1" value="${partialData.extraExam || 0}"></td>
+          <td><input type="number" class="extra-task" min="0" max="2" step="0.1" value="${partialData.extraTask || 0}"></td>
+          <td><input type="number" class="extra-practice" min="0" max="2" step="0.1" value="${partialData.extraPractice || 0}"></td>
+          <td><input type="number" class="extra-parcial" min="0" step="0.1" value="${partialData.extraParcial || 0}"></td>
+          <td class="extra-total">0</td>
+          <td><input type="number" class="participation" min="0" max="5" step="0.1" value="${partialData.participation || 0}"></td>
+          <td><input type="number" class="absences" min="0" step="1" value="${partialData.absences || 0}"></td>
+          <td class="deductions"><span class="deduction-sum">0</span> <button class="deduct-btn btn">Ded</button></td>
+          <td class="total-partial">0</td>
+          <td>
+            <button class="row-action-btn btn">Ver Ded.</button>
+            <button class="delete-student btn">Eliminar</button>
+          </td>
+        </tr>`;
+        tbody.innerHTML += rowHTML;
+      });
+      attachTableListeners();
+      recalculateAll();
+      if(readOnlyMode) { setReadOnly(); }
+      saveData();
+    }
+
+    function recalculateRow(row) {
+      const rubric = subjectsConfig[currentSubject].rubric;
+      let examSum = 0, examCount = 0;
+      row.querySelectorAll(".exam-input").forEach(input => { examSum += parseFloat(input.value) || 0; examCount++; });
+      const examAvg = examCount ? examSum / examCount : 0;
+      row.querySelector(".exam-average").textContent = examAvg.toFixed(2);
+      let taskSum = 0, taskCount = 0;
+      row.querySelectorAll(".task-input").forEach(input => { taskSum += parseFloat(input.value) || 0; taskCount++; });
+      const taskAvg = taskCount ? taskSum / taskCount : 0;
+      row.querySelector(".task-average").textContent = taskAvg.toFixed(2);
+      let practiceSum = 0, practiceCount = 0;
+      row.querySelectorAll(".practice-input").forEach(input => { practiceSum += parseFloat(input.value) || 0; practiceCount++; });
+      const practiceAvg = practiceCount ? practiceSum / practiceCount : 0;
+      row.querySelector(".practice-average").textContent = practiceAvg.toFixed(2);
+      const extraExam = parseFloat(row.querySelector(".extra-exam").value) || 0;
+      const extraTask = parseFloat(row.querySelector(".extra-task").value) || 0;
+      const extraPractice = parseFloat(row.querySelector(".extra-practice").value) || 0;
+      const extraParcial = parseFloat(row.querySelector(".extra-parcial").value) || 0;
+      const extraTotal = (extraExam * rubric.exam/100) + (extraTask * rubric.task/100) + (extraPractice * rubric.practice/100) + extraParcial;
+      row.querySelector(".extra-total").textContent = extraTotal.toFixed(2);
+      const participation = parseFloat(row.querySelector(".participation").value) || 0;
+      const listNum = row.getAttribute("data-list");
+      const student = students.find(s => s.listNumber == listNum);
+      let deductionSum = 0;
+      if(student && student.partials[currentPartial].deductions) {
+        deductionSum = student.partials[currentPartial].deductions.reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0);
+      }
+      row.querySelector(".deduction-sum").textContent = deductionSum.toFixed(2);
+      const totalPartial = ((examAvg * rubric.exam/100) + (taskAvg * rubric.task/100) + (practiceAvg * rubric.practice/100) + extraTotal + (participation * rubric.participation/100)) - deductionSum - (parseFloat(row.querySelector(".absences").value) || 0);
+      row.querySelector(".total-partial").textContent = totalPartial.toFixed(2);
+      if(student) { student.partials[currentPartial].total = totalPartial; }
+    }
+
+    function recalculateAll() {
+      document.querySelectorAll("#gradeTable tbody tr").forEach(row => recalculateRow(row));
+    }
+
+    function attachTableListeners() {
+      document.querySelectorAll("#gradeTable tbody input").forEach(input => {
+        input.addEventListener("input", () => {
+          const row = input.closest("tr");
+          saveRowData(row);
+          recalculateRow(row);
+          saveData();
+        });
+      });
+      document.querySelectorAll(".student-team").forEach(select => {
+        select.addEventListener("change", (e) => {
+          const row = e.target.closest("tr");
+          const listNum = row.getAttribute("data-list");
+          const student = students.find(s => s.listNumber == listNum);
+          if(student) { student.team = e.target.value; }
+          propagateTeamGradeForRow(row);
+          saveData();
+        });
+      });
+      document.querySelectorAll(".student-name").forEach(cell => {
+        cell.addEventListener("blur", (e) => {
+          const row = e.target.closest("tr");
+          const listNum = row.getAttribute("data-list");
+          const student = students.find(s => s.listNumber == listNum);
+          if(student) { student.name = e.target.textContent.trim(); }
+          saveData();
+        });
+      });
+      document.querySelectorAll(".deduct-btn").forEach(btn => {
+        btn.addEventListener("click", (e) => {
+          const row = e.target.closest("tr");
+          const listNum = row.getAttribute("data-list");
+          const student = students.find(s => s.listNumber == listNum);
+          if(student) { openDeductionModal(student); }
+        });
+      });
+      document.querySelectorAll(".row-action-btn").forEach(btn => {
+        btn.addEventListener("click", (e) => {
+          const row = e.target.closest("tr");
+          const listNum = row.getAttribute("data-list");
+          const student = students.find(s => s.listNumber == listNum);
+          if(student) { openDeductionModal(student, true); }
+        });
+      });
+      document.querySelectorAll(".delete-student").forEach(btn => {
+        btn.addEventListener("click", (e) => {
+          const row = e.target.closest("tr");
+          const listNum = parseInt(row.getAttribute("data-list"));
+          if(confirm("¿Estás seguro de eliminar este alumno?")) {
+            students.splice(students.findIndex(s => s.listNumber === listNum), 1);
+            buildGradeTable();
+            saveData();
           }
         });
-      }
-      // Agregar deducción
-      function openAddDeductionModal() {
-        let html = `
-          <h3>Agregar Deducción</h3>
-          <label>Motivo: <input type="text" id="deductionMotivo"></label><br>
-          <label>Fecha: <input type="date" id="deductionFecha"></label><br>
-          <label>Cantidad: <input type="number" id="deductionCantidad"></label><br>
-          <button id="addDeductionConfirmBtn">Agregar</button>
-        `;
-        showModal(html);
-        document.getElementById("addDeductionConfirmBtn").addEventListener("click", () => {
-          const motivo = document.getElementById("deductionMotivo").value;
-          const fecha = document.getElementById("deductionFecha").value;
-          const cantidad = parseFloat(document.getElementById("deductionCantidad").value);
-          const student = data.students.find(s => s.subjectId === currentSubjectId);
-          if(student) {
-            if(!student.partials[currentPartial].deductions) { student.partials[currentPartial].deductions = []; }
-            student.partials[currentPartial].deductions.push({ motivo, fecha, cantidad });
-            saveData();
-            hideModal();
-            updateDeductionsTable();
-            updateStudentsTable();
-          } else { alert("No hay alumnos para asignar la deducción."); }
-        });
-      }
-      
-      // Funciones para eliminar elementos
-      function deleteStudent(studentId) {
-        if(confirm("¿Eliminar alumno?")) {
-          data.students = data.students.filter(s => s.id !== studentId);
-          saveData();
-          updateStudentsTable();
-        }
-      }
-      function deleteTeam(teamId) {
-        if(confirm("¿Eliminar equipo?") && currentSubjectId) {
-          const subj = data.subjects[currentSubjectId];
-          subj.teams[currentPartial] = subj.teams[currentPartial].filter(t => t.id !== teamId);
-          saveData();
-          updateTeamsTable();
-        }
-      }
-      function deleteDeduction(studentId, dedIndex) {
-        const student = data.students.find(s => s.id === studentId);
-        if(student) {
-          student.partials[currentPartial].deductions.splice(dedIndex, 1);
-          saveData();
-          updateDeductionsTable();
-          updateStudentsTable();
-        }
-      }
-      
-      /* ---------------------- FUNCIONES DE EXPORTACIÓN Y PRESENTACIÓN ---------------------- */
-      function exportToExcel() {
-        const wb = XLSX.utils.book_new();
-        const ws_data = [];
-        const headerRow = [];
-        gradesHeader.querySelectorAll("th").forEach(th => headerRow.push(th.textContent));
-        ws_data.push(headerRow);
-        gradesBody.querySelectorAll("tr").forEach(tr => {
-          const row = [];
-          tr.querySelectorAll("td").forEach(td => row.push(td.textContent));
-          ws_data.push(row);
-        });
-        const ws = XLSX.utils.aoa_to_sheet(ws_data);
-        XLSX.utils.book_append_sheet(wb, ws, "Parcial " + currentPartial);
-        XLSX.writeFile(wb, "Calificaciones_Parcial_" + currentPartial + ".xlsx");
-      }
-      
-      function exportToPDF() {
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF({ orientation: "landscape" });
-        let y = 10;
-        doc.setFontSize(12);
-        doc.text("Calificaciones - Parcial " + currentPartial, 10, y);
-        y += 10;
-        let headers = [];
-        gradesHeader.querySelectorAll("th").forEach(th => headers.push(th.textContent));
-        doc.autoTable({
-          head: [headers],
-          body: [],
-          startY: y,
-          theme: 'grid'
-        });
-        const bodyData = [];
-        gradesBody.querySelectorAll("tr").forEach(tr => {
-          const row = [];
-          tr.querySelectorAll("td").forEach(td => row.push(td.textContent));
-          row.push("Firma: __________________");
-          bodyData.push(row);
-        });
-        doc.autoTable({
-          body: bodyData,
-          startY: doc.lastAutoTable.finalY + 10,
-          theme: 'grid'
-        });
-        doc.save("Calificaciones_Parcial_" + currentPartial + ".pdf");
-      }
-      
-      function printPartial() { window.print(); }
-      
-      function shareVersion() {
-        const url = new URL(window.location.href);
-        url.searchParams.set("readonly", "true");
-        url.searchParams.set("subject", currentSubjectId);
-        url.searchParams.set("partial", currentPartial);
-        prompt("Enlace para compartir:", url.toString());
-      }
-      
-      /* ---------------------- EVENTOS DE LOS BOTONES DE LA INTERFAZ ---------------------- */
-      addSubjectBtn.addEventListener("click", () => { openEditSubjectModal(); });
-      addExamBtn.addEventListener("click", () => { openAddEvaluationModal("exam"); });
-      addTaskBtn.addEventListener("click", () => { openAddEvaluationModal("task"); });
-      addPracticeBtn.addEventListener("click", () => { openAddEvaluationModal("practice"); });
-      addStudentBtn.addEventListener("click", () => { openAddStudentModal(); });
-      addTeamBtn.addEventListener("click", () => { openAddTeamModal(); });
-      addDeductionBtn.addEventListener("click", () => { openAddDeductionModal(); });
-      exportExcelBtn.addEventListener("click", exportToExcel);
-      exportPDFBtn.addEventListener("click", exportToPDF);
-      printPartialBtn.addEventListener("click", printPartial);
-      shareVersionBtn.addEventListener("click", shareVersion);
-      
-      subjectSelect.addEventListener("change", () => {
-        currentSubjectId = subjectSelect.value;
-        updateEvaluationsHeader();
-        updateStudentsTable();
-        updateTeamsTable();
-        updateDeductionsTable();
       });
-      partialSelect.addEventListener("change", () => {
-        currentPartial = partialSelect.value;
-        updateEvaluationsHeader();
-        updateStudentsTable();
-        updateTeamsTable();
-        updateDeductionsTable();
+    }
+
+    function saveRowData(row) {
+      const listNum = row.getAttribute("data-list");
+      const student = students.find(s => s.listNumber == listNum);
+      if(!student) return;
+      const partialData = student.partials[currentPartial];
+      partialData.exams = [];
+      row.querySelectorAll(".exam-input").forEach(input => { partialData.exams.push(parseFloat(input.value) || 0); });
+      partialData.tasks = [];
+      row.querySelectorAll(".task-input").forEach(input => { partialData.tasks.push(parseFloat(input.value) || 0); });
+      partialData.extraExam = parseFloat(row.querySelector(".extra-exam").value) || 0;
+      partialData.extraTask = parseFloat(row.querySelector(".extra-task").value) || 0;
+      partialData.extraPractice = parseFloat(row.querySelector(".extra-practice").value) || 0;
+      partialData.extraParcial = parseFloat(row.querySelector(".extra-parcial").value) || 0;
+      partialData.participation = parseFloat(row.querySelector(".participation").value) || 0;
+      partialData.absences = parseFloat(row.querySelector(".absences").value) || 0;
+      saveData();
+    }
+
+    function propagateTeamGradeForRow(row) {
+      const listNum = row.getAttribute("data-list");
+      const student = students.find(s => s.listNumber == listNum);
+      if(!student) return;
+      const subjectTeams = teams[currentSubject];
+      const teamObj = subjectTeams.find(t => t.id === student.team);
+      if(teamObj && teamObj.partials && teamObj.partials[currentPartial]) {
+        row.querySelectorAll(".practice-input").forEach((input, idx) => { input.value = teamObj.partials[currentPartial][idx] || 0; });
+      }
+      recalculateRow(row);
+      saveData();
+    }
+
+    /***********************
+     * 6. Funciones de Modal para Agregar/Editar Elementos
+     ***********************/
+    // Definición global del modal (usamos el div con id "modalOverlay")
+    const modal = document.getElementById("modalOverlay");
+
+    // Función para mostrar el modal
+    function showModal(contentHTML) {
+      document.getElementById("modalBody").innerHTML = contentHTML;
+      modal.style.display = "block";
+    }
+
+    // Cerrar modal al hacer clic en el botón "×"
+    document.querySelectorAll(".modal .close").forEach(closeBtn => {
+      closeBtn.onclick = function() {
+        this.parentElement.parentElement.style.display = "none";
+      };
+    });
+    // Cerrar modal al hacer clic fuera de la caja de contenido
+    window.onclick = function(event) {
+      if (event.target.classList.contains("modal")) {
+        event.target.style.display = "none";
+      }
+    };
+
+    function openDeductionModal(student, viewOnly = false) {
+      let content = `<h3>Deducciones para ${student.name}</h3>
+        <label>Monto (-): <input type="number" id="dedAmount" step="0.1"></label><br>
+        <label>Motivo: <input type="text" id="dedReason"></label><br>
+        <label>Fecha: <input type="date" id="dedDate"></label><br>`;
+      if(!viewOnly) { content += `<button id="saveDed" class="btn">Agregar Deducción</button>`; }
+      if(student.partials[currentPartial].deductions && student.partials[currentPartial].deductions.length > 0) {
+        content += `<h4>Deducciones Registradas:</h4><ul>`;
+        student.partials[currentPartial].deductions.forEach((ded) => {
+          content += `<li>${ded.date} - ${ded.reason}: ${ded.amount} pts</li>`;
+        });
+        content += `</ul>`;
+      } else {
+        content += `<p>No hay deducciones registradas.</p>`;
+      }
+      showModal(content);
+      if(!viewOnly) {
+        document.getElementById("saveDed").onclick = () => {
+          const amount = parseFloat(document.getElementById("dedAmount").value) || 0;
+          const reason = document.getElementById("dedReason").value.trim();
+          const date = document.getElementById("dedDate").value;
+          if(amount <= 0 || !reason || !date) { alert("Complete todos los campos."); return; }
+          if(!student.partials[currentPartial].deductions) student.partials[currentPartial].deductions = [];
+          student.partials[currentPartial].deductions.push({ amount, reason, date });
+          modal.style.display = "none";
+          buildGradeTable();
+          saveData();
+        };
+      }
+    }
+
+    // Botón Editar Rúbrica (en modal)
+    document.getElementById("editRubric").onclick = () => {
+      const cfg = subjectsConfig[currentSubject];
+      let content = `<h3>Editar Rúbrica</h3>
+        <h4>Porcentajes</h4>
+        <label>Exámenes (%): <input type="number" id="rubricExam" value="${cfg.rubric.exam}" min="0" max="100"></label><br>
+        <label>Tareas (%): <input type="number" id="rubricTask" value="${cfg.rubric.task}" min="0" max="100"></label><br>
+        <label>Prácticas (%): <input type="number" id="rubricPractice" value="${cfg.rubric.practice}" min="0" max="100"></label><br>
+        <label>Participación (%): <input type="number" id="rubricPart" value="${cfg.rubric.participation}" min="0" max="100"></label><br>
+        <h4>Evaluaciones</h4>
+        <div id="rubricEdits">
+          <h5>Exámenes</h5>
+          <ul id="examList">`;
+      cfg.examEvals.forEach((e, i) => {
+        content += `<li><input type="text" data-cat="exam" data-index="${i}" value="${e.name}"> <button class="removeEval btn" data-cat="exam" data-index="${i}">Quitar</button></li>`;
+      });
+      content += `</ul>
+          <button id="addExamItem" class="btn">Agregar Examen</button>
+          <h5>Tareas</h5>
+          <ul id="taskList">`;
+      cfg.taskEvals.forEach((e, i) => {
+        content += `<li><input type="text" data-cat="task" data-index="${i}" value="${e.name}"> <button class="removeEval btn" data-cat="task" data-index="${i}">Quitar</button></li>`;
+      });
+      content += `</ul>
+          <button id="addTaskItem" class="btn">Agregar Tarea</button>
+          <h5>Prácticas</h5>
+          <ul id="practiceList">`;
+      cfg.practiceEvals.forEach((e, i) => {
+        content += `<li><input type="text" data-cat="practice" data-index="${i}" value="${e.name}"> <button class="removeEval btn" data-cat="practice" data-index="${i}">Quitar</button></li>`;
+      });
+      content += `</ul>
+          <button id="addPracticeItem" class="btn">Agregar Práctica</button>
+        </div>
+        <br>
+        <button id="saveRubric" class="btn">Guardar Rúbrica</button>`;
+      showModal(content);
+      // Asignar los eventos para quitar evaluaciones
+      Array.from(document.querySelectorAll(".removeEval")).forEach(btn => {
+        btn.onclick = (e) => {
+          const cat = e.target.getAttribute("data-cat");
+          const index = parseInt(e.target.getAttribute("data-index"));
+          if(cat === "exam") { cfg.examEvals.splice(index, 1); }
+          else if(cat === "task") { cfg.taskEvals.splice(index, 1); }
+          else if(cat === "practice") { cfg.practiceEvals.splice(index, 1); }
+          buildDynamicHeader();
+          buildGradeTable();
+          modal.style.display = "none";
+          // Reabrir el modal para seguir editando
+          setTimeout(() => { document.getElementById("editRubric").onclick(); }, 200);
+          saveData();
+        };
+      });
+      document.getElementById("addExamItem").onclick = () => {
+        const newItem = prompt("Nuevo examen:");
+        if(newItem) { cfg.examEvals.push({ name: newItem }); buildDynamicHeader(); buildGradeTable(); saveData(); }
+      };
+      document.getElementById("addTaskItem").onclick = () => {
+        const newItem = prompt("Nueva tarea:");
+        if(newItem) { cfg.taskEvals.push({ name: newItem }); buildDynamicHeader(); buildGradeTable(); saveData(); }
+      };
+      document.getElementById("addPracticeItem").onclick = () => {
+        const newItem = prompt("Nueva práctica:");
+        if(newItem) {
+          cfg.practiceEvals.push({ name: newItem });
+          teams[currentSubject].forEach(team => {
+            if (!team.partials) team.partials = {};
+            if (!team.partials[currentPartial]) { team.partials[currentPartial] = []; }
+            team.partials[currentPartial].push(0);
+          });
+          buildDynamicHeader();
+          buildTeamTable();
+          buildGradeTable();
+          saveData();
+        }
+      };
+      document.getElementById("saveRubric").onclick = () => {
+        cfg.rubric.exam = parseFloat(document.getElementById("rubricExam").value) || 0;
+        cfg.rubric.task = parseFloat(document.getElementById("rubricTask").value) || 0;
+        cfg.rubric.practice = parseFloat(document.getElementById("rubricPractice").value) || 0;
+        cfg.rubric.participation = parseFloat(document.getElementById("rubricPart").value) || 0;
+        modal.style.display = "none";
+        updateRubricDisplay();
+        buildDynamicHeader();
+        buildGradeTable();
+        saveData();
+      };
+    };
+
+    /* Botones de Agregar Evaluación (desde el área principal) */
+    document.getElementById("addExamEval").onclick = () => {
+      let newExam = prompt("Ingrese nombre del nuevo Examen:");
+      if(newExam) {
+        subjectsConfig[currentSubject].examEvals.push({ name: newExam });
+        buildDynamicHeader();
+        buildGradeTable();
+        saveData();
+      }
+    };
+    document.getElementById("addTaskEval").onclick = () => {
+      let newTask = prompt("Ingrese nombre de la nueva Tarea:");
+      if(newTask) {
+        subjectsConfig[currentSubject].taskEvals.push({ name: newTask });
+        buildDynamicHeader();
+        buildGradeTable();
+        saveData();
+      }
+    };
+    document.getElementById("addPracticeEval").onclick = () => {
+      let newPractice = prompt("Ingrese nombre de la nueva Práctica:");
+      if(newPractice) {
+        subjectsConfig[currentSubject].practiceEvals.push({ name: newPractice });
+        teams[currentSubject].forEach(team => {
+          if(!team.partials) team.partials = {};
+          if(!team.partials[currentPartial]) { team.partials[currentPartial] = []; }
+          team.partials[currentPartial].push(0);
+        });
+        buildDynamicHeader();
+        buildTeamTable();
+        buildGradeTable();
+        saveData();
+      }
+    };
+
+    /* -----------------------------
+       Agregar Alumno
+    ----------------------------- */
+    document.getElementById("addStudent").onclick = () => {
+      let content = `<h3>Agregar Alumno</h3>
+         <label>N° LS: <input type="number" id="newListNumber"></label><br>
+         <label>Alumno: <input type="text" id="newStudentName"></label><br>
+         <label>Equipo: 
+             <select id="newStudentTeam">
+                ${teams[currentSubject].map(team => `<option value="${team.id}">${team.name}</option>`).join('')}
+             </select>
+         </label><br>
+         <button id="saveStudent" class="btn">Guardar</button>`;
+      showModal(content);
+      document.getElementById("saveStudent").onclick = () => {
+         const listNum = parseInt(document.getElementById("newListNumber").value);
+         const name = document.getElementById("newStudentName").value.trim();
+         const team = document.getElementById("newStudentTeam").value;
+         if(!listNum || !name) { alert("Complete todos los campos."); return; }
+         students.push({ listNumber: listNum, name, team, subject: currentSubject, partials: {} });
+         modal.style.display = "none";
+         buildGradeTable();
+         saveData();
+      };
+    };
+
+    /* -----------------------------
+       Agregar Equipo
+    ----------------------------- */
+    document.getElementById("addTeam").onclick = () => {
+      let content = `<h3>Agregar Equipo</h3>
+         <label>ID: <input type="text" id="newTeamId"></label><br>
+         <label>Nombre: <input type="text" id="newTeamName"></label><br>
+         <label>Encargado: <input type="text" id="newTeamHead"></label><br>
+         <button id="saveTeamNew" class="btn">Guardar</button>`;
+      showModal(content);
+      document.getElementById("saveTeamNew").onclick = () => {
+         const id = document.getElementById("newTeamId").value.trim();
+         const name = document.getElementById("newTeamName").value.trim();
+         const head = document.getElementById("newTeamHead").value.trim();
+         if(!id || !name || !head) { alert("Complete todos los campos."); return; }
+         if(!teams[currentSubject]) teams[currentSubject] = [];
+         teams[currentSubject].push({ id, name, head, partials: {} });
+         modal.style.display = "none";
+         buildTeamTable();
+         buildGradeTable();
+         saveData();
+      };
+    };
+
+    /* -----------------------------
+       Editar Materia
+    ----------------------------- */
+    document.getElementById("editSubject").onclick = () => {
+      const subj = subjectsConfig[currentSubject];
+      let content = `<h3>Editar Materia</h3>
+        <label>Nombre: <input type="text" id="editSubjName" value="${subj.name}"></label><br>
+        <label>Semestre: 
+          <select id="editSubjSemester">
+            <option value="ene-jul" ${subj.semester==="ene-jul"?"selected":""}>ene-jul</option>
+            <option value="ago-dic" ${subj.semester==="ago-dic"?"selected":""}>ago-dic</option>
+          </select>
+        </label><br>
+        <label>Año: <input type="number" id="editSubjYear" value="${subj.year}"></label><br>
+        <button id="saveSubjectEd" class="btn">Guardar</button>`;
+      showModal(content);
+      document.getElementById("saveSubjectEd").onclick = () => {
+        subj.name = document.getElementById("editSubjName").value.trim();
+        subj.semester = document.getElementById("editSubjSemester").value;
+        subj.year = parseInt(document.getElementById("editSubjYear").value);
+        modal.style.display = "none";
+        buildSubjectSelect();
+        buildDynamicHeader();
+        saveData();
+      };
+    };
+
+    /* -----------------------------
+       Agregar Materia
+    ----------------------------- */
+    document.getElementById("addSubject").onclick = () => {
+      let content = `<h3>Agregar Materia</h3>
+        <label>ID: <input type="text" id="newSubjectId"></label><br>
+        <label>Nombre: <input type="text" id="newSubjectName"></label><br>
+        <label>Semestre: 
+          <select id="newSubjectSemester">
+            <option value="ene-jul">ene-jul</option>
+            <option value="ago-dic">ago-dic</option>
+          </select>
+        </label><br>
+        <label>Año: <input type="number" id="newSubjectYear" value="2023"></label><br>
+        <button id="saveSubject" class="btn">Guardar Materia</button>`;
+      showModal(content);
+      document.getElementById("saveSubject").onclick = () => {
+        const id = document.getElementById("newSubjectId").value.trim();
+        const name = document.getElementById("newSubjectName").value.trim();
+        const semester = document.getElementById("newSubjectSemester").value;
+        const year = parseInt(document.getElementById("newSubjectYear").value);
+        if(!id || !name || !semester || isNaN(year)) { alert("Complete todos los campos."); return; }
+        subjectsConfig[id] = {
+          name: name,
+          semester: semester,
+          year: year,
+          rubric: { exam: 45, task: 25, practice: 30, participation: 5 },
+          examEvals: [],
+          taskEvals: [],
+          practiceEvals: []
+        };
+        teams[id] = [];
+        buildSubjectSelect();
+        modal.style.display = "none";
+        saveData();
+      };
+    };
+
+    /* -----------------------------
+       Compartir Versión (Solo Lectura)
+    ----------------------------- */
+    document.getElementById("shareVersion").onclick = () => {
+      const url = new URL(window.location.href);
+      url.searchParams.set("subject", currentSubject);
+      url.searchParams.set("partial", currentPartial);
+      url.searchParams.set("readonly", "true");
+      prompt("Copia este enlace para compartir la versión de solo lectura:", url.toString());
+    };
+
+    /* -----------------------------
+       Exportar a Excel (celdas vacías = 0)
+    ----------------------------- */
+    document.getElementById("exportExcel").onclick = () => {
+      const table = document.getElementById("gradeTable");
+      let csv = "";
+      for (let row of table.rows) {
+        let rowData = [];
+        for (let cell of row.cells) {
+          let text = cell.innerText.trim();
+          if (!text) text = "0";
+          rowData.push('"' + text + '"');
+        }
+        csv += rowData.join(",") + "\n";
+      }
+      const blob = new Blob([csv], { type: "application/vnd.ms-excel" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "calificaciones_" + currentSubject + "_parcial_" + currentPartial + ".xls";
+      a.click();
+      URL.revokeObjectURL(url);
+    };
+
+    /* -----------------------------
+       Exportar a PDF (celdas vacías = 0)
+    ----------------------------- */
+    document.getElementById("exportPDF").onclick = () => {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF('landscape', 'pt', 'a4');
+      doc.setFontSize(10);
+      doc.text("Calificaciones - " + subjectsConfig[currentSubject].name + " - Parcial " + currentPartial, 40, 30);
+      const headerCells = [
+        "N° LS", "Alumno", "Equipo"
+      ];
+      const cfg = subjectsConfig[currentSubject];
+      cfg.examEvals.forEach(e => headerCells.push(e.name));
+      headerCells.push("P-EX");
+      cfg.taskEvals.forEach(e => headerCells.push(e.name));
+      headerCells.push("P-TA");
+      cfg.practiceEvals.forEach(e => headerCells.push(e.name));
+      headerCells.push("P-PR");
+      headerCells.push("ExE");
+      headerCells.push("ExT");
+      headerCells.push("ExP");
+      headerCells.push("ExP-Gen");
+      headerCells.push("ExTOT");
+      headerCells.push("Par");
+      headerCells.push("Faltas");
+      headerCells.push("Ded");
+      headerCells.push("TOT");
+      headerCells.push("Firma");
+      const headers = [headerCells];
+      
+      const data = [];
+      document.querySelectorAll("#gradeTable tbody tr").forEach(row => {
+        const rowData = [];
+        const cells = Array.from(row.querySelectorAll("td"));
+        cells.slice(0, cells.length - 1).forEach(cell => {
+          let text = cell.innerText.trim();
+          if (!text) text = "0";
+          rowData.push(text);
+        });
+        rowData.push("____________________________");
+        data.push(rowData);
       });
       
-      /* ---------------------- AUTENTICACIÓN CON FIREBASE ---------------------- */
-      if(!readOnly) {
-        auth.onAuthStateChanged(user => {
-          if(user) {
-            currentUser = user;
-            updateEditMode();
+      doc.autoTable({
+        head: headers,
+        body: data,
+        startY: 50,
+        theme: 'grid',
+        styles: { fontSize: 7, cellPadding: 4, halign: 'center', valign: 'middle' },
+        headStyles: { fillColor: [0, 51, 102] },
+        columnStyles: { text: { cellWidth: 'auto' } }
+      });
+      doc.save("calificaciones_" + currentSubject + "_parcial_" + currentPartial + ".pdf");
+    };
+
+    document.getElementById("printGrades").onclick = () => { window.print(); };
+
+    /* -----------------------------
+       Cambios de Parcial y Materia
+    ----------------------------- */
+    document.querySelectorAll(".tab-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        currentPartial = parseInt(btn.getAttribute("data-partial"));
+        document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        updatePartialDisplay();
+        buildGradeTable();
+        buildTeamTable();
+        updateURLParams();
+      });
+    });
+    
+    document.getElementById("subjectSelect").addEventListener("change", (e) => {
+      currentSubject = e.target.value;
+      updateRubricDisplay();
+      buildDynamicHeader();
+      buildTeamTable();
+      buildGradeTable();
+      updateURLParams();
+    });
+    
+    function updateURLParams() {
+      const url = new URL(window.location.href);
+      url.searchParams.set("subject", currentSubject);
+      url.searchParams.set("partial", currentPartial);
+      if (!readOnlyMode) { url.searchParams.delete("readonly"); }
+      window.history.pushState({}, '', url.toString());
+    }
+
+    /***********************
+     * 7. Carga Inicial
+     ***********************/
+    buildSubjectSelect();
+    updateRubricDisplay();
+    updatePartialDisplay();
+    buildDynamicHeader();
+    buildTeamTable();
+    buildGradeTable();
+
+    /***********************
+     * 8. Inicio de Sesión con Firebase
+     ***********************/
+    window.addEventListener("load", () => {
+      if (readOnlyMode) {
+        updateURLParams();
+        document.getElementById("appContainer").style.display = "block";
+        setReadOnly();
+      } else {
+        const loginModal = document.getElementById("loginModal");
+        loginModal.style.display = "block";
+        auth.onAuthStateChanged((user) => {
+          if (user) {
+            loginModal.style.display = "none";
+            document.getElementById("appContainer").style.display = "block";
           } else {
-            currentUser = null;
-            updateEditMode();
+            document.getElementById("appContainer").style.display = "none";
             loginModal.style.display = "block";
           }
         });
-        loginSubmitBtn.addEventListener("click", () => {
-          const email = loginEmail.value;
-          const password = loginPassword.value;
+        document.getElementById("loginBtn").onclick = () => {
+          const email = document.getElementById("loginUser").value.trim();
+          const password = document.getElementById("loginPass").value;
           auth.signInWithEmailAndPassword(email, password)
-            .then(cred => {
-              currentUser = cred.user;
-              loginModal.style.display = "none";
-              updateEditMode();
+            .then(() => {
+              document.getElementById("loginModal").style.display = "none";
+              document.getElementById("appContainer").style.display = "block";
             })
-            .catch(err => { alert("Error de autenticación: " + err.message); });
-        });
+            .catch((error) => { alert("Error: " + error.message); });
+        };
       }
-      
-      /* ---------------------- INICIALIZACIÓN ---------------------- */
-      loadData();
-      updateSubjectSelector();
-      updateSubjectsList();
-      updateEvaluationsHeader();
-      updateStudentsTable();
-      updateTeamsTable();
-      updateDeductionsTable();
-      updateEditMode();
     });
+
+    function setReadOnly() {
+      document.querySelectorAll("input, select, button").forEach(el => { el.disabled = true; });
+      const notice = document.createElement("p");
+      notice.textContent = "Modo Solo Lectura – No se permite la edición";
+      notice.style.textAlign = "center";
+      notice.style.fontWeight = "bold";
+      notice.style.color = "#900";
+      document.getElementById("appContainer").insertBefore(notice, document.getElementById("appContainer").firstChild);
+    }
   </script>
 </body>
 </html>
