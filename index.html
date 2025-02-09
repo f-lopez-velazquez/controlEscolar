@@ -59,7 +59,17 @@
     .partial-tabs button:hover { background: #003d80; }
     .rubric-display button,
     .cred-btn { margin-left: 10px; padding: 5px 10px; font-size: 0.9rem; cursor: pointer; }
-    /* Contenedor para el botón Reset DB (visible sólo para el propietario) */
+    /* Botones de guardado manual y Reset DB */
+    #manualSaveBtn, #resetDBBtn {
+      padding: 8px 12px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      margin: 5px;
+    }
+    #manualSaveBtn { background: #28a745; color: #fff; }
+    #resetDBBtn { background: #dc3545; color: #fff; }
+    /* Contenedor para el botón Reset DB (solo para propietario) */
     #resetDBContainer { display: none; }
     main { padding: 10px 0; }
     .eval-controls, .student-controls, .action-section { text-align: center; margin: 15px 0; }
@@ -137,6 +147,8 @@
       padding: 20px;
       border-radius: 8px;
       max-width: 500px;
+      max-height: 80vh;
+      overflow-y: auto;
       position: relative;
       box-shadow: 0 0 10px rgba(0,0,0,0.3);
     }
@@ -166,8 +178,21 @@
       th, td { font-size: 0.8em; padding: 6px; }
       .btn, .cred-btn { padding: 6px 10px; font-size: 0.8em; }
     }
+    /* ===== Indicador de guardado (toast) ===== */
+    #saveIndicator {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: #28a745;
+      color: #fff;
+      padding: 10px 15px;
+      border-radius: 4px;
+      font-size: 0.9em;
+      display: none;
+      z-index: 2000;
+    }
   </style>
-  <!-- Incluir Firebase y dependencias (compat) -->
+  <!-- Incluir Firebase (compat) y dependencias -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
@@ -175,6 +200,9 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body>
+  <!-- Indicador de guardado -->
+  <div id="saveIndicator">Guardado</div>
+
   <!-- Modal General -->
   <div id="modalOverlay" class="modal">
     <div class="modal-content">
@@ -220,9 +248,9 @@
           Rúbrica: Exámenes: <span id="weightExam">45%</span>, Tareas: <span id="weightTask">25%</span>, Prácticas: <span id="weightPractice">30%</span>, Participación: <span id="weightPart">5%</span>
           <button id="editRubric" class="btn">Editar Rúbrica</button>
         </div>
-        <!-- Botón para Resetear DB (visible sólo para el propietario) -->
+        <!-- Botón Reset DB (solo para propietario) -->
         <div id="resetDBContainer">
-          <button id="resetDBBtn" class="cred-btn" style="background: #dc3545;">Reset DB</button>
+          <button id="resetDBBtn" class="cred-btn">Reset DB</button>
         </div>
       </div>
     </header>
@@ -237,6 +265,10 @@
       <!-- Administración de alumnos -->
       <section class="student-controls">
         <button id="addStudent" class="btn">Agregar Alumno</button>
+      </section>
+      <!-- Botón de guardado manual (opcional) -->
+      <section class="action-section">
+        <button id="manualSaveBtn" class="btn">Forzar guardado</button>
       </section>
       <!-- Tabla de equipos -->
       <section class="team-section">
@@ -279,7 +311,7 @@
           </table>
         </div>
       </section>
-      <!-- Botones de acción -->
+      <!-- Botones de exportación -->
       <section class="action-section">
         <button id="exportExcel" class="btn">Exportar Excel</button>
         <button id="exportPDF" class="btn">Exportar PDF</button>
@@ -371,46 +403,69 @@
     };
 
     /***********************
-     * 2. Persistencia: Firestore
+     * 2. Persistencia en Firestore
      ***********************/
-    // Funciones para guardar en Firestore
+    // Funciones para guardar en Firestore (agrupando con Promise.all)
     function saveSubjects() {
-      for (const key in subjectsConfig) {
-        db.collection("subjects").doc(key).set(subjectsConfig[key])
-          .catch(err => console.error("Error guardando subject", key, err));
-      }
+      return Promise.all(Object.keys(subjectsConfig).map(key => {
+        return db.collection("subjects").doc(key).set(subjectsConfig[key]);
+      })).catch(err => console.error("Error guardando subjects", err));
     }
     function saveStudents() {
-      students.forEach(student => {
-        db.collection("students").doc("stu_" + student.listNumber).set(student)
-          .catch(err => console.error("Error guardando student", student.listNumber, err));
-      });
+      return Promise.all(students.map(student => {
+        return db.collection("students").doc("stu_" + student.listNumber).set(student);
+      })).catch(err => console.error("Error guardando students", err));
     }
     function saveTeams() {
-      for (const subject in teams) {
-        teams[subject].forEach(team => {
+      return Promise.all(Object.keys(teams).map(subject => {
+        return Promise.all(teams[subject].map(team => {
           const docId = subject + "_" + team.id;
-          db.collection("teams").doc(docId).set({ ...team, subject: subject })
-            .catch(err => console.error("Error guardando team", docId, err));
-        });
-      }
+          return db.collection("teams").doc(docId).set({ ...team, subject: subject });
+        }));
+      })).catch(err => console.error("Error guardando teams", err));
     }
     function saveData() {
-      saveSubjects();
-      saveStudents();
-      saveTeams();
+      console.log("Guardando datos en Firestore...");
+      Promise.all([ saveSubjects(), saveStudents(), saveTeams() ])
+        .then(() => { showSaveIndicator(); })
+        .catch(err => console.error("Error en saveData", err));
+    }
+
+    // Debounce para agrupar escrituras: espera 15 segundos sin cambios
+    let saveTimeout = null;
+    function debounceSaveData() {
+      if (saveTimeout) clearTimeout(saveTimeout);
+      saveTimeout = setTimeout(() => {
+        console.log("Guardado automático (debounce) a Firestore...");
+        saveData();
+      }, 15000);
+    }
+
+    // Botón de guardado manual
+    document.getElementById("manualSaveBtn").addEventListener("click", () => {
+      console.log("Guardado manual a Firestore...");
+      saveData();
+      if (saveTimeout) clearTimeout(saveTimeout);
+    });
+
+    // Función para mostrar indicador de guardado (toast)
+    function showSaveIndicator() {
+      const indicator = document.getElementById("saveIndicator");
+      indicator.style.display = "block";
+      setTimeout(() => { indicator.style.display = "none"; }, 2000);
     }
 
     /***********************
      * 3. Inicializar Firebase y Firestore
      ***********************/
+    // Nueva configuración del proyecto "paginaesco"
     const firebaseConfig = {
-      apiKey: "AIzaSyDsoLZHDpR8EEyvs5tJ7gF1tE7eKS-ZGcU",
-      authDomain: "controlescolar-a184f.firebaseapp.com",
-      projectId: "controlescolar-a184f",
-      storageBucket: "controlescolar-a184f.firebasestorage.app",
-      messagingSenderId: "213806947943",
-      appId: "1:213806947943:web:996ab97cdd805998f0bec2"
+      apiKey: "AIzaSyC2VXIvR-OzF4iLlt8C69zt-cY1ZI_YhVo",
+      authDomain: "paginaesco.firebaseapp.com",
+      projectId: "paginaesco",
+      storageBucket: "paginaesco.firebasestorage.app",
+      messagingSenderId: "488675130286",
+      appId: "1:488675130286:web:003debfbff0b1f3ee7a63f"
     };
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
@@ -455,7 +510,7 @@
       document.getElementById("currentPartialDisplay").textContent = currentPartial;
     }
 
-    // Las evaluaciones se toman del parcial actual
+    // Función para construir la cabecera de evaluaciones (según el parcial actual)
     function buildGroupHeader() {
       const cfg = subjectsConfig[currentSubject].parcials[currentPartial];
       const examColspan = cfg.examEvals.length + 1;
@@ -471,6 +526,8 @@
       headerRow.innerHTML = "";
       const cfg = subjectsConfig[currentSubject].parcials[currentPartial];
       cfg.examEvals.forEach(evalObj => {
+        // Ignorar si el nombre es "Acciones" (por seguridad)
+        if(evalObj.name.toLowerCase() === "acciones") return;
         const th = document.createElement("th");
         th.textContent = evalObj.name;
         headerRow.appendChild(th);
@@ -479,6 +536,7 @@
       thExamAvg.textContent = "Promedio Exámenes";
       headerRow.appendChild(thExamAvg);
       cfg.taskEvals.forEach(evalObj => {
+        if(evalObj.name.toLowerCase() === "acciones") return;
         const th = document.createElement("th");
         th.textContent = evalObj.name;
         headerRow.appendChild(th);
@@ -487,6 +545,7 @@
       thTaskAvg.textContent = "Promedio Tareas";
       headerRow.appendChild(thTaskAvg);
       cfg.practiceEvals.forEach(evalObj => {
+        if(evalObj.name.toLowerCase() === "acciones") return;
         const th = document.createElement("th");
         th.textContent = evalObj.name;
         headerRow.appendChild(th);
@@ -545,7 +604,7 @@
                 if(practiceInputs[idx]) { practiceInputs[idx].value = newVal; recalculateRow(row); }
               }
             });
-            saveData();
+            debounceSaveData();
           }
         });
       });
@@ -567,7 +626,7 @@
               modal.style.display = "none";
               buildTeamTable();
               buildGradeTable();
-              saveData();
+              debounceSaveData();
             };
           }
         };
@@ -580,7 +639,7 @@
             teams[currentSubject] = teams[currentSubject].filter(t => t.id !== teamId);
             buildTeamTable();
             buildGradeTable();
-            saveData();
+            debounceSaveData();
           }
         };
       });
@@ -665,7 +724,7 @@
       attachTableListeners();
       recalculateAll();
       if(readOnlyMode) { setReadOnly(); }
-      saveData();
+      debounceSaveData();
     }
 
     function recalculateRow(row) {
@@ -711,7 +770,7 @@
           const row = input.closest("tr");
           saveRowData(row);
           recalculateRow(row);
-          saveData();
+          debounceSaveData();
         });
       });
       document.querySelectorAll(".student-team").forEach(select => {
@@ -721,7 +780,7 @@
           const student = students.find(s => s.listNumber == listNum);
           if(student) { student.team = e.target.value; }
           propagateTeamGradeForRow(row);
-          saveData();
+          debounceSaveData();
         });
       });
       document.querySelectorAll(".student-name").forEach(cell => {
@@ -730,7 +789,7 @@
           const listNum = row.getAttribute("data-list");
           const student = students.find(s => s.listNumber == listNum);
           if(student) { student.name = e.target.textContent.trim(); }
-          saveData();
+          debounceSaveData();
         });
       });
       document.querySelectorAll(".deduct-btn").forEach(btn => {
@@ -756,7 +815,7 @@
           if(confirm("¿Estás seguro de eliminar este alumno?")) {
             students.splice(students.findIndex(s => s.listNumber === listNum), 1);
             buildGradeTable();
-            saveData();
+            debounceSaveData();
           }
         });
       });
@@ -777,7 +836,7 @@
       partialData.extraParcial = parseFloat(row.querySelector(".extra-parcial").value) || 0;
       partialData.participation = parseFloat(row.querySelector(".participation").value) || 0;
       partialData.absences = parseFloat(row.querySelector(".absences").value) || 0;
-      saveData();
+      debounceSaveData();
     }
 
     function propagateTeamGradeForRow(row) {
@@ -792,7 +851,7 @@
         });
       }
       recalculateRow(row);
-      saveData();
+      debounceSaveData();
     }
 
     /***********************
@@ -813,40 +872,11 @@
         event.target.style.display = "none";
       }
     };
-    function openDeductionModal(student, viewOnly = false) {
-      let content = `<h3>Deducciones para ${student.name}</h3>
-        <label>Monto (-): <input type="number" id="dedAmount" step="0.1"></label><br>
-        <label>Motivo: <input type="text" id="dedReason"></label><br>
-        <label>Fecha: <input type="date" id="dedDate"></label><br>`;
-      if(!viewOnly) { content += `<button id="saveDed" class="btn">Agregar Deducción</button>`; }
-      if(student.partials[currentPartial].deductions && student.partials[currentPartial].deductions.length > 0) {
-        content += `<h4>Deducciones Registradas:</h4><ul>`;
-        student.partials[currentPartial].deductions.forEach((ded) => {
-          content += `<li>${ded.date} - ${ded.reason}: ${ded.amount} pts</li>`;
-        });
-        content += `</ul>`;
-      } else {
-        content += `<p>No hay deducciones registradas.</p>`;
-      }
-      showModal(content);
-      if(!viewOnly) {
-        document.getElementById("saveDed").onclick = () => {
-          const amount = parseFloat(document.getElementById("dedAmount").value) || 0;
-          const reason = document.getElementById("dedReason").value.trim();
-          const date = document.getElementById("dedDate").value;
-          if(amount <= 0 || !reason || !date) { alert("Complete todos los campos."); return; }
-          if(!student.partials[currentPartial].deductions) student.partials[currentPartial].deductions = [];
-          student.partials[currentPartial].deductions.push({ amount, reason, date });
-          modal.style.display = "none";
-          buildGradeTable();
-          saveData();
-        };
-      }
-    }
 
-    document.getElementById("editRubric").onclick = () => {
-      // La rúbrica se mantiene a nivel de materia; las evaluaciones se editan por parcial
+    // Función para abrir el modal de "Editar Rúbrica" y permitir quitar evaluaciones sin cerrar el modal
+    function openRubricModal() {
       const cfg = subjectsConfig[currentSubject];
+      const currParcial = subjectsConfig[currentSubject].parcials[currentPartial];
       let content = `<h3>Editar Rúbrica</h3>
         <h4>Porcentajes</h4>
         <label>Exámenes (%): <input type="number" id="rubricExam" value="${cfg.rubric.exam}" min="0" max="100"></label><br>
@@ -857,23 +887,31 @@
         <div id="rubricEdits">
           <h5>Exámenes</h5>
           <ul id="examList">`;
-      const currParcial = subjectsConfig[currentSubject].parcials[currentPartial];
       currParcial.examEvals.forEach((e, i) => {
-        content += `<li><input type="text" data-cat="exam" data-index="${i}" value="${e.name}"> <button class="removeEval btn" data-cat="exam" data-index="${i}">Quitar</button></li>`;
+        content += `<li data-cat="exam" data-index="${i}">
+          <input type="text" class="evalInput" value="${e.name}">
+          <button class="removeEval btn">Quitar</button>
+        </li>`;
       });
       content += `</ul>
           <button id="addExamItem" class="btn">Agregar Examen</button>
           <h5>Tareas</h5>
           <ul id="taskList">`;
       currParcial.taskEvals.forEach((e, i) => {
-        content += `<li><input type="text" data-cat="task" data-index="${i}" value="${e.name}"> <button class="removeEval btn" data-cat="task" data-index="${i}">Quitar</button></li>`;
+        content += `<li data-cat="task" data-index="${i}">
+          <input type="text" class="evalInput" value="${e.name}">
+          <button class="removeEval btn">Quitar</button>
+        </li>`;
       });
       content += `</ul>
           <button id="addTaskItem" class="btn">Agregar Tarea</button>
           <h5>Prácticas</h5>
           <ul id="practiceList">`;
       currParcial.practiceEvals.forEach((e, i) => {
-        content += `<li><input type="text" data-cat="practice" data-index="${i}" value="${e.name}"> <button class="removeEval btn" data-cat="practice" data-index="${i}">Quitar</button></li>`;
+        content += `<li data-cat="practice" data-index="${i}">
+          <input type="text" class="evalInput" value="${e.name}">
+          <button class="removeEval btn">Quitar</button>
+        </li>`;
       });
       content += `</ul>
           <button id="addPracticeItem" class="btn">Agregar Práctica</button>
@@ -881,41 +919,69 @@
         <br>
         <button id="saveRubric" class="btn">Guardar Rúbrica</button>`;
       showModal(content);
-      Array.from(document.querySelectorAll(".removeEval")).forEach(btn => {
-        btn.onclick = (e) => {
-          const cat = e.target.getAttribute("data-cat");
-          const index = parseInt(e.target.getAttribute("data-index"));
-          if(cat === "exam") { currParcial.examEvals.splice(index, 1); }
-          else if(cat === "task") { currParcial.taskEvals.splice(index, 1); }
-          else if(cat === "practice") { currParcial.practiceEvals.splice(index, 1); }
+
+      // Adjuntar el event listener para quitar evaluaciones sin cerrar el modal
+      document.querySelectorAll("#rubricEdits .removeEval").forEach(btn => {
+        btn.addEventListener("click", (e) => {
+          const li = e.target.closest("li");
+          const cat = li.getAttribute("data-cat");
+          const index = parseInt(li.getAttribute("data-index"));
+          if(cat === "exam") {
+            currParcial.examEvals.splice(index, 1);
+          } else if(cat === "task") {
+            currParcial.taskEvals.splice(index, 1);
+          } else if(cat === "practice") {
+            currParcial.practiceEvals.splice(index, 1);
+          }
+          // Reabrir el modal con el contenido actualizado
+          openRubricModal();
           buildDynamicHeader();
           buildGradeTable();
-          modal.style.display = "none";
-          setTimeout(() => { document.getElementById("editRubric").onclick(); }, 200);
-          saveData();
-        };
+          debounceSaveData();
+        });
       });
+
+      // Adjuntar listeners para agregar evaluaciones
       document.getElementById("addExamItem").onclick = () => {
-        const newItem = prompt("Nuevo examen:");
-        if(newItem) { currParcial.examEvals.push({ name: newItem }); buildDynamicHeader(); buildGradeTable(); saveData(); }
+        let newItem = prompt("Nuevo examen:");
+        if(newItem && newItem.trim().toLowerCase() !== "acciones") {
+          currParcial.examEvals.push({ name: newItem.trim() });
+          openRubricModal();
+          buildDynamicHeader();
+          buildGradeTable();
+          debounceSaveData();
+        } else if(newItem) {
+          alert('El nombre "Acciones" no está permitido.');
+        }
       };
       document.getElementById("addTaskItem").onclick = () => {
-        const newItem = prompt("Nueva tarea:");
-        if(newItem) { currParcial.taskEvals.push({ name: newItem }); buildDynamicHeader(); buildGradeTable(); saveData(); }
+        let newItem = prompt("Nueva tarea:");
+        if(newItem && newItem.trim().toLowerCase() !== "acciones") {
+          currParcial.taskEvals.push({ name: newItem.trim() });
+          openRubricModal();
+          buildDynamicHeader();
+          buildGradeTable();
+          debounceSaveData();
+        } else if(newItem) {
+          alert('El nombre "Acciones" no está permitido.');
+        }
       };
       document.getElementById("addPracticeItem").onclick = () => {
-        const newItem = prompt("Nueva práctica:");
-        if(newItem) {
-          currParcial.practiceEvals.push({ name: newItem });
+        let newItem = prompt("Nueva práctica:");
+        if(newItem && newItem.trim().toLowerCase() !== "acciones") {
+          currParcial.practiceEvals.push({ name: newItem.trim() });
           teams[currentSubject].forEach(team => {
             if (!team.partials) team.partials = {};
             if (!team.partials[currentPartial]) { team.partials[currentPartial] = []; }
             team.partials[currentPartial].push(0);
           });
+          openRubricModal();
           buildDynamicHeader();
           buildTeamTable();
           buildGradeTable();
-          saveData();
+          debounceSaveData();
+        } else if(newItem) {
+          alert('El nombre "Acciones" no está permitido.');
         }
       };
       document.getElementById("saveRubric").onclick = () => {
@@ -927,32 +993,39 @@
         updateRubricDisplay();
         buildDynamicHeader();
         buildGradeTable();
-        saveData();
+        debounceSaveData();
       };
-    };
+    }
+
+    // Abrir el modal de Editar Rúbrica al hacer clic en el botón correspondiente
+    document.getElementById("editRubric").onclick = openRubricModal;
 
     document.getElementById("addExamEval").onclick = () => {
       let newExam = prompt("Ingrese nombre del nuevo Examen:");
-      if(newExam) {
-        subjectsConfig[currentSubject].parcials[currentPartial].examEvals.push({ name: newExam });
+      if(newExam && newExam.trim().toLowerCase() !== "acciones") {
+        subjectsConfig[currentSubject].parcials[currentPartial].examEvals.push({ name: newExam.trim() });
         buildDynamicHeader();
         buildGradeTable();
-        saveData();
+        debounceSaveData();
+      } else if(newExam) {
+        alert('El nombre "Acciones" no está permitido.');
       }
     };
     document.getElementById("addTaskEval").onclick = () => {
       let newTask = prompt("Ingrese nombre de la nueva Tarea:");
-      if(newTask) {
-        subjectsConfig[currentSubject].parcials[currentPartial].taskEvals.push({ name: newTask });
+      if(newTask && newTask.trim().toLowerCase() !== "acciones") {
+        subjectsConfig[currentSubject].parcials[currentPartial].taskEvals.push({ name: newTask.trim() });
         buildDynamicHeader();
         buildGradeTable();
-        saveData();
+        debounceSaveData();
+      } else if(newTask) {
+        alert('El nombre "Acciones" no está permitido.');
       }
     };
     document.getElementById("addPracticeEval").onclick = () => {
       let newPractice = prompt("Ingrese nombre de la nueva Práctica:");
-      if(newPractice) {
-        subjectsConfig[currentSubject].parcials[currentPartial].practiceEvals.push({ name: newPractice });
+      if(newPractice && newPractice.trim().toLowerCase() !== "acciones") {
+        subjectsConfig[currentSubject].parcials[currentPartial].practiceEvals.push({ name: newPractice.trim() });
         teams[currentSubject].forEach(team => {
           if(!team.partials) team.partials = {};
           if(!team.partials[currentPartial]) { team.partials[currentPartial] = []; }
@@ -961,7 +1034,9 @@
         buildDynamicHeader();
         buildTeamTable();
         buildGradeTable();
-        saveData();
+        debounceSaveData();
+      } else if(newPractice) {
+        alert('El nombre "Acciones" no está permitido.');
       }
     };
     document.getElementById("addStudent").onclick = () => {
@@ -983,7 +1058,7 @@
          students.push({ listNumber: listNum, name, team, subject: currentSubject, partials: {} });
          modal.style.display = "none";
          buildGradeTable();
-         saveData();
+         debounceSaveData();
       };
     };
     document.getElementById("addTeam").onclick = () => {
@@ -1003,7 +1078,7 @@
          modal.style.display = "none";
          buildTeamTable();
          buildGradeTable();
-         saveData();
+         debounceSaveData();
       };
     };
     document.getElementById("editSubject").onclick = () => {
@@ -1026,7 +1101,7 @@
         modal.style.display = "none";
         buildSubjectSelect();
         buildDynamicHeader();
-        saveData();
+        debounceSaveData();
       };
     };
     document.getElementById("addSubject").onclick = () => {
@@ -1063,7 +1138,7 @@
         teams[id] = [];
         buildSubjectSelect();
         modal.style.display = "none";
-        saveData();
+        debounceSaveData();
       };
     };
     document.getElementById("shareVersion").onclick = () => {
@@ -1182,8 +1257,7 @@
     /***********************
      * 6. Carga Inicial y Realtime (Firestore)
      ***********************/
-    // Se usan listeners de Firestore para actualizar la interfaz en tiempo real
-    attachRealtimeListeners();
+    // Listeners de Firestore para actualizar la UI en tiempo real
     function attachRealtimeListeners() {
       db.collection("subjects").onSnapshot(snapshot => {
         snapshot.forEach(doc => {
@@ -1211,6 +1285,7 @@
         buildTeamTable();
       });
     }
+    attachRealtimeListeners();
     buildSubjectSelect();
     updateRubricDisplay();
     updatePartialDisplay();
@@ -1233,7 +1308,7 @@
           if (user) {
             loginModal.style.display = "none";
             document.getElementById("appContainer").style.display = "block";
-            // Si el usuario es el propietario, se muestra el botón para Resetear DB
+            // Solo el propietario puede editar (y ver el botón Reset DB)
             if(user.email === "fco.lopezvelazquez@gmail.com") {
               document.getElementById("resetDBContainer").style.display = "block";
             } else {
@@ -1259,28 +1334,26 @@
     });
 
     /***********************
-     * 8. Botón para Resetear la Base de Datos en Firestore (sólo para el propietario)
+     * 8. Botón para Resetear la Base de Datos en Firestore (solo para el propietario)
      ***********************/
     document.getElementById("resetDBBtn").onclick = () => {
+      const code = prompt("Para confirmar el reset, ingresa el código de seguridad:");
+      if(code !== "RESET2025") {
+        alert("Código incorrecto. Operación cancelada.");
+        return;
+      }
       if(confirm("¿Estás seguro de borrar TODOS los datos de Firestore? Esta acción no se podrá deshacer.")) {
-        // Borrar documentos en "subjects"
-        db.collection("subjects").get().then(snapshot => {
-          snapshot.forEach(doc => {
-            doc.ref.delete();
-          });
-        });
-        // Borrar documentos en "students"
-        db.collection("students").get().then(snapshot => {
-          snapshot.forEach(doc => {
-            doc.ref.delete();
-          });
-        });
-        // Borrar documentos en "teams"
-        db.collection("teams").get().then(snapshot => {
-          snapshot.forEach(doc => {
-            doc.ref.delete();
-          });
-        }).then(() => {
+        Promise.all([
+          db.collection("subjects").get().then(snapshot => {
+            snapshot.forEach(doc => { doc.ref.delete(); });
+          }),
+          db.collection("students").get().then(snapshot => {
+            snapshot.forEach(doc => { doc.ref.delete(); });
+          }),
+          db.collection("teams").get().then(snapshot => {
+            snapshot.forEach(doc => { doc.ref.delete(); });
+          })
+        ]).then(() => {
           alert("Base de datos borrada. Recarga la página para reiniciar los datos.");
           window.location.reload();
         }).catch(err => {
