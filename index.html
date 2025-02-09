@@ -290,42 +290,55 @@
     /***********************
      * 1. Variables Globales: Datos
      ***********************/
+    // Ahora, cada materia tiene un objeto "parcials" para cada parcial.
     const subjectsConfig = {
       circuitos: {
         name: "Circuitos Eléctricos",
         semester: "ene-jul",
         year: 2023,
         rubric: { exam: 45, task: 25, practice: 30, participation: 5 },
-        examEvals: [],
-        taskEvals: [],
-        practiceEvals: []
+        parcials: {
+          "1": { examEvals: [], taskEvals: [], practiceEvals: [] },
+          "2": { examEvals: [], taskEvals: [], practiceEvals: [] },
+          "3": { examEvals: [], taskEvals: [], practiceEvals: [] },
+          "4": { examEvals: [], taskEvals: [], practiceEvals: [] }
+        }
       },
       tt6: {
         name: "TT6",
         semester: "ene-jul",
         year: 2023,
         rubric: { exam: 45, task: 25, practice: 30, participation: 5 },
-        examEvals: [],
-        taskEvals: [],
-        practiceEvals: []
+        parcials: {
+          "1": { examEvals: [], taskEvals: [], practiceEvals: [] },
+          "2": { examEvals: [], taskEvals: [], practiceEvals: [] },
+          "3": { examEvals: [], taskEvals: [], practiceEvals: [] },
+          "4": { examEvals: [], taskEvals: [], practiceEvals: [] }
+        }
       },
       instalaciones: {
         name: "Instalaciones y Control Eléctrico",
         semester: "ago-dic",
         year: 2023,
         rubric: { exam: 45, task: 25, practice: 30, participation: 5 },
-        examEvals: [],
-        taskEvals: [],
-        practiceEvals: []
+        parcials: {
+          "1": { examEvals: [], taskEvals: [], practiceEvals: [] },
+          "2": { examEvals: [], taskEvals: [], practiceEvals: [] },
+          "3": { examEvals: [], taskEvals: [], practiceEvals: [] },
+          "4": { examEvals: [], taskEvals: [], practiceEvals: [] }
+        }
       },
       fisica4: {
         name: "Física 4",
         semester: "ago-dic",
         year: 2023,
         rubric: { exam: 45, task: 25, practice: 30, participation: 5 },
-        examEvals: [],
-        taskEvals: [],
-        practiceEvals: []
+        parcials: {
+          "1": { examEvals: [], taskEvals: [], practiceEvals: [] },
+          "2": { examEvals: [], taskEvals: [], practiceEvals: [] },
+          "3": { examEvals: [], taskEvals: [], practiceEvals: [] },
+          "4": { examEvals: [], taskEvals: [], practiceEvals: [] }
+        }
       }
     };
 
@@ -357,7 +370,7 @@
     /***********************
      * 2. Firebase Configuración y Firestore
      ***********************/
-    // Reemplaza estos valores con la configuración de tu proyecto Firebase
+    // Reemplaza estos valores con la configuración de tu proyecto Firebase.
     const firebaseConfig = {
       apiKey: "AIzaSyDsoLZHDpR8EEyvs5tJ7gF1tE7eKS-ZGcU",
       authDomain: "controlescolar-a184f.firebaseapp.com",
@@ -379,11 +392,11 @@
     let urlPartial = parseInt(urlParams.get("partial"));
     let currentSubject = (urlSubject && subjectsConfig[urlSubject]) ? urlSubject : "circuitos";
     let currentPartial = (!isNaN(urlPartial) && urlPartial > 0) ? urlPartial : 1;
+    let isOwner = false; // Se determinará tras autenticarse
 
     /***********************
      * 4. Persistencia en Firestore
      ***********************/
-    // Funciones para guardar los datos en Firestore
     function saveSubjects() {
       for (const key in subjectsConfig) {
         db.collection("subjects").doc(key).set(subjectsConfig[key])
@@ -411,7 +424,7 @@
       saveTeams();
     }
 
-    // Escucha en tiempo real para actualizar la interfaz (útil para modo solo lectura y sincronización en varios clientes)
+    // Escucha en tiempo real para actualizar la interfaz
     function attachRealtimeListeners() {
       db.collection("subjects").onSnapshot(snapshot => {
         snapshot.forEach(doc => {
@@ -429,7 +442,6 @@
         buildGradeTable();
       });
       db.collection("teams").onSnapshot(snapshot => {
-        // Reiniciamos los equipos para cada materia
         for (const subject in teams) { teams[subject] = []; }
         snapshot.forEach(doc => {
           const data = doc.data();
@@ -466,19 +478,11 @@
     function updatePartialDisplay() {
       document.getElementById("currentPartialDisplay").textContent = currentPartial;
     }
-    function buildGroupHeader() {
-      const cfg = subjectsConfig[currentSubject];
-      const examColspan = cfg.examEvals.length + 1;
-      const taskColspan = cfg.taskEvals.length + 1;
-      const practiceColspan = cfg.practiceEvals.length + 1;
-      document.querySelector(".exam-group").setAttribute("colspan", examColspan);
-      document.querySelector(".task-group").setAttribute("colspan", taskColspan);
-      document.querySelector(".practice-group").setAttribute("colspan", practiceColspan);
-    }
+    // Usamos las evaluaciones del parcial actual
     function buildDynamicHeader() {
       const headerRow = document.getElementById("dynamicHeader");
       headerRow.innerHTML = "";
-      const cfg = subjectsConfig[currentSubject];
+      const cfg = subjectsConfig[currentSubject].parcials[currentPartial];
       cfg.examEvals.forEach(evalObj => {
         const th = document.createElement("th");
         th.textContent = evalObj.name;
@@ -505,12 +509,21 @@
       headerRow.appendChild(thPracticeAvg);
       buildGroupHeader();
     }
+    function buildGroupHeader() {
+      const cfg = subjectsConfig[currentSubject].parcials[currentPartial];
+      const examColspan = cfg.examEvals.length + 1;
+      const taskColspan = cfg.taskEvals.length + 1;
+      const practiceColspan = cfg.practiceEvals.length + 1;
+      document.querySelector(".exam-group").setAttribute("colspan", examColspan);
+      document.querySelector(".task-group").setAttribute("colspan", taskColspan);
+      document.querySelector(".practice-group").setAttribute("colspan", practiceColspan);
+    }
     function buildTeamTable() {
       const teamTableHead = document.getElementById("teamHeader");
       const teamTableBody = document.querySelector("#teamTable tbody");
       teamTableHead.innerHTML = "";
       teamTableBody.innerHTML = "";
-      const cfg = subjectsConfig[currentSubject];
+      const cfg = subjectsConfig[currentSubject].parcials[currentPartial];
       let headerHTML = "<tr><th>Equipo</th><th>Encargado</th>";
       cfg.practiceEvals.forEach(evalObj => { headerHTML += `<th>${evalObj.name}</th>`; });
       headerHTML += "<th>Acciones</th></tr>";
@@ -541,7 +554,7 @@
           if(team) {
             if (!team.partials) team.partials = {};
             if (!team.partials[currentPartial]) {
-              team.partials[currentPartial] = Array(subjectsConfig[currentSubject].practiceEvals.length).fill(0);
+              team.partials[currentPartial] = Array(subjectsConfig[currentSubject].parcials[currentPartial].practiceEvals.length).fill(0);
             }
             team.partials[currentPartial][idx] = newVal;
             // Actualizar en la tabla de alumnos
@@ -596,7 +609,7 @@
     function buildGradeTable() {
       const tbody = document.getElementById("gradeTable").querySelector("tbody");
       tbody.innerHTML = "";
-      const cfg = subjectsConfig[currentSubject];
+      const cfg = subjectsConfig[currentSubject].parcials[currentPartial];
       const filteredStudents = students.filter(s => s.subject === currentSubject);
       filteredStudents.forEach(student => {
         if (!student.partials[currentPartial]) {
@@ -674,6 +687,7 @@
       if(readOnlyMode) { setReadOnly(); }
       saveData();
     }
+
     function recalculateRow(row) {
       const rubric = subjectsConfig[currentSubject].rubric;
       let examSum = 0, examCount = 0;
@@ -706,9 +720,11 @@
       row.querySelector(".total-partial").textContent = totalPartial.toFixed(2);
       if(student) { student.partials[currentPartial].total = totalPartial; }
     }
+
     function recalculateAll() {
       document.querySelectorAll("#gradeTable tbody tr").forEach(row => recalculateRow(row));
     }
+
     function attachTableListeners() {
       document.querySelectorAll("#gradeTable tbody input").forEach(input => {
         input.addEventListener("input", () => {
@@ -765,6 +781,7 @@
         });
       });
     }
+
     function saveRowData(row) {
       const listNum = row.getAttribute("data-list");
       const student = students.find(s => s.listNumber == listNum);
@@ -782,6 +799,7 @@
       partialData.absences = parseFloat(row.querySelector(".absences").value) || 0;
       saveData();
     }
+
     function propagateTeamGradeForRow(row) {
       const listNum = row.getAttribute("data-list");
       const student = students.find(s => s.listNumber == listNum);
@@ -803,7 +821,6 @@
       document.getElementById("modalBody").innerHTML = contentHTML;
       modal.style.display = "block";
     }
-    // Cerrar modal al hacer clic en "×" o fuera del contenido
     document.querySelectorAll(".modal .close").forEach(closeBtn => {
       closeBtn.onclick = function() {
         this.parentElement.parentElement.style.display = "none";
@@ -844,33 +861,34 @@
         };
       }
     }
+    // Edición de la rúbrica para el parcial actual
     document.getElementById("editRubric").onclick = () => {
-      const cfg = subjectsConfig[currentSubject];
-      let content = `<h3>Editar Rúbrica</h3>
+      const cfg = subjectsConfig[currentSubject].parcials[currentPartial];
+      let content = `<h3>Editar Rúbrica (Parcial ${currentPartial})</h3>
         <h4>Porcentajes</h4>
-        <label>Exámenes (%): <input type="number" id="rubricExam" value="${cfg.rubric.exam}" min="0" max="100"></label><br>
-        <label>Tareas (%): <input type="number" id="rubricTask" value="${cfg.rubric.task}" min="0" max="100"></label><br>
-        <label>Prácticas (%): <input type="number" id="rubricPractice" value="${cfg.rubric.practice}" min="0" max="100"></label><br>
-        <label>Participación (%): <input type="number" id="rubricPart" value="${cfg.rubric.participation}" min="0" max="100"></label><br>
+        <label>Exámenes (%): <input type="number" id="rubricExam" value="${subjectsConfig[currentSubject].rubric.exam}" min="0" max="100"></label><br>
+        <label>Tareas (%): <input type="number" id="rubricTask" value="${subjectsConfig[currentSubject].rubric.task}" min="0" max="100"></label><br>
+        <label>Prácticas (%): <input type="number" id="rubricPractice" value="${subjectsConfig[currentSubject].rubric.practice}" min="0" max="100"></label><br>
+        <label>Participación (%): <input type="number" id="rubricPart" value="${subjectsConfig[currentSubject].rubric.participation}" min="0" max="100"></label><br>
         <h4>Evaluaciones</h4>
         <div id="rubricEdits">
           <h5>Exámenes</h5>
           <ul id="examList">`;
-      cfg.examEvals.forEach((e, i) => {
+      subjectsConfig[currentSubject].parcials[currentPartial].examEvals.forEach((e, i) => {
         content += `<li><input type="text" data-cat="exam" data-index="${i}" value="${e.name}"> <button class="removeEval btn" data-cat="exam" data-index="${i}">Quitar</button></li>`;
       });
       content += `</ul>
           <button id="addExamItem" class="btn">Agregar Examen</button>
           <h5>Tareas</h5>
           <ul id="taskList">`;
-      cfg.taskEvals.forEach((e, i) => {
+      subjectsConfig[currentSubject].parcials[currentPartial].taskEvals.forEach((e, i) => {
         content += `<li><input type="text" data-cat="task" data-index="${i}" value="${e.name}"> <button class="removeEval btn" data-cat="task" data-index="${i}">Quitar</button></li>`;
       });
       content += `</ul>
           <button id="addTaskItem" class="btn">Agregar Tarea</button>
           <h5>Prácticas</h5>
           <ul id="practiceList">`;
-      cfg.practiceEvals.forEach((e, i) => {
+      subjectsConfig[currentSubject].parcials[currentPartial].practiceEvals.forEach((e, i) => {
         content += `<li><input type="text" data-cat="practice" data-index="${i}" value="${e.name}"> <button class="removeEval btn" data-cat="practice" data-index="${i}">Quitar</button></li>`;
       });
       content += `</ul>
@@ -883,9 +901,9 @@
         btn.onclick = (e) => {
           const cat = e.target.getAttribute("data-cat");
           const index = parseInt(e.target.getAttribute("data-index"));
-          if(cat === "exam") { cfg.examEvals.splice(index, 1); }
-          else if(cat === "task") { cfg.taskEvals.splice(index, 1); }
-          else if(cat === "practice") { cfg.practiceEvals.splice(index, 1); }
+          if(cat === "exam") { subjectsConfig[currentSubject].parcials[currentPartial].examEvals.splice(index, 1); }
+          else if(cat === "task") { subjectsConfig[currentSubject].parcials[currentPartial].taskEvals.splice(index, 1); }
+          else if(cat === "practice") { subjectsConfig[currentSubject].parcials[currentPartial].practiceEvals.splice(index, 1); }
           buildDynamicHeader();
           buildGradeTable();
           modal.style.display = "none";
@@ -895,16 +913,16 @@
       });
       document.getElementById("addExamItem").onclick = () => {
         const newItem = prompt("Nuevo examen:");
-        if(newItem) { cfg.examEvals.push({ name: newItem }); buildDynamicHeader(); buildGradeTable(); saveData(); }
+        if(newItem) { subjectsConfig[currentSubject].parcials[currentPartial].examEvals.push({ name: newItem }); buildDynamicHeader(); buildGradeTable(); saveData(); }
       };
       document.getElementById("addTaskItem").onclick = () => {
         const newItem = prompt("Nueva tarea:");
-        if(newItem) { cfg.taskEvals.push({ name: newItem }); buildDynamicHeader(); buildGradeTable(); saveData(); }
+        if(newItem) { subjectsConfig[currentSubject].parcials[currentPartial].taskEvals.push({ name: newItem }); buildDynamicHeader(); buildGradeTable(); saveData(); }
       };
       document.getElementById("addPracticeItem").onclick = () => {
         const newItem = prompt("Nueva práctica:");
         if(newItem) {
-          cfg.practiceEvals.push({ name: newItem });
+          subjectsConfig[currentSubject].parcials[currentPartial].practiceEvals.push({ name: newItem });
           teams[currentSubject].forEach(team => {
             if (!team.partials) team.partials = {};
             if (!team.partials[currentPartial]) { team.partials[currentPartial] = []; }
@@ -917,10 +935,11 @@
         }
       };
       document.getElementById("saveRubric").onclick = () => {
-        cfg.rubric.exam = parseFloat(document.getElementById("rubricExam").value) || 0;
-        cfg.rubric.task = parseFloat(document.getElementById("rubricTask").value) || 0;
-        cfg.rubric.practice = parseFloat(document.getElementById("rubricPractice").value) || 0;
-        cfg.rubric.participation = parseFloat(document.getElementById("rubricPart").value) || 0;
+        // La rúbrica se mantiene global para la materia
+        subjectsConfig[currentSubject].rubric.exam = parseFloat(document.getElementById("rubricExam").value) || 0;
+        subjectsConfig[currentSubject].rubric.task = parseFloat(document.getElementById("rubricTask").value) || 0;
+        subjectsConfig[currentSubject].rubric.practice = parseFloat(document.getElementById("rubricPractice").value) || 0;
+        subjectsConfig[currentSubject].rubric.participation = parseFloat(document.getElementById("rubricPart").value) || 0;
         modal.style.display = "none";
         updateRubricDisplay();
         buildDynamicHeader();
@@ -931,7 +950,7 @@
     document.getElementById("addExamEval").onclick = () => {
       let newExam = prompt("Ingrese nombre del nuevo Examen:");
       if(newExam) {
-        subjectsConfig[currentSubject].examEvals.push({ name: newExam });
+        subjectsConfig[currentSubject].parcials[currentPartial].examEvals.push({ name: newExam });
         buildDynamicHeader();
         buildGradeTable();
         saveData();
@@ -940,7 +959,7 @@
     document.getElementById("addTaskEval").onclick = () => {
       let newTask = prompt("Ingrese nombre de la nueva Tarea:");
       if(newTask) {
-        subjectsConfig[currentSubject].taskEvals.push({ name: newTask });
+        subjectsConfig[currentSubject].parcials[currentPartial].taskEvals.push({ name: newTask });
         buildDynamicHeader();
         buildGradeTable();
         saveData();
@@ -949,7 +968,7 @@
     document.getElementById("addPracticeEval").onclick = () => {
       let newPractice = prompt("Ingrese nombre de la nueva Práctica:");
       if(newPractice) {
-        subjectsConfig[currentSubject].practiceEvals.push({ name: newPractice });
+        subjectsConfig[currentSubject].parcials[currentPartial].practiceEvals.push({ name: newPractice });
         teams[currentSubject].forEach(team => {
           if(!team.partials) team.partials = {};
           if(!team.partials[currentPartial]) { team.partials[currentPartial] = []; }
@@ -1050,9 +1069,12 @@
           semester: semester,
           year: year,
           rubric: { exam: 45, task: 25, practice: 30, participation: 5 },
-          examEvals: [],
-          taskEvals: [],
-          practiceEvals: []
+          parcials: {
+             "1": { examEvals: [], taskEvals: [], practiceEvals: [] },
+             "2": { examEvals: [], taskEvals: [], practiceEvals: [] },
+             "3": { examEvals: [], taskEvals: [], practiceEvals: [] },
+             "4": { examEvals: [], taskEvals: [], practiceEvals: [] }
+          }
         };
         teams[id] = [];
         buildSubjectSelect();
@@ -1095,7 +1117,7 @@
       const headerCells = [
         "N° LS", "Alumno", "Equipo"
       ];
-      const cfg = subjectsConfig[currentSubject];
+      const cfg = subjectsConfig[currentSubject].parcials[currentPartial];
       cfg.examEvals.forEach(e => headerCells.push(e.name));
       headerCells.push("P-EX");
       cfg.taskEvals.forEach(e => headerCells.push(e.name));
@@ -1165,7 +1187,7 @@
       if (!readOnlyMode) { url.searchParams.delete("readonly"); }
       window.history.pushState({}, '', url.toString());
     }
-    // La función setReadOnly ahora se asegura de agregar el aviso solo una vez
+    // Se asegura de que el aviso de modo solo lectura se inserte solo una vez
     function setReadOnly() {
       document.querySelectorAll("input, select, button").forEach(el => { el.disabled = true; });
       if (!document.getElementById("readOnlyNotice")) {
@@ -1180,7 +1202,7 @@
     }
 
     /***********************
-     * 6. Carga Inicial y Escucha Realtime (Firestore)
+     * 6. Carga Inicial y Realtime (Firestore)
      ***********************/
     attachRealtimeListeners();
     function attachRealtimeListeners() {
@@ -1210,7 +1232,6 @@
         buildTeamTable();
       });
     }
-    // Llamamos a funciones iniciales para construir la UI
     buildSubjectSelect();
     updateRubricDisplay();
     updatePartialDisplay();
@@ -1231,6 +1252,13 @@
         loginModal.style.display = "block";
         auth.onAuthStateChanged((user) => {
           if (user) {
+            // Solo el usuario "admin@ejemplo.com" podrá editar
+            if(user.email === "admin@ejemplo.com") {
+              isOwner = true;
+            } else {
+              isOwner = false;
+              setReadOnly();
+            }
             loginModal.style.display = "none";
             document.getElementById("appContainer").style.display = "block";
           } else {
