@@ -177,7 +177,7 @@
       .btn, .cred-btn { padding: 6px 10px; font-size: 0.8em; }
     }
   </style>
-  <!-- Incluir Firebase y dependencias (versión compat para usar la API "namespaced") -->
+  <!-- Incluir Firebase y dependencias (versión compat) -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
@@ -230,7 +230,7 @@
           Rúbrica: Exámenes: <span id="weightExam">45%</span>, Tareas: <span id="weightTask">25%</span>, Prácticas: <span id="weightPractice">30%</span>, Participación: <span id="weightPart">5%</span>
           <button id="editRubric" class="btn">Editar Rúbrica</button>
         </div>
-        <!-- Botón para cerrar sesión, visible solo para el propietario -->
+        <!-- Botón para cerrar sesión (visible solo para el propietario) -->
         <div id="signOutContainer" style="display: none;">
           <button id="signOutBtn">Cerrar sesión</button>
         </div>
@@ -303,7 +303,7 @@
     /***********************
      * 1. Variables Globales: Datos
      ***********************/
-    // Cada materia tiene sus propios parciales (1, 2, 3, 4) con evaluaciones independientes.
+    // Cada materia tiene sus propios parciales con evaluaciones independientes.
     const subjectsConfig = {
       circuitos: {
         name: "Circuitos Eléctricos",
@@ -431,6 +431,14 @@
         });
       }
     }
+    // Se utiliza debounce para evitar demasiadas escrituras seguidas
+    let saveTimeout;
+    function debounceSaveData() {
+      clearTimeout(saveTimeout);
+      saveTimeout = setTimeout(() => {
+        saveData();
+      }, 500); // espera 500ms antes de guardar
+    }
     function saveData() {
       saveSubjects();
       saveStudents();
@@ -491,7 +499,7 @@
     function updatePartialDisplay() {
       document.getElementById("currentPartialDisplay").textContent = currentPartial;
     }
-    // Usamos las evaluaciones del parcial actual (cada parcial tiene sus propias evaluaciones)
+    // Cada parcial tiene sus propias evaluaciones
     function buildDynamicHeader() {
       const headerRow = document.getElementById("dynamicHeader");
       headerRow.innerHTML = "";
@@ -579,7 +587,7 @@
                 if(practiceInputs[idx]) { practiceInputs[idx].value = newVal; recalculateRow(row); }
               }
             });
-            saveData();
+            debounceSaveData();
           }
         });
       });
@@ -601,7 +609,7 @@
               modal.style.display = "none";
               buildTeamTable();
               buildGradeTable();
-              saveData();
+              debounceSaveData();
             };
           }
         };
@@ -614,7 +622,7 @@
             teams[currentSubject] = teams[currentSubject].filter(t => t.id !== teamId);
             buildTeamTable();
             buildGradeTable();
-            saveData();
+            debounceSaveData();
           }
         };
       });
@@ -698,7 +706,7 @@
       attachTableListeners();
       recalculateAll();
       if(readOnlyMode) { setReadOnly(); }
-      saveData();
+      debounceSaveData();
     }
     function recalculateRow(row) {
       const rubric = subjectsConfig[currentSubject].rubric;
@@ -741,7 +749,7 @@
           const row = input.closest("tr");
           saveRowData(row);
           recalculateRow(row);
-          saveData();
+          debounceSaveData();
         });
       });
       document.querySelectorAll(".student-team").forEach(select => {
@@ -751,7 +759,7 @@
           const student = students.find(s => s.listNumber == listNum);
           if(student) { student.team = e.target.value; }
           propagateTeamGradeForRow(row);
-          saveData();
+          debounceSaveData();
         });
       });
       document.querySelectorAll(".student-name").forEach(cell => {
@@ -760,7 +768,7 @@
           const listNum = row.getAttribute("data-list");
           const student = students.find(s => s.listNumber == listNum);
           if(student) { student.name = e.target.textContent.trim(); }
-          saveData();
+          debounceSaveData();
         });
       });
       document.querySelectorAll(".deduct-btn").forEach(btn => {
@@ -786,7 +794,7 @@
           if(confirm("¿Estás seguro de eliminar este alumno?")) {
             students.splice(students.findIndex(s => s.listNumber === listNum), 1);
             buildGradeTable();
-            saveData();
+            debounceSaveData();
           }
         });
       });
@@ -806,7 +814,7 @@
       partialData.extraParcial = parseFloat(row.querySelector(".extra-parcial").value) || 0;
       partialData.participation = parseFloat(row.querySelector(".participation").value) || 0;
       partialData.absences = parseFloat(row.querySelector(".absences").value) || 0;
-      saveData();
+      debounceSaveData();
     }
     function propagateTeamGradeForRow(row) {
       const listNum = row.getAttribute("data-list");
@@ -818,7 +826,7 @@
         row.querySelectorAll(".practice-input").forEach((input, idx) => { input.value = teamObj.partials[currentPartial][idx] || 0; });
       }
       recalculateRow(row);
-      saveData();
+      debounceSaveData();
     }
 
     /***********************
@@ -865,7 +873,7 @@
           student.partials[currentPartial].deductions.push({ amount, reason, date });
           modal.style.display = "none";
           buildGradeTable();
-          saveData();
+          debounceSaveData();
         };
       }
     }
@@ -916,16 +924,16 @@
           buildGradeTable();
           modal.style.display = "none";
           setTimeout(() => { document.getElementById("editRubric").onclick(); }, 200);
-          saveData();
+          debounceSaveData();
         };
       });
       document.getElementById("addExamItem").onclick = () => {
         const newItem = prompt("Nuevo examen:");
-        if(newItem) { subjectsConfig[currentSubject].parcials[currentPartial].examEvals.push({ name: newItem }); buildDynamicHeader(); buildGradeTable(); saveData(); }
+        if(newItem) { subjectsConfig[currentSubject].parcials[currentPartial].examEvals.push({ name: newItem }); buildDynamicHeader(); buildGradeTable(); debounceSaveData(); }
       };
       document.getElementById("addTaskItem").onclick = () => {
         const newItem = prompt("Nueva tarea:");
-        if(newItem) { subjectsConfig[currentSubject].parcials[currentPartial].taskEvals.push({ name: newItem }); buildDynamicHeader(); buildGradeTable(); saveData(); }
+        if(newItem) { subjectsConfig[currentSubject].parcials[currentPartial].taskEvals.push({ name: newItem }); buildDynamicHeader(); buildGradeTable(); debounceSaveData(); }
       };
       document.getElementById("addPracticeItem").onclick = () => {
         const newItem = prompt("Nueva práctica:");
@@ -939,7 +947,7 @@
           buildDynamicHeader();
           buildTeamTable();
           buildGradeTable();
-          saveData();
+          debounceSaveData();
         }
       };
       document.getElementById("saveRubric").onclick = () => {
@@ -952,7 +960,7 @@
         updateRubricDisplay();
         buildDynamicHeader();
         buildGradeTable();
-        saveData();
+        debounceSaveData();
       };
     };
     document.getElementById("addExamEval").onclick = () => {
@@ -961,7 +969,7 @@
         subjectsConfig[currentSubject].parcials[currentPartial].examEvals.push({ name: newExam });
         buildDynamicHeader();
         buildGradeTable();
-        saveData();
+        debounceSaveData();
       }
     };
     document.getElementById("addTaskEval").onclick = () => {
@@ -970,7 +978,7 @@
         subjectsConfig[currentSubject].parcials[currentPartial].taskEvals.push({ name: newTask });
         buildDynamicHeader();
         buildGradeTable();
-        saveData();
+        debounceSaveData();
       }
     };
     document.getElementById("addPracticeEval").onclick = () => {
@@ -985,7 +993,7 @@
         buildDynamicHeader();
         buildTeamTable();
         buildGradeTable();
-        saveData();
+        debounceSaveData();
       }
     };
     document.getElementById("addStudent").onclick = () => {
@@ -1007,7 +1015,7 @@
          students.push({ listNumber: listNum, name, team, subject: currentSubject, partials: {} });
          modal.style.display = "none";
          buildGradeTable();
-         saveData();
+         debounceSaveData();
       };
     };
     document.getElementById("addTeam").onclick = () => {
@@ -1027,7 +1035,7 @@
          modal.style.display = "none";
          buildTeamTable();
          buildGradeTable();
-         saveData();
+         debounceSaveData();
       };
     };
     document.getElementById("editSubject").onclick = () => {
@@ -1050,7 +1058,7 @@
         modal.style.display = "none";
         buildSubjectSelect();
         buildDynamicHeader();
-        saveData();
+        debounceSaveData();
       };
     };
     document.getElementById("addSubject").onclick = () => {
@@ -1087,7 +1095,7 @@
         teams[id] = [];
         buildSubjectSelect();
         modal.style.display = "none";
-        saveData();
+        debounceSaveData();
       };
     };
     document.getElementById("shareVersion").onclick = () => {
@@ -1195,6 +1203,7 @@
       if (!readOnlyMode) { url.searchParams.delete("readonly"); }
       window.history.pushState({}, '', url.toString());
     }
+    // Se asegura de que el aviso de modo solo lectura se inserte solo una vez
     function setReadOnly() {
       document.querySelectorAll("input, select, button").forEach(el => { el.disabled = true; });
       if (!document.getElementById("readOnlyNotice")) {
@@ -1206,6 +1215,14 @@
         notice.style.color = "#900";
         document.getElementById("appContainer").insertBefore(notice, document.getElementById("appContainer").firstChild);
       }
+    }
+    // Función de debounce para reducir el número de escrituras a Firestore
+    let saveTimeout;
+    function debounceSaveData() {
+      clearTimeout(saveTimeout);
+      saveTimeout = setTimeout(() => {
+        saveData();
+      }, 500);
     }
 
     /***********************
@@ -1259,7 +1276,7 @@
         loginModal.style.display = "block";
         auth.onAuthStateChanged((user) => {
           if (user) {
-            // Verificamos que el usuario sea el propietario (tu correo)
+            // Verificar que el usuario sea el propietario
             if(user.email === "fco.lopezvelazquez@gmail.com") {
               isOwner = true;
               document.getElementById("signOutContainer").style.display = "block";
@@ -1288,7 +1305,7 @@
       }
     });
 
-    // Botón para cerrar sesión (visible solo para el propietario)
+    // Botón para cerrar sesión (solo para el propietario)
     document.getElementById("signOutBtn").onclick = () => {
       auth.signOut()
         .then(() => {
