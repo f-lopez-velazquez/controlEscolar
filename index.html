@@ -248,7 +248,7 @@
           Rúbrica: Exámenes: <span id="weightExam">45%</span>, Tareas: <span id="weightTask">25%</span>, Prácticas: <span id="weightPractice">30%</span>, Participación: <span id="weightPart">5%</span>
           <button id="editRubric" class="btn">Editar Rúbrica</button>
         </div>
-        <!-- Botón Reset DB (solo para propietario) -->
+        <!-- Botón Reset DB (solo para el propietario) -->
         <div id="resetDBContainer">
           <button id="resetDBBtn" class="cred-btn">Reset DB</button>
         </div>
@@ -510,7 +510,7 @@
       document.getElementById("currentPartialDisplay").textContent = currentPartial;
     }
 
-    // Función para construir la cabecera de evaluaciones (según el parcial actual)
+    // Construir la cabecera de evaluaciones del parcial actual
     function buildGroupHeader() {
       const cfg = subjectsConfig[currentSubject].parcials[currentPartial];
       const examColspan = cfg.examEvals.length + 1;
@@ -526,7 +526,6 @@
       headerRow.innerHTML = "";
       const cfg = subjectsConfig[currentSubject].parcials[currentPartial];
       cfg.examEvals.forEach(evalObj => {
-        // Ignorar si el nombre es "Acciones" (por seguridad)
         if(evalObj.name.toLowerCase() === "acciones") return;
         const th = document.createElement("th");
         th.textContent = evalObj.name;
@@ -623,7 +622,7 @@
             document.getElementById("saveTeam").onclick = () => {
               team.name = document.getElementById("editTeamName").value.trim();
               team.head = document.getElementById("editTeamHead").value.trim();
-              modal.style.display = "none";
+              modalOverlay.style.display = "none";
               buildTeamTable();
               buildGradeTable();
               debounceSaveData();
@@ -636,10 +635,15 @@
           const row = e.target.closest("tr");
           const teamId = row.getAttribute("data-team-id");
           if(confirm("¿Estás seguro de eliminar este equipo?")) {
-            teams[currentSubject] = teams[currentSubject].filter(t => t.id !== teamId);
-            buildTeamTable();
-            buildGradeTable();
-            debounceSaveData();
+            const docId = currentSubject + "_" + teamId;
+            db.collection("teams").doc(docId).delete()
+              .then(() => {
+                teams[currentSubject] = teams[currentSubject].filter(t => t.id !== teamId);
+                buildTeamTable();
+                buildGradeTable();
+                debounceSaveData();
+              })
+              .catch(err => console.error("Error eliminando equipo", err));
           }
         };
       });
@@ -808,14 +812,19 @@
           if(student) { openDeductionModal(student, true); }
         });
       });
+      // Eliminar alumno: borrar de Firestore
       document.querySelectorAll(".delete-student").forEach(btn => {
         btn.addEventListener("click", (e) => {
           const row = e.target.closest("tr");
           const listNum = parseInt(row.getAttribute("data-list"));
           if(confirm("¿Estás seguro de eliminar este alumno?")) {
-            students.splice(students.findIndex(s => s.listNumber === listNum), 1);
-            buildGradeTable();
-            debounceSaveData();
+            db.collection("students").doc("stu_" + listNum).delete()
+              .then(() => {
+                students.splice(students.findIndex(s => s.listNumber === listNum), 1);
+                buildGradeTable();
+                debounceSaveData();
+              })
+              .catch(err => console.error("Error eliminando alumno", err));
           }
         });
       });
@@ -857,10 +866,11 @@
     /***********************
      * 6. Funciones de Modal para Agregar/Editar Elementos
      ***********************/
-    const modal = document.getElementById("modalOverlay");
+    // Declaramos la variable del modal una sola vez (con el nombre modalOverlay para evitar duplicados)
+    const modalOverlay = document.getElementById("modalOverlay");
     function showModal(contentHTML) {
       document.getElementById("modalBody").innerHTML = contentHTML;
-      modal.style.display = "block";
+      modalOverlay.style.display = "block";
     }
     document.querySelectorAll(".modal .close").forEach(closeBtn => {
       closeBtn.onclick = function() {
@@ -873,7 +883,38 @@
       }
     };
 
-    // Función para abrir el modal de "Editar Rúbrica" y permitir quitar evaluaciones sin cerrar el modal
+    function openDeductionModal(student, viewOnly = false) {
+      let content = `<h3>Deducciones para ${student.name}</h3>
+        <label>Monto (-): <input type="number" id="dedAmount" step="0.1"></label><br>
+        <label>Motivo: <input type="text" id="dedReason"></label><br>
+        <label>Fecha: <input type="date" id="dedDate"></label><br>`;
+      if(!viewOnly) { content += `<button id="saveDed" class="btn">Agregar Deducción</button>`; }
+      if(student.partials[currentPartial].deductions && student.partials[currentPartial].deductions.length > 0) {
+        content += `<h4>Deducciones Registradas:</h4><ul>`;
+        student.partials[currentPartial].deductions.forEach((ded) => {
+          content += `<li>${ded.date} - ${ded.reason}: ${ded.amount} pts</li>`;
+        });
+        content += `</ul>`;
+      } else {
+        content += `<p>No hay deducciones registradas.</p>`;
+      }
+      showModal(content);
+      if(!viewOnly) {
+        document.getElementById("saveDed").onclick = () => {
+          const amount = parseFloat(document.getElementById("dedAmount").value) || 0;
+          const reason = document.getElementById("dedReason").value.trim();
+          const date = document.getElementById("dedDate").value;
+          if(amount <= 0 || !reason || !date) { alert("Complete todos los campos."); return; }
+          if(!student.partials[currentPartial].deductions) student.partials[currentPartial].deductions = [];
+          student.partials[currentPartial].deductions.push({ amount, reason, date });
+          modalOverlay.style.display = "none";
+          buildGradeTable();
+          debounceSaveData();
+        };
+      }
+    }
+
+    // Función para abrir el modal de "Editar Rúbrica" (con scroll y sin cerrar al quitar evaluaciones)
     function openRubricModal() {
       const cfg = subjectsConfig[currentSubject];
       const currParcial = subjectsConfig[currentSubject].parcials[currentPartial];
@@ -920,7 +961,7 @@
         <button id="saveRubric" class="btn">Guardar Rúbrica</button>`;
       showModal(content);
 
-      // Adjuntar el event listener para quitar evaluaciones sin cerrar el modal
+      // Listener para eliminar evaluaciones sin cerrar el modal (se reabre actualizado)
       document.querySelectorAll("#rubricEdits .removeEval").forEach(btn => {
         btn.addEventListener("click", (e) => {
           const li = e.target.closest("li");
@@ -933,7 +974,7 @@
           } else if(cat === "practice") {
             currParcial.practiceEvals.splice(index, 1);
           }
-          // Reabrir el modal con el contenido actualizado
+          // Vuelve a abrir el modal actualizado sin cerrarlo
           openRubricModal();
           buildDynamicHeader();
           buildGradeTable();
@@ -941,7 +982,6 @@
         });
       });
 
-      // Adjuntar listeners para agregar evaluaciones
       document.getElementById("addExamItem").onclick = () => {
         let newItem = prompt("Nuevo examen:");
         if(newItem && newItem.trim().toLowerCase() !== "acciones") {
@@ -989,7 +1029,7 @@
         cfg.rubric.task = parseFloat(document.getElementById("rubricTask").value) || 0;
         cfg.rubric.practice = parseFloat(document.getElementById("rubricPractice").value) || 0;
         cfg.rubric.participation = parseFloat(document.getElementById("rubricPart").value) || 0;
-        modal.style.display = "none";
+        modalOverlay.style.display = "none";
         updateRubricDisplay();
         buildDynamicHeader();
         buildGradeTable();
@@ -997,7 +1037,7 @@
       };
     }
 
-    // Abrir el modal de Editar Rúbrica al hacer clic en el botón correspondiente
+    // Abrir el modal de Editar Rúbrica al hacer clic
     document.getElementById("editRubric").onclick = openRubricModal;
 
     document.getElementById("addExamEval").onclick = () => {
@@ -1056,7 +1096,7 @@
          const team = document.getElementById("newStudentTeam").value;
          if(!listNum || !name) { alert("Complete todos los campos."); return; }
          students.push({ listNumber: listNum, name, team, subject: currentSubject, partials: {} });
-         modal.style.display = "none";
+         modalOverlay.style.display = "none";
          buildGradeTable();
          debounceSaveData();
       };
@@ -1075,7 +1115,7 @@
          if(!id || !name || !head) { alert("Complete todos los campos."); return; }
          if(!teams[currentSubject]) teams[currentSubject] = [];
          teams[currentSubject].push({ id, name, head, partials: {} });
-         modal.style.display = "none";
+         modalOverlay.style.display = "none";
          buildTeamTable();
          buildGradeTable();
          debounceSaveData();
@@ -1098,7 +1138,7 @@
         subj.name = document.getElementById("editSubjName").value.trim();
         subj.semester = document.getElementById("editSubjSemester").value;
         subj.year = parseInt(document.getElementById("editSubjYear").value);
-        modal.style.display = "none";
+        modalOverlay.style.display = "none";
         buildSubjectSelect();
         buildDynamicHeader();
         debounceSaveData();
@@ -1137,7 +1177,7 @@
         };
         teams[id] = [];
         buildSubjectSelect();
-        modal.style.display = "none";
+        modalOverlay.style.display = "none";
         debounceSaveData();
       };
     };
@@ -1257,7 +1297,6 @@
     /***********************
      * 6. Carga Inicial y Realtime (Firestore)
      ***********************/
-    // Listeners de Firestore para actualizar la UI en tiempo real
     function attachRealtimeListeners() {
       db.collection("subjects").onSnapshot(snapshot => {
         snapshot.forEach(doc => {
@@ -1308,7 +1347,7 @@
           if (user) {
             loginModal.style.display = "none";
             document.getElementById("appContainer").style.display = "block";
-            // Solo el propietario puede editar (y ver el botón Reset DB)
+            // Solo el propietario puede editar y ver el botón Reset DB
             if(user.email === "fco.lopezvelazquez@gmail.com") {
               document.getElementById("resetDBContainer").style.display = "block";
             } else {
