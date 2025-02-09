@@ -213,30 +213,26 @@
     </div>
   </div>
   
-  <!-- Firebase App y Auth -->
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js"></script>
-  <!-- jsPDF y su plugin AutoTable -->
+  <!-- Firebase App y Auth (versiones compat para disponer de la variable global "firebase") -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <!-- jsPDF y AutoTable -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
   <!-- SheetJS para Excel -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
   
   <script>
-    // Esperar a que el DOM esté listo
+    // Ejecutar todo el código cuando el DOM esté listo
     document.addEventListener("DOMContentLoaded", () => {
       /* ---------------------- VARIABLES GLOBALES Y CONFIGURACIÓN ---------------------- */
-      // Modo solo lectura si se incluye ?readonly=true en la URL
+      // Modo solo lectura si en la URL se incluye ?readonly=true
       let readOnly = new URLSearchParams(window.location.search).get('readonly') === 'true';
       let currentSubjectId = null;
       let currentPartial = "1";
       let currentUser = null;
       
-      /* Estructura de datos:
-         - subjects: objeto con cada materia (nombre, semestre, año, rúbrica, evaluaciones y equipos por parcial)
-         - students: array de alumnos (número de lista, nombre, materia, equipo y registros por parcial)
-         Nota: Los equipos se almacenan dentro de cada materia, en la propiedad teams.
-      */
+      // Estructura de datos
       let data = {
         subjects: {},
         students: []
@@ -250,7 +246,7 @@
         participation: 5
       };
       
-      // Firebase configuration (usar la configuración proporcionada)
+      // Configuración de Firebase
       const firebaseConfig = {
         apiKey: "AIzaSyDsoLZHDpR8EEyvs5tJ7gF1tE7eKS-ZGcU",
         authDomain: "controlescolar-a184f.firebaseapp.com",
@@ -295,7 +291,7 @@
       const loginSubmitBtn = document.getElementById("loginSubmitBtn");
       
       /* ---------------------- FUNCIONES DE MODO EDICIÓN Y MODALES ---------------------- */
-      // Actualiza la interfaz según si está en modo de edición o solo lectura
+      // Actualiza la interfaz según el modo de edición o solo lectura
       function updateEditMode() {
         if(readOnly) {
           document.querySelectorAll("button").forEach(btn => btn.disabled = true);
@@ -333,7 +329,7 @@
       }
       
       /* ---------------------- ACTUALIZACIÓN DE LA INTERFAZ ---------------------- */
-      // Actualiza el selector de materias y guarda la materia actual
+      // Actualiza el selector de materias
       function updateSubjectSelector() {
         subjectSelect.innerHTML = "";
         for (const subjId in data.subjects) {
@@ -344,7 +340,7 @@
         }
         if(subjectSelect.options.length > 0) currentSubjectId = subjectSelect.options[0].value;
       }
-      // Muestra el listado de materias con opción de editar (si es editable)
+      // Muestra el listado de materias con opción de editar
       function updateSubjectsList() {
         subjectsListDiv.innerHTML = "";
         for (const subjId in data.subjects) {
@@ -360,7 +356,7 @@
           subjectsListDiv.appendChild(div);
         }
       }
-      // Reconstruye los encabezados de la tabla de calificaciones de forma dinámica
+      // Reconstruye los encabezados de la tabla de calificaciones
       function updateEvaluationsHeader() {
         gradesHeader.innerHTML = "";
         const headerRow = document.createElement("tr");
@@ -393,7 +389,7 @@
         }
         gradesHeader.appendChild(headerRow);
       }
-      // Actualiza la tabla de alumnos con sus notas y totales calculados
+      // Actualiza la tabla de alumnos
       function updateStudentsTable() {
         gradesBody.innerHTML = "";
         data.students.forEach(student => {
@@ -442,7 +438,6 @@
             tdTotal.textContent = total.toFixed(2);
             tr.appendChild(tdTotal);
             if(!readOnly) {
-              // Botones de edición para alumno
               const tdActions = document.createElement("td");
               const editBtn = document.createElement("button");
               editBtn.textContent = "Editar";
@@ -458,7 +453,7 @@
           }
         });
       }
-      // Actualiza la tabla de equipos para la materia y parcial actual
+      // Actualiza la tabla de equipos
       function updateTeamsTable() {
         teamsBody.innerHTML = "";
         if(currentSubjectId && data.subjects[currentSubjectId]) {
@@ -491,7 +486,7 @@
           });
         }
       }
-      // Actualiza la tabla de deducciones (en este ejemplo, se asigna la deducción al primer alumno encontrado)
+      // Actualiza la tabla de deducciones
       function updateDeductionsTable() {
         deductionsBody.innerHTML = "";
         data.students.forEach(student => {
@@ -614,7 +609,7 @@
           updateStudentsTable();
         });
       }
-      // Agregar alumno (se permite elegir la materia)
+      // Agregar alumno
       function openAddStudentModal() {
         let html = `
           <h3>Agregar Alumno</h3>
@@ -702,7 +697,7 @@
           }
         });
       }
-      // Agregar deducción (se asigna al primer alumno encontrado en la materia actual)
+      // Agregar deducción
       function openAddDeductionModal() {
         let html = `
           <h3>Agregar Deducción</h3>
@@ -756,14 +751,11 @@
       
       /* ---------------------- FUNCIONES DE EXPORTACIÓN Y PRESENTACIÓN ---------------------- */
       function exportToExcel() {
-        // Se utiliza SheetJS para exportar la tabla de calificaciones a Excel
         const wb = XLSX.utils.book_new();
         const ws_data = [];
-        // Encabezados
         const headerRow = [];
         gradesHeader.querySelectorAll("th").forEach(th => headerRow.push(th.textContent));
         ws_data.push(headerRow);
-        // Filas de datos
         gradesBody.querySelectorAll("tr").forEach(tr => {
           const row = [];
           tr.querySelectorAll("td").forEach(td => row.push(td.textContent));
@@ -775,7 +767,6 @@
       }
       
       function exportToPDF() {
-        // Se utiliza jsPDF y autoTable para exportar en orientación horizontal
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF({ orientation: "landscape" });
         let y = 10;
@@ -794,7 +785,6 @@
         gradesBody.querySelectorAll("tr").forEach(tr => {
           const row = [];
           tr.querySelectorAll("td").forEach(td => row.push(td.textContent));
-          // Línea para la firma de cada alumno
           row.push("Firma: __________________");
           bodyData.push(row);
         });
@@ -809,7 +799,6 @@
       function printPartial() { window.print(); }
       
       function shareVersion() {
-        // Genera un enlace con los parámetros readonly, subject y partial
         const url = new URL(window.location.href);
         url.searchParams.set("readonly", "true");
         url.searchParams.set("subject", currentSubjectId);
@@ -854,7 +843,6 @@
           } else {
             currentUser = null;
             updateEditMode();
-            // Mostrar modal de login si no está autenticado
             loginModal.style.display = "block";
           }
         });
