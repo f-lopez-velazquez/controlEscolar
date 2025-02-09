@@ -167,7 +167,7 @@
       .btn, .cred-btn { padding: 6px 10px; font-size: 0.8em; }
     }
   </style>
-  <!-- Incluir Firebase y dependencias (compat para usar la API "namespaced") -->
+  <!-- Incluir Firebase y dependencias (versión compat para usar la API "namespaced") -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <!-- Incluir Firestore (compat) -->
@@ -290,7 +290,6 @@
     /***********************
      * 1. Variables Globales: Datos
      ***********************/
-    // Estructuras de datos iniciales
     const subjectsConfig = {
       circuitos: {
         name: "Circuitos Eléctricos",
@@ -358,7 +357,7 @@
     /***********************
      * 2. Firebase Configuración y Firestore
      ***********************/
-    // Configuración de Firebase (usa tus propios datos si fuera necesario)
+    // Reemplaza estos valores con la configuración de tu proyecto Firebase
     const firebaseConfig = {
       apiKey: "AIzaSyDsoLZHDpR8EEyvs5tJ7gF1tE7eKS-ZGcU",
       authDomain: "controlescolar-a184f.firebaseapp.com",
@@ -384,7 +383,7 @@
     /***********************
      * 4. Persistencia en Firestore
      ***********************/
-    // Guarda cada colección en Firestore
+    // Funciones para guardar los datos en Firestore
     function saveSubjects() {
       for (const key in subjectsConfig) {
         db.collection("subjects").doc(key).set(subjectsConfig[key])
@@ -412,7 +411,7 @@
       saveTeams();
     }
 
-    // Escucha en tiempo real para actualizar la UI (ideal para el modo solo lectura y para múltiples clientes)
+    // Escucha en tiempo real para actualizar la interfaz (útil para modo solo lectura y sincronización en varios clientes)
     function attachRealtimeListeners() {
       db.collection("subjects").onSnapshot(snapshot => {
         snapshot.forEach(doc => {
@@ -430,7 +429,7 @@
         buildGradeTable();
       });
       db.collection("teams").onSnapshot(snapshot => {
-        // Reinicia los equipos para cada materia
+        // Reiniciamos los equipos para cada materia
         for (const subject in teams) { teams[subject] = []; }
         snapshot.forEach(doc => {
           const data = doc.data();
@@ -443,7 +442,7 @@
     }
 
     /***********************
-     * 5. Funciones de Interfaz (Construcción de selectores, tablas, etc.)
+     * 5. Funciones de Interfaz
      ***********************/
     function buildSubjectSelect() {
       const select = document.getElementById("subjectSelect");
@@ -1166,20 +1165,23 @@
       if (!readOnlyMode) { url.searchParams.delete("readonly"); }
       window.history.pushState({}, '', url.toString());
     }
+    // La función setReadOnly ahora se asegura de agregar el aviso solo una vez
     function setReadOnly() {
       document.querySelectorAll("input, select, button").forEach(el => { el.disabled = true; });
-      const notice = document.createElement("p");
-      notice.textContent = "Modo Solo Lectura – No se permite la edición";
-      notice.style.textAlign = "center";
-      notice.style.fontWeight = "bold";
-      notice.style.color = "#900";
-      document.getElementById("appContainer").insertBefore(notice, document.getElementById("appContainer").firstChild);
+      if (!document.getElementById("readOnlyNotice")) {
+        const notice = document.createElement("p");
+        notice.id = "readOnlyNotice";
+        notice.textContent = "Modo Solo Lectura – No se permite la edición";
+        notice.style.textAlign = "center";
+        notice.style.fontWeight = "bold";
+        notice.style.color = "#900";
+        document.getElementById("appContainer").insertBefore(notice, document.getElementById("appContainer").firstChild);
+      }
     }
 
     /***********************
-     * 6. Carga Inicial y Realtime
+     * 6. Carga Inicial y Escucha Realtime (Firestore)
      ***********************/
-    // En lugar de usar localStorage, usamos Firestore para cargar y escuchar los cambios
     attachRealtimeListeners();
     function attachRealtimeListeners() {
       db.collection("subjects").onSnapshot(snapshot => {
@@ -1198,7 +1200,6 @@
         buildGradeTable();
       });
       db.collection("teams").onSnapshot(snapshot => {
-        // Reiniciamos los equipos para cada materia
         for (const subject in teams) { teams[subject] = []; }
         snapshot.forEach(doc => {
           const data = doc.data();
@@ -1209,7 +1210,7 @@
         buildTeamTable();
       });
     }
-    // Llamamos a funciones iniciales
+    // Llamamos a funciones iniciales para construir la UI
     buildSubjectSelect();
     updateRubricDisplay();
     updatePartialDisplay();
@@ -1218,7 +1219,7 @@
     buildGradeTable();
 
     /***********************
-     * 7. Inicio de Sesión con Firebase
+     * 7. Inicio de Sesión con Firebase Authentication
      ***********************/
     window.addEventListener("load", () => {
       if (readOnlyMode) {
