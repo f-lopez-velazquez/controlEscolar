@@ -177,7 +177,7 @@
       .btn, .cred-btn { padding: 6px 10px; font-size: 0.8em; }
     }
   </style>
-  <!-- Incluir Firebase y dependencias (compat) -->
+  <!-- Incluir Firebase y dependencias (versión compat para usar la API "namespaced") -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
@@ -303,7 +303,7 @@
     /***********************
      * 1. Variables Globales: Datos
      ***********************/
-    // Cada materia tiene un objeto "parcials" para cada parcial.
+    // Cada materia tiene sus propios parciales (1, 2, 3, 4) con evaluaciones independientes.
     const subjectsConfig = {
       circuitos: {
         name: "Circuitos Eléctricos",
@@ -491,7 +491,7 @@
     function updatePartialDisplay() {
       document.getElementById("currentPartialDisplay").textContent = currentPartial;
     }
-    // Aquí usamos las evaluaciones del parcial actual
+    // Usamos las evaluaciones del parcial actual (cada parcial tiene sus propias evaluaciones)
     function buildDynamicHeader() {
       const headerRow = document.getElementById("dynamicHeader");
       headerRow.innerHTML = "";
@@ -943,7 +943,7 @@
         }
       };
       document.getElementById("saveRubric").onclick = () => {
-        // La rúbrica es global para la materia (no se edita por parcial)
+        // La rúbrica es global para la materia
         subjectsConfig[currentSubject].rubric.exam = parseFloat(document.getElementById("rubricExam").value) || 0;
         subjectsConfig[currentSubject].rubric.task = parseFloat(document.getElementById("rubricTask").value) || 0;
         subjectsConfig[currentSubject].rubric.practice = parseFloat(document.getElementById("rubricPractice").value) || 0;
@@ -1247,7 +1247,7 @@
     buildGradeTable();
 
     /***********************
-     * 7. Inicio de Sesión con Firebase Authentication y Restricción de Edición
+     * 7. Autenticación y Restricción de Edición
      ***********************/
     window.addEventListener("load", () => {
       if (readOnlyMode) {
@@ -1259,10 +1259,9 @@
         loginModal.style.display = "block";
         auth.onAuthStateChanged((user) => {
           if (user) {
-            // Verificamos que el usuario autenticado sea el propietario
+            // Verificamos que el usuario sea el propietario (tu correo)
             if(user.email === "fco.lopezvelazquez@gmail.com") {
               isOwner = true;
-              // Hacemos visibles los botones de edición y el botón para cerrar sesión
               document.getElementById("signOutContainer").style.display = "block";
             } else {
               isOwner = false;
@@ -1289,11 +1288,10 @@
       }
     });
 
-    // Botón para cerrar sesión
+    // Botón para cerrar sesión (visible solo para el propietario)
     document.getElementById("signOutBtn").onclick = () => {
       auth.signOut()
         .then(() => {
-          // Después de cerrar sesión, recargamos la página para que se active el modo solo lectura
           window.location.reload();
         })
         .catch(err => console.error("Error al cerrar sesión", err));
