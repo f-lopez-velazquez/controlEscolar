@@ -167,9 +167,11 @@
       .btn, .cred-btn { padding: 6px 10px; font-size: 0.8em; }
     }
   </style>
-  <!-- Incluir Firebase y dependencias -->
+  <!-- Incluir Firebase y dependencias (compat para usar la API "namespaced") -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <!-- Incluir Firestore (compat) -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
 </head>
@@ -288,6 +290,7 @@
     /***********************
      * 1. Variables Globales: Datos
      ***********************/
+    // Estructuras de datos iniciales
     const subjectsConfig = {
       circuitos: {
         name: "Circuitos Eléctricos",
@@ -353,50 +356,9 @@
     };
 
     /***********************
-     * 2. Persistencia: localStorage (para pruebas)
+     * 2. Firebase Configuración y Firestore
      ***********************/
-    function saveData() {
-      localStorage.setItem("subjectsConfig", JSON.stringify(subjectsConfig));
-      localStorage.setItem("students", JSON.stringify(students));
-      localStorage.setItem("teams", JSON.stringify(teams));
-    }
-    function loadData() {
-      try {
-        const storedSubjects = localStorage.getItem("subjectsConfig");
-        if (storedSubjects) {
-          const parsed = JSON.parse(storedSubjects);
-          for (let key in parsed) { subjectsConfig[key] = parsed[key]; }
-        }
-      } catch (error) {
-        console.error("Error al cargar subjectsConfig:", error);
-        localStorage.removeItem("subjectsConfig");
-      }
-      try {
-        const storedStudents = localStorage.getItem("students");
-        if (storedStudents) {
-          const parsed = JSON.parse(storedStudents);
-          students.splice(0, students.length, ...parsed);
-        }
-      } catch (error) {
-        console.error("Error al cargar students:", error);
-        localStorage.removeItem("students");
-      }
-      try {
-        const storedTeams = localStorage.getItem("teams");
-        if (storedTeams) {
-          const parsed = JSON.parse(storedTeams);
-          for (let key in parsed) { teams[key] = parsed[key]; }
-        }
-      } catch (error) {
-        console.error("Error al cargar teams:", error);
-        localStorage.removeItem("teams");
-      }
-    }
-    loadData();
-
-    /***********************
-     * 3. Inicializar Firebase
-     ***********************/
+    // Configuración de Firebase (usa tus propios datos si fuera necesario)
     const firebaseConfig = {
       apiKey: "AIzaSyDsoLZHDpR8EEyvs5tJ7gF1tE7eKS-ZGcU",
       authDomain: "controlescolar-a184f.firebaseapp.com",
@@ -405,11 +367,12 @@
       messagingSenderId: "213806947943",
       appId: "1:213806947943:web:996ab97cdd805998f0bec2"
     };
-    const appFirebase = firebase.initializeApp(firebaseConfig);
+    firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
+    const db = firebase.firestore();
 
     /***********************
-     * 4. Variables de Estado
+     * 3. Variables de Estado
      ***********************/
     const urlParams = new URLSearchParams(window.location.search);
     let readOnlyMode = urlParams.get("readonly") === "true";
@@ -419,7 +382,68 @@
     let currentPartial = (!isNaN(urlPartial) && urlPartial > 0) ? urlPartial : 1;
 
     /***********************
-     * 5. Funciones de Interfaz
+     * 4. Persistencia en Firestore
+     ***********************/
+    // Guarda cada colección en Firestore
+    function saveSubjects() {
+      for (const key in subjectsConfig) {
+        db.collection("subjects").doc(key).set(subjectsConfig[key])
+          .catch(err => console.error("Error guardando subject", key, err));
+      }
+    }
+    function saveStudents() {
+      students.forEach(student => {
+        db.collection("students").doc("stu_" + student.listNumber).set(student)
+          .catch(err => console.error("Error guardando student", student.listNumber, err));
+      });
+    }
+    function saveTeams() {
+      for (const subject in teams) {
+        teams[subject].forEach(team => {
+          const docId = subject + "_" + team.id;
+          db.collection("teams").doc(docId).set({ ...team, subject: subject })
+            .catch(err => console.error("Error guardando team", docId, err));
+        });
+      }
+    }
+    function saveData() {
+      saveSubjects();
+      saveStudents();
+      saveTeams();
+    }
+
+    // Escucha en tiempo real para actualizar la UI (ideal para el modo solo lectura y para múltiples clientes)
+    function attachRealtimeListeners() {
+      db.collection("subjects").onSnapshot(snapshot => {
+        snapshot.forEach(doc => {
+          subjectsConfig[doc.id] = doc.data();
+        });
+        buildSubjectSelect();
+        updateRubricDisplay();
+        buildDynamicHeader();
+      });
+      db.collection("students").onSnapshot(snapshot => {
+        students.length = 0;
+        snapshot.forEach(doc => {
+          students.push(doc.data());
+        });
+        buildGradeTable();
+      });
+      db.collection("teams").onSnapshot(snapshot => {
+        // Reinicia los equipos para cada materia
+        for (const subject in teams) { teams[subject] = []; }
+        snapshot.forEach(doc => {
+          const data = doc.data();
+          const subject = data.subject;
+          if (!teams[subject]) teams[subject] = [];
+          teams[subject].push(data);
+        });
+        buildTeamTable();
+      });
+    }
+
+    /***********************
+     * 5. Funciones de Interfaz (Construcción de selectores, tablas, etc.)
      ***********************/
     function buildSubjectSelect() {
       const select = document.getElementById("subjectSelect");
@@ -433,7 +457,6 @@
       }
       select.value = currentSubject;
     }
-
     function updateRubricDisplay() {
       const cfg = subjectsConfig[currentSubject];
       document.getElementById("weightExam").textContent = cfg.rubric.exam + "%";
@@ -441,11 +464,9 @@
       document.getElementById("weightPractice").textContent = cfg.rubric.practice + "%";
       document.getElementById("weightPart").textContent = cfg.rubric.participation + "%";
     }
-
     function updatePartialDisplay() {
       document.getElementById("currentPartialDisplay").textContent = currentPartial;
     }
-
     function buildGroupHeader() {
       const cfg = subjectsConfig[currentSubject];
       const examColspan = cfg.examEvals.length + 1;
@@ -455,7 +476,6 @@
       document.querySelector(".task-group").setAttribute("colspan", taskColspan);
       document.querySelector(".practice-group").setAttribute("colspan", practiceColspan);
     }
-
     function buildDynamicHeader() {
       const headerRow = document.getElementById("dynamicHeader");
       headerRow.innerHTML = "";
@@ -486,7 +506,6 @@
       headerRow.appendChild(thPracticeAvg);
       buildGroupHeader();
     }
-
     function buildTeamTable() {
       const teamTableHead = document.getElementById("teamHeader");
       const teamTableBody = document.querySelector("#teamTable tbody");
@@ -513,7 +532,6 @@
                     </td></tr>`;
         teamTableBody.innerHTML += rowHTML;
       });
-      // Asignar eventos para los inputs de equipos
       document.querySelectorAll(".team-practice-input").forEach(input => {
         input.addEventListener("input", (e) => {
           const teamId = e.target.getAttribute("data-team-id");
@@ -540,7 +558,6 @@
           }
         });
       });
-      // Editar equipo
       document.querySelectorAll(".edit-team").forEach(btn => {
         btn.onclick = (e) => {
           const row = e.target.closest("tr");
@@ -564,7 +581,6 @@
           }
         };
       });
-      // Eliminar equipo
       document.querySelectorAll(".delete-team").forEach(btn => {
         btn.onclick = (e) => {
           const row = e.target.closest("tr");
@@ -578,7 +594,6 @@
         };
       });
     }
-
     function buildGradeTable() {
       const tbody = document.getElementById("gradeTable").querySelector("tbody");
       tbody.innerHTML = "";
@@ -660,7 +675,6 @@
       if(readOnlyMode) { setReadOnly(); }
       saveData();
     }
-
     function recalculateRow(row) {
       const rubric = subjectsConfig[currentSubject].rubric;
       let examSum = 0, examCount = 0;
@@ -693,11 +707,9 @@
       row.querySelector(".total-partial").textContent = totalPartial.toFixed(2);
       if(student) { student.partials[currentPartial].total = totalPartial; }
     }
-
     function recalculateAll() {
       document.querySelectorAll("#gradeTable tbody tr").forEach(row => recalculateRow(row));
     }
-
     function attachTableListeners() {
       document.querySelectorAll("#gradeTable tbody input").forEach(input => {
         input.addEventListener("input", () => {
@@ -754,7 +766,6 @@
         });
       });
     }
-
     function saveRowData(row) {
       const listNum = row.getAttribute("data-list");
       const student = students.find(s => s.listNumber == listNum);
@@ -772,7 +783,6 @@
       partialData.absences = parseFloat(row.querySelector(".absences").value) || 0;
       saveData();
     }
-
     function propagateTeamGradeForRow(row) {
       const listNum = row.getAttribute("data-list");
       const student = students.find(s => s.listNumber == listNum);
@@ -789,28 +799,22 @@
     /***********************
      * 6. Funciones de Modal para Agregar/Editar Elementos
      ***********************/
-    // Definición global del modal (usamos el div con id "modalOverlay")
     const modal = document.getElementById("modalOverlay");
-
-    // Función para mostrar el modal
     function showModal(contentHTML) {
       document.getElementById("modalBody").innerHTML = contentHTML;
       modal.style.display = "block";
     }
-
-    // Cerrar modal al hacer clic en el botón "×"
+    // Cerrar modal al hacer clic en "×" o fuera del contenido
     document.querySelectorAll(".modal .close").forEach(closeBtn => {
       closeBtn.onclick = function() {
         this.parentElement.parentElement.style.display = "none";
       };
     });
-    // Cerrar modal al hacer clic fuera de la caja de contenido
     window.onclick = function(event) {
       if (event.target.classList.contains("modal")) {
         event.target.style.display = "none";
       }
     };
-
     function openDeductionModal(student, viewOnly = false) {
       let content = `<h3>Deducciones para ${student.name}</h3>
         <label>Monto (-): <input type="number" id="dedAmount" step="0.1"></label><br>
@@ -841,8 +845,6 @@
         };
       }
     }
-
-    // Botón Editar Rúbrica (en modal)
     document.getElementById("editRubric").onclick = () => {
       const cfg = subjectsConfig[currentSubject];
       let content = `<h3>Editar Rúbrica</h3>
@@ -878,7 +880,6 @@
         <br>
         <button id="saveRubric" class="btn">Guardar Rúbrica</button>`;
       showModal(content);
-      // Asignar los eventos para quitar evaluaciones
       Array.from(document.querySelectorAll(".removeEval")).forEach(btn => {
         btn.onclick = (e) => {
           const cat = e.target.getAttribute("data-cat");
@@ -889,7 +890,6 @@
           buildDynamicHeader();
           buildGradeTable();
           modal.style.display = "none";
-          // Reabrir el modal para seguir editando
           setTimeout(() => { document.getElementById("editRubric").onclick(); }, 200);
           saveData();
         };
@@ -929,8 +929,6 @@
         saveData();
       };
     };
-
-    /* Botones de Agregar Evaluación (desde el área principal) */
     document.getElementById("addExamEval").onclick = () => {
       let newExam = prompt("Ingrese nombre del nuevo Examen:");
       if(newExam) {
@@ -964,10 +962,6 @@
         saveData();
       }
     };
-
-    /* -----------------------------
-       Agregar Alumno
-    ----------------------------- */
     document.getElementById("addStudent").onclick = () => {
       let content = `<h3>Agregar Alumno</h3>
          <label>N° LS: <input type="number" id="newListNumber"></label><br>
@@ -990,10 +984,6 @@
          saveData();
       };
     };
-
-    /* -----------------------------
-       Agregar Equipo
-    ----------------------------- */
     document.getElementById("addTeam").onclick = () => {
       let content = `<h3>Agregar Equipo</h3>
          <label>ID: <input type="text" id="newTeamId"></label><br>
@@ -1014,10 +1004,6 @@
          saveData();
       };
     };
-
-    /* -----------------------------
-       Editar Materia
-    ----------------------------- */
     document.getElementById("editSubject").onclick = () => {
       const subj = subjectsConfig[currentSubject];
       let content = `<h3>Editar Materia</h3>
@@ -1041,10 +1027,6 @@
         saveData();
       };
     };
-
-    /* -----------------------------
-       Agregar Materia
-    ----------------------------- */
     document.getElementById("addSubject").onclick = () => {
       let content = `<h3>Agregar Materia</h3>
         <label>ID: <input type="text" id="newSubjectId"></label><br>
@@ -1079,10 +1061,6 @@
         saveData();
       };
     };
-
-    /* -----------------------------
-       Compartir Versión (Solo Lectura)
-    ----------------------------- */
     document.getElementById("shareVersion").onclick = () => {
       const url = new URL(window.location.href);
       url.searchParams.set("subject", currentSubject);
@@ -1090,10 +1068,6 @@
       url.searchParams.set("readonly", "true");
       prompt("Copia este enlace para compartir la versión de solo lectura:", url.toString());
     };
-
-    /* -----------------------------
-       Exportar a Excel (celdas vacías = 0)
-    ----------------------------- */
     document.getElementById("exportExcel").onclick = () => {
       const table = document.getElementById("gradeTable");
       let csv = "";
@@ -1114,10 +1088,6 @@
       a.click();
       URL.revokeObjectURL(url);
     };
-
-    /* -----------------------------
-       Exportar a PDF (celdas vacías = 0)
-    ----------------------------- */
     document.getElementById("exportPDF").onclick = () => {
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF('landscape', 'pt', 'a4');
@@ -1169,12 +1139,7 @@
       });
       doc.save("calificaciones_" + currentSubject + "_parcial_" + currentPartial + ".pdf");
     };
-
     document.getElementById("printGrades").onclick = () => { window.print(); };
-
-    /* -----------------------------
-       Cambios de Parcial y Materia
-    ----------------------------- */
     document.querySelectorAll(".tab-btn").forEach(btn => {
       btn.addEventListener("click", () => {
         currentPartial = parseInt(btn.getAttribute("data-partial"));
@@ -1186,7 +1151,6 @@
         updateURLParams();
       });
     });
-    
     document.getElementById("subjectSelect").addEventListener("change", (e) => {
       currentSubject = e.target.value;
       updateRubricDisplay();
@@ -1195,7 +1159,6 @@
       buildGradeTable();
       updateURLParams();
     });
-    
     function updateURLParams() {
       const url = new URL(window.location.href);
       url.searchParams.set("subject", currentSubject);
@@ -1203,10 +1166,50 @@
       if (!readOnlyMode) { url.searchParams.delete("readonly"); }
       window.history.pushState({}, '', url.toString());
     }
+    function setReadOnly() {
+      document.querySelectorAll("input, select, button").forEach(el => { el.disabled = true; });
+      const notice = document.createElement("p");
+      notice.textContent = "Modo Solo Lectura – No se permite la edición";
+      notice.style.textAlign = "center";
+      notice.style.fontWeight = "bold";
+      notice.style.color = "#900";
+      document.getElementById("appContainer").insertBefore(notice, document.getElementById("appContainer").firstChild);
+    }
 
     /***********************
-     * 7. Carga Inicial
+     * 6. Carga Inicial y Realtime
      ***********************/
+    // En lugar de usar localStorage, usamos Firestore para cargar y escuchar los cambios
+    attachRealtimeListeners();
+    function attachRealtimeListeners() {
+      db.collection("subjects").onSnapshot(snapshot => {
+        snapshot.forEach(doc => {
+          subjectsConfig[doc.id] = doc.data();
+        });
+        buildSubjectSelect();
+        updateRubricDisplay();
+        buildDynamicHeader();
+      });
+      db.collection("students").onSnapshot(snapshot => {
+        students.length = 0;
+        snapshot.forEach(doc => {
+          students.push(doc.data());
+        });
+        buildGradeTable();
+      });
+      db.collection("teams").onSnapshot(snapshot => {
+        // Reiniciamos los equipos para cada materia
+        for (const subject in teams) { teams[subject] = []; }
+        snapshot.forEach(doc => {
+          const data = doc.data();
+          const subject = data.subject;
+          if (!teams[subject]) teams[subject] = [];
+          teams[subject].push(data);
+        });
+        buildTeamTable();
+      });
+    }
+    // Llamamos a funciones iniciales
     buildSubjectSelect();
     updateRubricDisplay();
     updatePartialDisplay();
@@ -1215,7 +1218,7 @@
     buildGradeTable();
 
     /***********************
-     * 8. Inicio de Sesión con Firebase
+     * 7. Inicio de Sesión con Firebase
      ***********************/
     window.addEventListener("load", () => {
       if (readOnlyMode) {
@@ -1246,16 +1249,6 @@
         };
       }
     });
-
-    function setReadOnly() {
-      document.querySelectorAll("input, select, button").forEach(el => { el.disabled = true; });
-      const notice = document.createElement("p");
-      notice.textContent = "Modo Solo Lectura – No se permite la edición";
-      notice.style.textAlign = "center";
-      notice.style.fontWeight = "bold";
-      notice.style.color = "#900";
-      document.getElementById("appContainer").insertBefore(notice, document.getElementById("appContainer").firstChild);
-    }
   </script>
 </body>
 </html>
