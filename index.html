@@ -303,7 +303,7 @@
     /***********************
      * 1. Variables Globales: Datos
      ***********************/
-    // Cada materia tiene sus propios parciales con evaluaciones independientes.
+    // Cada materia tiene sus propios parcials con evaluaciones independientes.
     const subjectsConfig = {
       circuitos: {
         name: "Circuitos Eléctricos",
@@ -431,13 +431,13 @@
         });
       }
     }
-    // Se utiliza debounce para evitar demasiadas escrituras seguidas
+    // Se utiliza debounce para reducir la cantidad de escrituras
     let saveTimeout;
     function debounceSaveData() {
       clearTimeout(saveTimeout);
       saveTimeout = setTimeout(() => {
         saveData();
-      }, 500); // espera 500ms antes de guardar
+      }, 500);
     }
     function saveData() {
       saveSubjects();
@@ -832,6 +832,7 @@
     /***********************
      * 6. Funciones de Modal para Agregar/Editar Elementos
      ***********************/
+    // ¡IMPORTANTE! Declaramos la variable modal UNA sola vez
     const modal = document.getElementById("modalOverlay");
     function showModal(contentHTML) {
       document.getElementById("modalBody").innerHTML = contentHTML;
@@ -1216,7 +1217,7 @@
         document.getElementById("appContainer").insertBefore(notice, document.getElementById("appContainer").firstChild);
       }
     }
-    // Función de debounce para reducir el número de escrituras a Firestore
+    // Función de debounce para reducir escrituras
     let saveTimeout;
     function debounceSaveData() {
       clearTimeout(saveTimeout);
@@ -1276,7 +1277,7 @@
         loginModal.style.display = "block";
         auth.onAuthStateChanged((user) => {
           if (user) {
-            // Verificar que el usuario sea el propietario
+            // Solo el propietario (fco.lopezvelazquez@gmail.com) puede editar
             if(user.email === "fco.lopezvelazquez@gmail.com") {
               isOwner = true;
               document.getElementById("signOutContainer").style.display = "block";
@@ -1304,8 +1305,7 @@
         };
       }
     });
-
-    // Botón para cerrar sesión (solo para el propietario)
+    // Botón para cerrar sesión (visible solo para el propietario)
     document.getElementById("signOutBtn").onclick = () => {
       auth.signOut()
         .then(() => {
