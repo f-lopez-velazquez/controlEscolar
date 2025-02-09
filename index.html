@@ -42,7 +42,7 @@
     }
     .subject-select label,
     .rubric-display { font-weight: bold; }
-    /* Se asocian los inputs a sus etiquetas mediante "for" para evitar advertencias */
+    /* Se asocian los inputs a sus etiquetas mediante "for" */
     .subject-select label { margin-right: 5px; }
     .subject-select select { margin-right: 5px; }
     .subject-select button { margin-right: 5px; padding: 5px 10px; font-size: 0.9em; }
@@ -282,7 +282,9 @@
           </table>
         </div>
       </section>
+      <!-- Nuevo botón para guardar cambios manualmente -->
       <section class="action-section">
+        <button id="saveChanges" class="btn">Guardar Cambios</button>
         <button id="exportExcel" class="btn">Exportar Excel</button>
         <button id="exportPDF" class="btn">Exportar PDF</button>
         <button id="printGrades" class="btn">Imprimir Parcial</button>
@@ -425,16 +427,9 @@
           });
         }
       }
-      let saveTimeout; // Declarada UNA sola vez
-      // Aumentamos el tiempo de debounce a 2000 ms para reducir la cantidad de escrituras
-      function debounceSaveData() {
-        clearTimeout(saveTimeout);
-        saveTimeout = setTimeout(() => {
-          console.log("Guardando datos en Firestore...");
-          saveData();
-        }, 2000);
-      }
+      // En este ejemplo usaremos un botón "Guardar Cambios" en lugar de guardado automático.
       function saveData() {
+        console.log("Guardando datos en Firestore...");
         saveSubjects();
         saveStudents();
         saveTeams();
@@ -552,7 +547,6 @@
                   if(practiceInputs[idx]) { practiceInputs[idx].value = newVal; recalculateRow(row); }
                 }
               });
-              debounceSaveData();
             }
           });
         });
@@ -576,8 +570,6 @@
                 console.log("Equipo " + teamId + " editado.");
                 modalElement.style.display = "none";
                 buildTeamTable();
-                buildGradeTable();
-                debounceSaveData();
               };
             }
           };
@@ -590,8 +582,6 @@
               teams[currentSubject] = teams[currentSubject].filter(t => t.id !== teamId);
               console.log("Equipo " + teamId + " eliminado.");
               buildTeamTable();
-              buildGradeTable();
-              debounceSaveData();
             }
           };
         });
@@ -676,7 +666,6 @@
         attachTableListeners();
         recalculateAll();
         if(readOnlyMode) { setReadOnly(); }
-        debounceSaveData();
       }
       function recalculateRow(row) {
         const rubric = subjectsConfig[currentSubject].rubric;
@@ -719,7 +708,6 @@
             const row = input.closest("tr");
             saveRowData(row);
             recalculateRow(row);
-            debounceSaveData();
           });
         });
         document.querySelectorAll(".student-team").forEach(select => {
@@ -729,7 +717,6 @@
             const student = students.find(s => s.listNumber == listNum);
             if(student) { student.team = e.target.value; }
             propagateTeamGradeForRow(row);
-            debounceSaveData();
           });
         });
         document.querySelectorAll(".student-name").forEach(cell => {
@@ -738,7 +725,6 @@
             const listNum = row.getAttribute("data-list");
             const student = students.find(s => s.listNumber == listNum);
             if(student) { student.name = e.target.textContent.trim(); }
-            debounceSaveData();
           });
         });
         document.querySelectorAll(".deduct-btn").forEach(btn => {
@@ -764,7 +750,6 @@
             if(confirm("¿Estás seguro de eliminar este alumno?")) {
               students.splice(students.findIndex(s => s.listNumber === listNum), 1);
               buildGradeTable();
-              debounceSaveData();
             }
           });
         });
@@ -784,7 +769,6 @@
         partialData.extraParcial = parseFloat(row.querySelector(".extra-parcial").value) || 0;
         partialData.participation = parseFloat(row.querySelector(".participation").value) || 0;
         partialData.absences = parseFloat(row.querySelector(".absences").value) || 0;
-        debounceSaveData();
       }
       function propagateTeamGradeForRow(row) {
         const listNum = row.getAttribute("data-list");
@@ -796,7 +780,6 @@
           row.querySelectorAll(".practice-input").forEach((input, idx) => { input.value = teamObj.partials[currentPartial][idx] || 0; });
         }
         recalculateRow(row);
-        debounceSaveData();
       }
 
       /***********************
@@ -846,7 +829,6 @@
             student.partials[currentPartial].deductions.push({ amount, reason, date });
             modalElement.style.display = "none";
             buildGradeTable();
-            debounceSaveData();
           };
         }
       }
@@ -962,6 +944,14 @@
       buildDynamicHeader();
       buildTeamTable();
       buildGradeTable();
+
+      /***********************
+       * 9. Botón Guardar Cambios (manual) para persistir en Firestore
+       ***********************/
+      document.getElementById("saveChanges").addEventListener("click", () => {
+        console.log("Botón Guardar Cambios pulsado.");
+        saveData();
+      });
     })();
   </script>
 </body>
