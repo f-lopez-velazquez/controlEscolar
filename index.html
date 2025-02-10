@@ -197,7 +197,7 @@
       z-index: 2000;
     }
   </style>
-  <!-- Cargar Firebase (compat) y dependencias desde CDN (¡asegúrate de no incluir duplicados en tu repositorio!) -->
+  <!-- Cargar Firebase (compat) y dependencias desde CDN -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
@@ -530,7 +530,7 @@
       let readOnlyMode = urlParams.get("readonly") === "true";
       let urlSubject = urlParams.get("subject");
       let urlPartial = parseInt(urlParams.get("partial"));
-      // Aseguramos que la estructura de parcials existe para la materia actual
+      // Aseguramos que la estructura de parcials exista para la materia actual
       if (urlSubject && subjectsConfig[urlSubject] && !subjectsConfig[urlSubject].parcials) {
         subjectsConfig[urlSubject].parcials = {
           "1": { examEvals: [], taskEvals: [], practiceEvals: [] },
