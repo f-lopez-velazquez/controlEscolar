@@ -718,7 +718,10 @@
         const tbody = document.getElementById("gradeTable").querySelector("tbody");
         tbody.innerHTML = "";
         const cfg = subjectsConfig[currentSubject].parcials[currentPartial];
-        const filteredStudents = students.filter(s => s.subject === currentSubject);
+        // Filtrar y ordenar los alumnos por número de lista (ascendente)
+        const filteredStudents = students
+          .filter(s => s.subject === currentSubject)
+          .sort((a, b) => a.listNumber - b.listNumber);
         filteredStudents.forEach(student => {
           if (!student.partials[currentPartial]) {
             student.partials[currentPartial] = {
@@ -1419,7 +1422,7 @@
        ***********************/
       window.addEventListener("load", () => {
         if (isReadOnlyMode()) {
-          // Para que las lecturas funcionen incluso sin login, se puede usar autenticación anónima
+          // Autenticación anónima para poder leer (si las reglas lo requieren)
           if (!auth.currentUser) {
             auth.signInAnonymously().catch(error => {
               console.error("Error en autenticación anónima:", error);
