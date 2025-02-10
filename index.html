@@ -216,7 +216,7 @@
     </div>
   </div>
 
-  <!-- Modal de Login (opcional; en modo solo lectura se omite) -->
+  <!-- Modal de Login (solo se muestra en modo editable) -->
   <div id="loginModal" class="modal">
     <div class="modal-content">
       <span class="close">&times;</span>
@@ -277,7 +277,7 @@
       <section class="student-controls">
         <button id="addStudent" class="btn">Agregar Alumno</button>
       </section>
-      <!-- Botón de guardado manual -->
+      <!-- Botón de guardado manual (solo en modo editable) -->
       <section class="action-section">
         <button id="manualSaveBtn" class="btn">Forzar guardado</button>
       </section>
@@ -339,7 +339,7 @@
       /***********************
        * 1. Variables Globales: Datos
        ***********************/
-      // Cada materia tiene su objeto "parcials" independiente
+      // Estructura de materias con parcials independientes
       const subjectsConfig = {
         circuitos: {
           name: "Circuitos Eléctricos",
@@ -417,10 +417,9 @@
       };
 
       /***********************
-       * 1.1. Restaurar estado desde localStorage (si existe)
-       * Se hace un deep clone para que cada parcial mantenga su propia copia.
+       * 1.1. Restaurar estado desde localStorage (solo en modo editable)
        ***********************/
-      if (localStorage.getItem('subjectsConfig')) {
+      if (!isReadOnlyMode() && localStorage.getItem('subjectsConfig')) {
         try {
           const storedSubjects = JSON.parse(localStorage.getItem('subjectsConfig'));
           for (let key in storedSubjects) {
@@ -430,7 +429,7 @@
           console.error("Error al parsear subjectsConfig desde localStorage", e);
         }
       }
-      if (localStorage.getItem('students')) {
+      if (!isReadOnlyMode() && localStorage.getItem('students')) {
         try {
           const storedStudents = JSON.parse(localStorage.getItem('students'));
           students.length = 0;
@@ -439,7 +438,7 @@
           console.error("Error al parsear students desde localStorage", e);
         }
       }
-      if (localStorage.getItem('teams')) {
+      if (!isReadOnlyMode() && localStorage.getItem('teams')) {
         try {
           const storedTeams = JSON.parse(localStorage.getItem('teams'));
           for (let subject in storedTeams) {
@@ -451,7 +450,47 @@
       }
 
       /***********************
-       * 2. Persistencia en Firestore y localStorage
+       * 2. Configuración de Firebase y Firestore
+       ***********************/
+      const firebaseConfig = {
+        apiKey: "AIzaSyC2VXIvR-OzF4iLlt8C69zt-cY1ZI_YhVo",
+        authDomain: "paginaesco.firebaseapp.com",
+        projectId: "paginaesco",
+        storageBucket: "paginaesco.firebasestorage.app",
+        messagingSenderId: "488675130286",
+        appId: "1:488675130286:web:003debfbff0b1f3ee7a63f"
+      };
+      firebase.initializeApp(firebaseConfig);
+      firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+        .catch(function(error) { console.error("Error en la persistencia:", error); });
+      const auth = firebase.auth();
+      const db = firebase.firestore();
+      db.enablePersistence()
+        .catch(function(err) {
+          if (err.code === 'failed-precondition') {
+            console.error("Solo una pestaña a la vez puede tener la persistencia offline.");
+          } else if (err.code === 'unimplemented') {
+            console.error("El navegador no soporta la persistencia offline.");
+          }
+        });
+
+      /***********************
+       * 3. Variables de Estado
+       ***********************/
+      const urlParams = new URLSearchParams(window.location.search);
+      const readOnlyMode = (urlParams.get("readonly") === "true");
+      function isReadOnlyMode() { return readOnlyMode; }
+      let urlSubject = urlParams.get("subject");
+      let urlPartial = parseInt(urlParams.get("partial"));
+      let currentSubject = (urlSubject && subjectsConfig[urlSubject]) ? urlSubject : "circuitos";
+      let currentPartial = (!isNaN(urlPartial) && urlPartial > 0) ? urlPartial : 1;
+      // Aseguramos que la estructura para el parcial actual exista
+      if (!subjectsConfig[currentSubject].parcials[currentPartial]) {
+        subjectsConfig[currentSubject].parcials[currentPartial] = { examEvals: [], taskEvals: [], practiceEvals: [] };
+      }
+
+      /***********************
+       * 4. Funciones de Persistencia (Firestore y localStorage)
        ***********************/
       function saveSubjects() {
         return Promise.all(Object.keys(subjectsConfig).map(key => {
@@ -472,7 +511,9 @@
         })).catch(err => console.error("Error guardando teams", err));
       }
       function saveData() {
-        if (!firebase.auth().currentUser && !readOnlyMode) {
+        // En modo solo lectura no se realizan guardados
+        if (isReadOnlyMode()) { console.log("Modo solo lectura: no se guardan datos."); return; }
+        if (!auth.currentUser) {
           console.warn("No hay usuario autenticado; no se guardan datos.");
           return;
         }
@@ -488,6 +529,7 @@
       }
       let saveTimeout = null;
       function debounceSaveData() {
+        if (isReadOnlyMode()) return;
         if (saveTimeout) clearTimeout(saveTimeout);
         saveTimeout = setTimeout(() => { saveData(); }, 15000);
       }
@@ -497,53 +539,14 @@
         setTimeout(() => { indicator.style.display = "none"; }, 2000);
       }
       document.getElementById("manualSaveBtn").addEventListener("click", () => {
-        saveData();
-        if (saveTimeout) clearTimeout(saveTimeout);
+        if (!isReadOnlyMode()) {
+          saveData();
+          if (saveTimeout) clearTimeout(saveTimeout);
+        }
       });
 
       /***********************
-       * 3. Inicializar Firebase y Firestore
-       ***********************/
-      const firebaseConfig = {
-        apiKey: "AIzaSyC2VXIvR-OzF4iLlt8C69zt-cY1ZI_YhVo",
-        authDomain: "paginaesco.firebaseapp.com",
-        projectId: "paginaesco",
-        storageBucket: "paginaesco.firebasestorage.app",
-        messagingSenderId: "488675130286",
-        appId: "1:488675130286:web:003debfbff0b1f3ee7a63f"
-      };
-      firebase.initializeApp(firebaseConfig);
-      firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL)
-        .catch(function(error) { console.error("Error en la persistencia:", error); });
-      const auth = firebase.auth();
-      const db = firebase.firestore();
-      // Habilitar persistencia offline (IndexedDB)
-      db.enablePersistence()
-        .catch(function(err) {
-          if (err.code === 'failed-precondition') {
-            console.error("Solo una pestaña a la vez puede tener la persistencia offline.");
-          } else if (err.code === 'unimplemented') {
-            console.error("El navegador no soporta la persistencia offline.");
-          }
-        });
-
-      /***********************
-       * 4. Variables de Estado
-       ***********************/
-      const urlParams = new URLSearchParams(window.location.search);
-      // Si se incluye "readonly=true" en la URL, se activa el modo solo lectura
-      let readOnlyMode = urlParams.get("readonly") === "true";
-      let urlSubject = urlParams.get("subject");
-      let urlPartial = parseInt(urlParams.get("partial"));
-      let currentSubject = (urlSubject && subjectsConfig[urlSubject]) ? urlSubject : "circuitos";
-      let currentPartial = (!isNaN(urlPartial) && urlPartial > 0) ? urlPartial : 1;
-      // Aseguramos que la estructura para el parcial actual exista
-      if (!subjectsConfig[currentSubject].parcials[currentPartial]) {
-        subjectsConfig[currentSubject].parcials[currentPartial] = { examEvals: [], taskEvals: [], practiceEvals: [] };
-      }
-
-      /***********************
-       * 5. Funciones de Interfaz
+       * 5. Funciones de Interfaz (Construcción de selectores, tablas, etc.)
        ***********************/
       function buildSubjectSelect() {
         const select = document.getElementById("subjectSelect");
@@ -580,6 +583,7 @@
         const headerRow = document.getElementById("dynamicHeader");
         headerRow.innerHTML = "";
         const cfg = subjectsConfig[currentSubject].parcials[currentPartial];
+        // Construir cabecera para exámenes
         cfg.examEvals.forEach(evalObj => {
           if(evalObj.name.toLowerCase() === "acciones") return;
           const th = document.createElement("th");
@@ -589,6 +593,7 @@
         const thExamAvg = document.createElement("th");
         thExamAvg.textContent = "Promedio Exámenes";
         headerRow.appendChild(thExamAvg);
+        // Cabecera para tareas
         cfg.taskEvals.forEach(evalObj => {
           if(evalObj.name.toLowerCase() === "acciones") return;
           const th = document.createElement("th");
@@ -598,6 +603,7 @@
         const thTaskAvg = document.createElement("th");
         thTaskAvg.textContent = "Promedio Tareas";
         headerRow.appendChild(thTaskAvg);
+        // Cabecera para prácticas
         cfg.practiceEvals.forEach(evalObj => {
           if(evalObj.name.toLowerCase() === "acciones") return;
           const th = document.createElement("th");
@@ -779,7 +785,7 @@
         });
         attachTableListeners();
         recalculateAll();
-        if(readOnlyMode) { setReadOnly(); }
+        if (isReadOnlyMode()) { setReadOnly(); }
         debounceSaveData();
       }
       function recalculateRow(row) {
@@ -1317,7 +1323,7 @@
 
       document.getElementById("printGrades").onclick = () => { window.print(); };
 
-      // Actualizar la URL al cambiar de parcial o materia
+      // Actualizar URL al cambiar de parcial o materia
       document.querySelectorAll(".tab-btn").forEach(btn => {
         btn.addEventListener("click", () => {
           currentPartial = parseInt(btn.getAttribute("data-partial"));
@@ -1346,6 +1352,7 @@
         window.history.pushState({}, '', url.toString());
       }
       function setReadOnly() {
+        // Deshabilitar todos los controles
         document.querySelectorAll("input, select, button").forEach(el => { el.disabled = true; });
         const notice = document.createElement("p");
         notice.textContent = "Modo Solo Lectura – No se permite la edición";
@@ -1404,8 +1411,8 @@
        * 7. Autenticación y Modo Solo Lectura
        ***********************/
       window.addEventListener("load", () => {
-        // Si la URL incluye "readonly=true", se activa el modo de solo lectura y no se requiere login.
         if (readOnlyMode) {
+          // En modo solo lectura, no se requiere login; se muestra la app y se actualiza la información
           document.getElementById("appContainer").style.display = "block";
           setReadOnly();
         } else {
@@ -1464,6 +1471,11 @@
           }).catch(err => { console.error("Error al resetear la base de datos:", err); });
         }
       };
+
+      // Función auxiliar para devolver true si estamos en modo solo lectura
+      function isReadOnlyMode() {
+        return readOnlyMode;
+      }
 
     })();
   </script>
