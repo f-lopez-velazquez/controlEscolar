@@ -335,11 +335,18 @@
   <script>
     "use strict";
     (function() {
+      /***********************
+       * Primero: Obtener parámetros de la URL y determinar modo solo lectura.
+       * Esto DEBE hacerse antes de cualquier restauración o uso.
+       ***********************/
+      const urlParams = new URLSearchParams(window.location.search);
+      const readOnlyMode = (urlParams.get("readonly") === "true");
+      function isReadOnlyMode() { return readOnlyMode; }
 
       /***********************
        * 1. Variables Globales: Datos
+       * (Estructuras iniciales para materias, alumnos y equipos)
        ***********************/
-      // Estructura de materias con parcials independientes
       const subjectsConfig = {
         circuitos: {
           name: "Circuitos Eléctricos",
@@ -477,14 +484,11 @@
       /***********************
        * 3. Variables de Estado
        ***********************/
-      const urlParams = new URLSearchParams(window.location.search);
-      const readOnlyMode = (urlParams.get("readonly") === "true");
-      function isReadOnlyMode() { return readOnlyMode; }
       let urlSubject = urlParams.get("subject");
       let urlPartial = parseInt(urlParams.get("partial"));
       let currentSubject = (urlSubject && subjectsConfig[urlSubject]) ? urlSubject : "circuitos";
       let currentPartial = (!isNaN(urlPartial) && urlPartial > 0) ? urlPartial : 1;
-      // Aseguramos que la estructura para el parcial actual exista
+      // Aseguramos que exista la estructura para el parcial actual
       if (!subjectsConfig[currentSubject].parcials[currentPartial]) {
         subjectsConfig[currentSubject].parcials[currentPartial] = { examEvals: [], taskEvals: [], practiceEvals: [] };
       }
@@ -511,8 +515,10 @@
         })).catch(err => console.error("Error guardando teams", err));
       }
       function saveData() {
-        // En modo solo lectura no se realizan guardados
-        if (isReadOnlyMode()) { console.log("Modo solo lectura: no se guardan datos."); return; }
+        if (isReadOnlyMode()) {
+          console.log("Modo solo lectura: no se guardan datos.");
+          return;
+        }
         if (!auth.currentUser) {
           console.warn("No hay usuario autenticado; no se guardan datos.");
           return;
@@ -546,7 +552,7 @@
       });
 
       /***********************
-       * 5. Funciones de Interfaz (Construcción de selectores, tablas, etc.)
+       * 5. Funciones de Interfaz
        ***********************/
       function buildSubjectSelect() {
         const select = document.getElementById("subjectSelect");
@@ -583,7 +589,6 @@
         const headerRow = document.getElementById("dynamicHeader");
         headerRow.innerHTML = "";
         const cfg = subjectsConfig[currentSubject].parcials[currentPartial];
-        // Construir cabecera para exámenes
         cfg.examEvals.forEach(evalObj => {
           if(evalObj.name.toLowerCase() === "acciones") return;
           const th = document.createElement("th");
@@ -593,7 +598,6 @@
         const thExamAvg = document.createElement("th");
         thExamAvg.textContent = "Promedio Exámenes";
         headerRow.appendChild(thExamAvg);
-        // Cabecera para tareas
         cfg.taskEvals.forEach(evalObj => {
           if(evalObj.name.toLowerCase() === "acciones") return;
           const th = document.createElement("th");
@@ -603,7 +607,6 @@
         const thTaskAvg = document.createElement("th");
         thTaskAvg.textContent = "Promedio Tareas";
         headerRow.appendChild(thTaskAvg);
-        // Cabecera para prácticas
         cfg.practiceEvals.forEach(evalObj => {
           if(evalObj.name.toLowerCase() === "acciones") return;
           const th = document.createElement("th");
@@ -1411,8 +1414,8 @@
        * 7. Autenticación y Modo Solo Lectura
        ***********************/
       window.addEventListener("load", () => {
-        if (readOnlyMode) {
-          // En modo solo lectura, no se requiere login; se muestra la app y se actualiza la información
+        if (isReadOnlyMode()) {
+          // En modo solo lectura, se muestra la app sin login
           document.getElementById("appContainer").style.display = "block";
           setReadOnly();
         } else {
@@ -1471,11 +1474,6 @@
           }).catch(err => { console.error("Error al resetear la base de datos:", err); });
         }
       };
-
-      // Función auxiliar para devolver true si estamos en modo solo lectura
-      function isReadOnlyMode() {
-        return readOnlyMode;
-      }
 
     })();
   </script>
