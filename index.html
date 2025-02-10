@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <!-- Para que la página sea responsiva en smartphones -->
+  <!-- Responsividad para móviles -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sistema de Calificaciones - Institución XYZ</title>
   <style>
@@ -65,7 +65,7 @@
     .partial-tabs button:hover { background: #003d80; }
     .rubric-display button,
     .cred-btn { margin-left: 10px; padding: 5px 10px; font-size: 0.9rem; cursor: pointer; }
-    /* Botones de guardado manual y Reset DB */
+    /* Botones de guardado manual y reset */
     #manualSaveBtn, #resetDBBtn {
       padding: 8px 12px;
       border: none;
@@ -197,7 +197,7 @@
       z-index: 2000;
     }
   </style>
-  <!-- Incluir Firebase (compat) y dependencias desde los CDN -->
+  <!-- Incluir Firebase (compat) y dependencias desde CDN -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
@@ -216,7 +216,7 @@
     </div>
   </div>
 
-  <!-- Modal de Login (opcional para esta versión) -->
+  <!-- Modal de Login (opcional) -->
   <div id="loginModal" class="modal">
     <div class="modal-content">
       <span class="close">&times;</span>
@@ -245,7 +245,7 @@
           <button id="editSubject" class="cred-btn">Editar Materia</button>
           <button id="shareVersion" class="cred-btn">Compartir Versión</button>
         </div>
-        <!-- Información del usuario (opcional) -->
+        <!-- Información del usuario -->
         <div id="userInfo"></div>
         <!-- Botón para cerrar sesión -->
         <button id="logoutBtn">Cerrar sesión</button>
@@ -336,7 +336,7 @@
     /***********************
      * 1. Variables Globales: Datos
      ***********************/
-    // Datos iniciales (estructuras de materias, estudiantes y equipos)
+    // Datos iniciales de la aplicación
     const subjectsConfig = {
       circuitos: {
         name: "Circuitos Eléctricos",
@@ -473,7 +473,6 @@
       console.log("Guardando datos en Firestore...");
       Promise.all([ saveSubjects(), saveStudents(), saveTeams() ])
         .then(() => {
-          // Guardar una copia en localStorage
           localStorage.setItem('subjectsConfig', JSON.stringify(subjectsConfig));
           localStorage.setItem('students', JSON.stringify(students));
           localStorage.setItem('teams', JSON.stringify(teams));
@@ -529,8 +528,20 @@
     let readOnlyMode = urlParams.get("readonly") === "true";
     let urlSubject = urlParams.get("subject");
     let urlPartial = parseInt(urlParams.get("partial"));
+    // Si la estructura de parcials no existe (por ejemplo, por datos antiguos en localStorage), la inicializamos:
+    if (urlSubject && subjectsConfig[urlSubject] && !subjectsConfig[urlSubject].parcials) {
+      subjectsConfig[urlSubject].parcials = {
+        "1": { examEvals: [], taskEvals: [], practiceEvals: [] },
+        "2": { examEvals: [], taskEvals: [], practiceEvals: [] },
+        "3": { examEvals: [], taskEvals: [], practiceEvals: [] },
+        "4": { examEvals: [], taskEvals: [], practiceEvals: [] }
+      };
+    }
     let currentSubject = (urlSubject && subjectsConfig[urlSubject]) ? urlSubject : "circuitos";
     let currentPartial = (!isNaN(urlPartial) && urlPartial > 0) ? urlPartial : 1;
+    if (!subjectsConfig[currentSubject].parcials[currentPartial]) {
+      subjectsConfig[currentSubject].parcials[currentPartial] = { examEvals: [], taskEvals: [], practiceEvals: [] };
+    }
 
     /***********************
      * 5. Funciones de Interfaz
@@ -995,13 +1006,12 @@
         <br>
         <button id="saveRubric" class="btn">Guardar Rúbrica</button>`;
       showModal(content);
-      // Guardar cambios en porcentajes y nombres
+      // Guardar porcentajes y actualizar nombres
       document.getElementById("saveRubric").onclick = () => {
         cfg.rubric.exam = parseFloat(document.getElementById("rubricExam").value) || 0;
         cfg.rubric.task = parseFloat(document.getElementById("rubricTask").value) || 0;
         cfg.rubric.practice = parseFloat(document.getElementById("rubricPractice").value) || 0;
         cfg.rubric.participation = parseFloat(document.getElementById("rubricPart").value) || 0;
-        // Actualizar nombres de evaluaciones
         const examInputs = document.querySelectorAll("#examList .evalInput");
         examInputs.forEach((input, index) => {
           currParcial.examEvals[index].name = input.value.trim();
@@ -1020,7 +1030,7 @@
         buildGradeTable();
         debounceSaveData();
       };
-      // Funcionalidad de botones "Quitar" y "Agregar"
+      // Botones "Quitar" y "Agregar evaluaciones"
       document.querySelectorAll("#rubricEdits .removeEval").forEach(btn => {
         btn.addEventListener("click", (e) => {
           const li = e.target.closest("li");
@@ -1033,6 +1043,7 @@
           } else if(cat === "practice") {
             currParcial.practiceEvals.splice(index, 1);
           }
+          // Reabrir el modal para seguir editando
           openRubricModal();
           buildDynamicHeader();
           buildGradeTable();
@@ -1371,7 +1382,7 @@
     buildGradeTable();
 
     /***********************
-     * 7. Autenticación y Datos del Usuario (opcional)
+     * 7. Autenticación y Mostrar Datos del Usuario
      ***********************/
     window.addEventListener("load", () => {
       const loginModal = document.getElementById("loginModal");
@@ -1381,7 +1392,6 @@
           loginModal.style.display = "none";
           document.getElementById("appContainer").style.display = "block";
           document.getElementById("userInfo").innerText = "Usuario: " + user.email;
-          // Si deseas restringir la edición a cierto usuario, por ejemplo, al propietario:
           if(user.email === "fco.lopezvelazquez@gmail.com") {
             document.getElementById("resetDBContainer").style.display = "block";
           } else {
