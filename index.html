@@ -590,7 +590,7 @@
         const headerRow = document.getElementById("dynamicHeader");
         headerRow.innerHTML = "";
         const cfg = subjectsConfig[currentSubject].parcials[currentPartial];
-        // Cabecera para exámenes
+        // Para exámenes
         cfg.examEvals.forEach(evalObj => {
           if (evalObj.name.toLowerCase() === "acciones") return;
           const th = document.createElement("th");
@@ -600,7 +600,7 @@
         const thExamAvg = document.createElement("th");
         thExamAvg.textContent = "Promedio Exámenes";
         headerRow.appendChild(thExamAvg);
-        // Cabecera para tareas
+        // Para tareas
         cfg.taskEvals.forEach(evalObj => {
           if (evalObj.name.toLowerCase() === "acciones") return;
           const th = document.createElement("th");
@@ -610,7 +610,7 @@
         const thTaskAvg = document.createElement("th");
         thTaskAvg.textContent = "Promedio Tareas";
         headerRow.appendChild(thTaskAvg);
-        // Cabecera para prácticas
+        // Para prácticas
         cfg.practiceEvals.forEach(evalObj => {
           if (evalObj.name.toLowerCase() === "acciones") return;
           const th = document.createElement("th");
@@ -640,7 +640,7 @@
           }
           let rowHTML = `<tr data-team-id="${team.id}"><td>${team.name}</td><td>${team.head}</td>`;
           team.partials[currentPartial].forEach((val, idx) => {
-            rowHTML += `<td><input type="number" class="team-practice-input" data-team-id="${team.id}" data-index="${idx}" min="0" max="10" step="0.1" value="${val || 0}"></td>`;
+            rowHTML += `<td><input type="number" class="team-practice-input" data-team-id="${team.id}" data-index="${idx}" min="0" max="10" step="0.1" value="${(typeof val !== 'undefined' ? val : 0)}"></td>`;
           });
           rowHTML += `<td>
                         <button class="edit-team btn">Editar</button>
@@ -769,11 +769,14 @@
             const subjectTeams = teams[currentSubject];
             const teamObj = subjectTeams.find(t => t.id === student.team);
             let grade = 0;
-            if(teamObj && teamObj.partials && teamObj.partials[currentPartial] && teamObj.partials[currentPartial][index] !== undefined) { 
+            if(teamObj && teamObj.partials && teamObj.partials[currentPartial] && typeof teamObj.partials[currentPartial][index] !== "undefined") { 
               grade = teamObj.partials[currentPartial][index]; 
+            } else if (typeof partialData.practices[index] !== "undefined") {
+              grade = partialData.practices[index];
             }
+            // Almacenar la nota en el registro del alumno
             partialData.practices[index] = grade;
-            rowHTML += `<td><input type="number" class="practice-input" data-index="${index}" min="0" max="10" step="0.1" value="${grade || 0}" readonly></td>`;
+            rowHTML += `<td><input type="number" class="practice-input" data-index="${index}" min="0" max="10" step="0.1" value="${grade}" readonly></td>`;
           });
           rowHTML += `<td class="practice-average">0</td>`;
           rowHTML += `
@@ -792,6 +795,10 @@
             </td>
           </tr>`;
           tbody.innerHTML += rowHTML;
+        });
+        // Forzar actualización de la nota de prácticas según el equipo en cada fila
+        document.querySelectorAll("#gradeTable tbody tr").forEach(row => {
+          propagateTeamGradeForRow(row);
         });
         attachTableListeners();
         recalculateAll();
@@ -1362,7 +1369,6 @@
         window.history.pushState({}, '', url.toString());
       }
       function setReadOnly() {
-        // Deshabilitar todos los controles
         document.querySelectorAll("input, select, button").forEach(el => { el.disabled = true; });
         const notice = document.createElement("p");
         notice.textContent = "Modo Solo Lectura – No se permite la edición";
@@ -1422,7 +1428,7 @@
        ***********************/
       window.addEventListener("load", () => {
         if (isReadOnlyMode()) {
-          // Autenticación anónima para poder leer (si las reglas lo requieren)
+          // Autenticación anónima para lectura
           if (!auth.currentUser) {
             auth.signInAnonymously().catch(error => {
               console.error("Error en autenticación anónima:", error);
