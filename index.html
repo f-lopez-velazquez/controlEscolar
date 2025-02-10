@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <!-- Para que la página sea responsiva en smartphones -->
+  <!-- Para que la página sea responsiva -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sistema de Calificaciones - Institución XYZ</title>
   <style>
@@ -250,6 +250,7 @@
         <!-- Botón para cerrar sesión -->
         <button id="logoutBtn">Cerrar sesión</button>
         <div class="partial-tabs">
+          <!-- Asegúrate de que cada botón tenga el atributo data-partial correctamente -->
           <button class="tab-btn" data-partial="1">Parcial 1</button>
           <button class="tab-btn" data-partial="2">Parcial 2</button>
           <button class="tab-btn" data-partial="3">Parcial 3</button>
@@ -339,7 +340,7 @@
       /***********************
        * 1. Variables Globales: Datos
        ***********************/
-      // Datos iniciales de ejemplo (cada materia define sus parcials de forma independiente)
+      // Cada materia tiene su propio objeto "parcials" con evaluaciones independientes
       const subjectsConfig = {
         circuitos: {
           name: "Circuitos Eléctricos",
@@ -418,13 +419,12 @@
 
       /***********************
        * 1.1. Restaurar estado desde localStorage (si existe)
-       * Se realiza un deep clone para asegurar que cada parcial sea independiente.
+       * Se hace un deep clone para que cada parcial mantenga su propia copia.
        ***********************/
       if (localStorage.getItem('subjectsConfig')) {
         try {
           const storedSubjects = JSON.parse(localStorage.getItem('subjectsConfig'));
           for (let key in storedSubjects) {
-            // Reasignamos haciendo deep clone
             subjectsConfig[key] = JSON.parse(JSON.stringify(storedSubjects[key]));
           }
         } catch (e) {
@@ -518,7 +518,7 @@
         .catch(function(error) { console.error("Error en la persistencia:", error); });
       const auth = firebase.auth();
       const db = firebase.firestore();
-      // Habilitar persistencia offline en Firestore (IndexedDB)
+      // Habilitar persistencia offline (IndexedDB)
       db.enablePersistence()
         .catch(function(err) {
           if (err.code === 'failed-precondition') {
@@ -537,7 +537,7 @@
       let urlPartial = parseInt(urlParams.get("partial"));
       let currentSubject = (urlSubject && subjectsConfig[urlSubject]) ? urlSubject : "circuitos";
       let currentPartial = (!isNaN(urlPartial) && urlPartial > 0) ? urlPartial : 1;
-      // Si no existe la estructura para el parcial actual, se crea (sin copiar de otro parcial)
+      // Aseguramos que la estructura para el parcial actual exista (sin copiar datos de otro parcial)
       if (!subjectsConfig[currentSubject].parcials[currentPartial]) {
         subjectsConfig[currentSubject].parcials[currentPartial] = { examEvals: [], taskEvals: [], practiceEvals: [] };
       }
@@ -580,6 +580,7 @@
         const headerRow = document.getElementById("dynamicHeader");
         headerRow.innerHTML = "";
         const cfg = subjectsConfig[currentSubject].parcials[currentPartial];
+        // Construir cabecera para exámenes
         cfg.examEvals.forEach(evalObj => {
           if(evalObj.name.toLowerCase() === "acciones") return;
           const th = document.createElement("th");
@@ -589,6 +590,7 @@
         const thExamAvg = document.createElement("th");
         thExamAvg.textContent = "Promedio Exámenes";
         headerRow.appendChild(thExamAvg);
+        // Construir cabecera para tareas
         cfg.taskEvals.forEach(evalObj => {
           if(evalObj.name.toLowerCase() === "acciones") return;
           const th = document.createElement("th");
@@ -598,6 +600,7 @@
         const thTaskAvg = document.createElement("th");
         thTaskAvg.textContent = "Promedio Tareas";
         headerRow.appendChild(thTaskAvg);
+        // Construir cabecera para prácticas
         cfg.practiceEvals.forEach(evalObj => {
           if(evalObj.name.toLowerCase() === "acciones") return;
           const th = document.createElement("th");
@@ -707,7 +710,7 @@
         const cfg = subjectsConfig[currentSubject].parcials[currentPartial];
         const filteredStudents = students.filter(s => s.subject === currentSubject);
         filteredStudents.forEach(student => {
-          // Inicializamos o actualizamos la información de este parcial para el alumno
+          // Inicializamos la estructura para este parcial si no existe
           if (!student.partials[currentPartial]) {
             student.partials[currentPartial] = {
               exams: Array(cfg.examEvals.length).fill(0),
@@ -723,7 +726,6 @@
               total: 0
             };
           } else {
-            // Si se han agregado evaluaciones nuevas en el parcial actual, extendemos los arrays (sin modificar los datos ya existentes)
             while (student.partials[currentPartial].exams.length < cfg.examEvals.length) { student.partials[currentPartial].exams.push(0); }
             while (student.partials[currentPartial].tasks.length < cfg.taskEvals.length) { student.partials[currentPartial].tasks.push(0); }
             while (student.partials[currentPartial].practices.length < cfg.practiceEvals.length) { student.partials[currentPartial].practices.push(0); }
@@ -1042,6 +1044,7 @@
             } else if(cat === "practice") {
               currParcial.practiceEvals.splice(index, 1);
             }
+            // Vuelve a abrir el modal para que se actualicen los elementos
             openRubricModal();
             buildDynamicHeader();
             buildGradeTable();
@@ -1093,7 +1096,7 @@
       }
       document.getElementById("editRubric").onclick = openRubricModal;
 
-      // Botones de agregar evaluaciones (fuera del modal) se agregan al parcial actual
+      // Botones para agregar evaluaciones fuera del modal
       document.getElementById("addExamEval").onclick = () => {
         let newExam = prompt("Ingrese nombre del nuevo Examen:");
         if(newExam && newExam.trim().toLowerCase() !== "acciones") {
@@ -1319,12 +1322,14 @@
 
       document.getElementById("printGrades").onclick = () => { window.print(); };
 
+      // Al cambiar de parcial, además de actualizar la tabla, se actualiza la cabecera dinámica
       document.querySelectorAll(".tab-btn").forEach(btn => {
         btn.addEventListener("click", () => {
           currentPartial = parseInt(btn.getAttribute("data-partial"));
           document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
           btn.classList.add("active");
           updatePartialDisplay();
+          buildDynamicHeader(); // <<–– Se actualiza la cabecera según el parcial actual
           buildGradeTable();
           buildTeamTable();
           updateURLParams();
@@ -1339,7 +1344,6 @@
         buildGradeTable();
         updateURLParams();
       });
-
       function updateURLParams() {
         const url = new URL(window.location.href);
         url.searchParams.set("subject", currentSubject);
@@ -1347,7 +1351,6 @@
         if (!readOnlyMode) { url.searchParams.delete("readonly"); }
         window.history.pushState({}, '', url.toString());
       }
-
       function setReadOnly() {
         document.querySelectorAll("input, select, button").forEach(el => { el.disabled = true; });
         const notice = document.createElement("p");
@@ -1363,7 +1366,19 @@
        ***********************/
       function attachRealtimeListeners() {
         db.collection("subjects").onSnapshot(snapshot => {
-          snapshot.forEach(doc => { subjectsConfig[doc.id] = doc.data(); });
+          snapshot.forEach(doc => {
+            let data = doc.data();
+            // Si no existe la propiedad "parcials", la creamos con valores por defecto
+            if (!data.parcials) {
+              data.parcials = {
+                "1": { examEvals: [], taskEvals: [], practiceEvals: [] },
+                "2": { examEvals: [], taskEvals: [], practiceEvals: [] },
+                "3": { examEvals: [], taskEvals: [], practiceEvals: [] },
+                "4": { examEvals: [], taskEvals: [], practiceEvals: [] }
+              };
+            }
+            subjectsConfig[doc.id] = data;
+          });
           buildSubjectSelect();
           updateRubricDisplay();
           buildDynamicHeader();
