@@ -335,9 +335,9 @@
   <script>
     "use strict";
     (function() {
+
       /***********************
-       * Primero: Obtener parámetros de la URL y determinar modo solo lectura.
-       * Esto DEBE hacerse antes de cualquier restauración o uso.
+       * 0. Parámetros URL y Modo Solo Lectura
        ***********************/
       const urlParams = new URLSearchParams(window.location.search);
       const readOnlyMode = (urlParams.get("readonly") === "true");
@@ -345,7 +345,7 @@
 
       /***********************
        * 1. Variables Globales: Datos
-       * (Estructuras iniciales para materias, alumnos y equipos)
+       * Estructuras iniciales para materias, alumnos y equipos.
        ***********************/
       const subjectsConfig = {
         circuitos: {
@@ -472,6 +472,7 @@
         .catch(function(error) { console.error("Error en la persistencia:", error); });
       const auth = firebase.auth();
       const db = firebase.firestore();
+      // Habilitar persistencia offline (IndexedDB)
       db.enablePersistence()
         .catch(function(err) {
           if (err.code === 'failed-precondition') {
@@ -482,7 +483,7 @@
         });
 
       /***********************
-       * 3. Variables de Estado
+       * 3. Variables de Estado (según URL)
        ***********************/
       let urlSubject = urlParams.get("subject");
       let urlPartial = parseInt(urlParams.get("partial"));
@@ -552,7 +553,7 @@
       });
 
       /***********************
-       * 5. Funciones de Interfaz
+       * 5. Funciones de Interfaz (Construcción de selectores, tablas, etc.)
        ***********************/
       function buildSubjectSelect() {
         const select = document.getElementById("subjectSelect");
@@ -589,8 +590,9 @@
         const headerRow = document.getElementById("dynamicHeader");
         headerRow.innerHTML = "";
         const cfg = subjectsConfig[currentSubject].parcials[currentPartial];
+        // Cabecera para exámenes
         cfg.examEvals.forEach(evalObj => {
-          if(evalObj.name.toLowerCase() === "acciones") return;
+          if (evalObj.name.toLowerCase() === "acciones") return;
           const th = document.createElement("th");
           th.textContent = evalObj.name;
           headerRow.appendChild(th);
@@ -598,8 +600,9 @@
         const thExamAvg = document.createElement("th");
         thExamAvg.textContent = "Promedio Exámenes";
         headerRow.appendChild(thExamAvg);
+        // Cabecera para tareas
         cfg.taskEvals.forEach(evalObj => {
-          if(evalObj.name.toLowerCase() === "acciones") return;
+          if (evalObj.name.toLowerCase() === "acciones") return;
           const th = document.createElement("th");
           th.textContent = evalObj.name;
           headerRow.appendChild(th);
@@ -607,8 +610,9 @@
         const thTaskAvg = document.createElement("th");
         thTaskAvg.textContent = "Promedio Tareas";
         headerRow.appendChild(thTaskAvg);
+        // Cabecera para prácticas
         cfg.practiceEvals.forEach(evalObj => {
-          if(evalObj.name.toLowerCase() === "acciones") return;
+          if (evalObj.name.toLowerCase() === "acciones") return;
           const th = document.createElement("th");
           th.textContent = evalObj.name;
           headerRow.appendChild(th);
@@ -1415,7 +1419,12 @@
        ***********************/
       window.addEventListener("load", () => {
         if (isReadOnlyMode()) {
-          // En modo solo lectura, se muestra la app sin login
+          // Para que las lecturas funcionen incluso sin login, se puede usar autenticación anónima
+          if (!auth.currentUser) {
+            auth.signInAnonymously().catch(error => {
+              console.error("Error en autenticación anónima:", error);
+            });
+          }
           document.getElementById("appContainer").style.display = "block";
           setReadOnly();
         } else {
