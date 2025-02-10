@@ -47,6 +47,8 @@
     .rubric-display { font-weight: bold; }
     .subject-select select { margin-right: 5px; }
     .subject-select button { margin-right: 5px; padding: 5px 10px; font-size: 0.9em; }
+    /* Botón para copiar alumnos a otra materia */
+    #copyStudentsBtn { background: #17a2b8; color: #fff; padding: 8px 12px; border: none; border-radius: 4px; cursor: pointer; margin-left: 10px; }
     /* Información del usuario */
     #userInfo { font-weight: bold; color: #003366; }
     /* Botón para cerrar sesión */
@@ -123,6 +125,8 @@
     .exam-average, .task-average, .practice-average, .total-partial {
       background-color: #d1e7dd;
     }
+    /* Ocultar columna de “Acciones” en modo solo lectura (opcional) */
+    .actions-column { display: none; }
     @media print {
       body { background: #fff; }
       .container { box-shadow: none; }
@@ -244,6 +248,7 @@
           <button id="addSubject" class="cred-btn">Agregar Materia</button>
           <button id="editSubject" class="cred-btn">Editar Materia</button>
           <button id="shareVersion" class="cred-btn">Compartir Versión</button>
+          <button id="copyStudentsBtn">Copiar Alumnos</button>
         </div>
         <!-- Información del usuario (solo en modo editable) -->
         <div id="userInfo"></div>
@@ -314,7 +319,8 @@
                 <th rowspan="2">Faltas</th>
                 <th rowspan="2">Deducciones</th>
                 <th rowspan="2">Total Parcial</th>
-                <th rowspan="2">Acciones</th>
+                <!-- La columna de "Acciones" solo se muestra en modo editable -->
+                <th rowspan="2" class="actions-column" style="display: none;">Acciones</th>
               </tr>
               <tr id="dynamicHeader"></tr>
             </thead>
@@ -553,7 +559,7 @@
       });
 
       /***********************
-       * 5. Funciones de Interfaz (Construcción de selectores, tablas, etc.)
+       * 5. Funciones de Interfaz
        ***********************/
       function buildSubjectSelect() {
         const select = document.getElementById("subjectSelect");
@@ -630,7 +636,9 @@
         const cfg = subjectsConfig[currentSubject].parcials[currentPartial];
         let headerHTML = "<tr><th>Equipo</th><th>Encargado</th>";
         cfg.practiceEvals.forEach(evalObj => { headerHTML += `<th>${evalObj.name}</th>`; });
-        headerHTML += "<th>Acciones</th></tr>";
+        // La columna de Acciones se muestra solo en modo editable
+        if (!isReadOnlyMode()) { headerHTML += "<th>Acciones</th>"; }
+        headerHTML += "</tr>";
         teamTableHead.innerHTML = headerHTML;
         const subjectTeams = teams[currentSubject] || [];
         subjectTeams.forEach(team => {
@@ -642,10 +650,13 @@
           team.partials[currentPartial].forEach((val, idx) => {
             rowHTML += `<td><input type="number" class="team-practice-input" data-team-id="${team.id}" data-index="${idx}" min="0" max="10" step="0.1" value="${(typeof val !== 'undefined' ? val : 0)}"></td>`;
           });
-          rowHTML += `<td>
-                        <button class="edit-team btn">Editar</button>
-                        <button class="delete-team btn">Eliminar</button>
-                      </td></tr>`;
+          if (!isReadOnlyMode()) {
+            rowHTML += `<td>
+                          <button class="edit-team btn">Editar</button>
+                          <button class="delete-team btn">Eliminar</button>
+                        </td>`;
+          }
+          rowHTML += `</tr>`;
           teamTableBody.innerHTML += rowHTML;
         });
         document.querySelectorAll(".team-practice-input").forEach(input => {
@@ -673,52 +684,54 @@
             }
           });
         });
-        document.querySelectorAll(".edit-team").forEach(btn => {
-          btn.onclick = (e) => {
-            const row = e.target.closest("tr");
-            const teamId = row.getAttribute("data-team-id");
-            const subjectTeams = teams[currentSubject];
-            const team = subjectTeams.find(t => t.id === teamId);
-            if(team) {
-              let content = `<h3>Editar Equipo</h3>
-                <label>Nombre: <input type="text" id="editTeamName" value="${team.name}"></label><br>
-                <label>Encargado: <input type="text" id="editTeamHead" value="${team.head}"></label><br>
-                <button id="saveTeam" class="btn">Guardar</button>`;
-              showModal(content);
-              document.getElementById("saveTeam").onclick = () => {
-                team.name = document.getElementById("editTeamName").value.trim();
-                team.head = document.getElementById("editTeamHead").value.trim();
-                modalOverlay.style.display = "none";
-                buildTeamTable();
-                buildGradeTable();
-                debounceSaveData();
-              };
-            }
-          };
-        });
-        document.querySelectorAll(".delete-team").forEach(btn => {
-          btn.onclick = (e) => {
-            const row = e.target.closest("tr");
-            const teamId = row.getAttribute("data-team-id");
-            if(confirm("¿Estás seguro de eliminar este equipo?")) {
-              const docId = currentSubject + "_" + teamId;
-              db.collection("teams").doc(docId).delete()
-                .then(() => {
-                  teams[currentSubject] = teams[currentSubject].filter(t => t.id !== teamId);
+        if (!isReadOnlyMode()) {
+          document.querySelectorAll(".edit-team").forEach(btn => {
+            btn.onclick = (e) => {
+              const row = e.target.closest("tr");
+              const teamId = row.getAttribute("data-team-id");
+              const subjectTeams = teams[currentSubject];
+              const team = subjectTeams.find(t => t.id === teamId);
+              if(team) {
+                let content = `<h3>Editar Equipo</h3>
+                  <label>Nombre: <input type="text" id="editTeamName" value="${team.name}"></label><br>
+                  <label>Encargado: <input type="text" id="editTeamHead" value="${team.head}"></label><br>
+                  <button id="saveTeam" class="btn">Guardar</button>`;
+                showModal(content);
+                document.getElementById("saveTeam").onclick = () => {
+                  team.name = document.getElementById("editTeamName").value.trim();
+                  team.head = document.getElementById("editTeamHead").value.trim();
+                  modalOverlay.style.display = "none";
                   buildTeamTable();
                   buildGradeTable();
                   debounceSaveData();
-                })
-                .catch(err => console.error("Error eliminando equipo", err));
-            }
-          };
-        });
+                };
+              }
+            };
+          });
+          document.querySelectorAll(".delete-team").forEach(btn => {
+            btn.onclick = (e) => {
+              const row = e.target.closest("tr");
+              const teamId = row.getAttribute("data-team-id");
+              if(confirm("¿Estás seguro de eliminar este equipo?")) {
+                const docId = currentSubject + "_" + teamId;
+                db.collection("teams").doc(docId).delete()
+                  .then(() => {
+                    teams[currentSubject] = teams[currentSubject].filter(t => t.id !== teamId);
+                    buildTeamTable();
+                    buildGradeTable();
+                    debounceSaveData();
+                  })
+                  .catch(err => console.error("Error eliminando equipo", err));
+              }
+            };
+          });
+        }
       }
       function buildGradeTable() {
         const tbody = document.getElementById("gradeTable").querySelector("tbody");
         tbody.innerHTML = "";
         const cfg = subjectsConfig[currentSubject].parcials[currentPartial];
-        // Filtrar y ordenar los alumnos por número de lista (ascendente)
+        // Filtrar y ordenar alumnos por número de lista (ascendente)
         const filteredStudents = students
           .filter(s => s.subject === currentSubject)
           .sort((a, b) => a.listNumber - b.listNumber);
@@ -746,7 +759,7 @@
           }
           const partialData = student.partials[currentPartial];
           let rowHTML = `<tr data-list="${student.listNumber}">
-            <td>${student.listNumber}</td>
+            <td class="list-cell" style="cursor:pointer;">${student.listNumber}</td>
             <td contenteditable="true" class="student-name">${student.name}</td>
             <td>
               <select class="student-team">
@@ -774,7 +787,7 @@
             } else if (typeof partialData.practices[index] !== "undefined") {
               grade = partialData.practices[index];
             }
-            // Almacenar la nota en el registro del alumno
+            // Aseguramos almacenar la nota en el alumno
             partialData.practices[index] = grade;
             rowHTML += `<td><input type="number" class="practice-input" data-index="${index}" min="0" max="10" step="0.1" value="${grade}" readonly></td>`;
           });
@@ -787,18 +800,25 @@
             <td class="extra-total">0</td>
             <td><input type="number" class="participation" min="0" max="5" step="0.1" value="${partialData.participation || 0}"></td>
             <td><input type="number" class="absences" min="0" step="1" value="${partialData.absences || 0}"></td>
-            <td class="deductions"><span class="deduction-sum">0</span> <button class="deduct-btn btn">Ded</button></td>
-            <td class="total-partial">0</td>
-            <td>
-              <button class="row-action-btn btn">Ver Ded.</button>
-              <button class="delete-student btn">Eliminar</button>
-            </td>
-          </tr>`;
+            <td class="deductions"><span class="deduction-sum">0</span> ${!isReadOnlyMode() ? '<button class="deduct-btn btn">Ded</button>' : ''}</td>
+            <td class="total-partial">0</td>`;
+          // Si se desea que al hacer click en la celda de acciones se muestren opciones, se pueden agregar botones (solo en modo editable)
+          if (!isReadOnlyMode()) {
+            rowHTML += `<td class="actions-column"><button class="row-action-btn btn">Ver Ded.</button>
+                        <button class="delete-student btn">Eliminar</button></td>`;
+          }
+          rowHTML += `</tr>`;
           tbody.innerHTML += rowHTML;
         });
-        // Forzar actualización de la nota de prácticas según el equipo en cada fila
-        document.querySelectorAll("#gradeTable tbody tr").forEach(row => {
-          propagateTeamGradeForRow(row);
+        // Agregar listener a la celda de número de lista para mostrar resumen individual
+        document.querySelectorAll(".list-cell").forEach(cell => {
+          cell.addEventListener("click", () => {
+            const listNum = cell.innerText.trim();
+            const student = students.find(s => s.listNumber == listNum && s.subject === currentSubject);
+            if(student) {
+              showStudentSummary(student);
+            }
+          });
         });
         attachTableListeners();
         recalculateAll();
@@ -827,7 +847,7 @@
         row.querySelector(".extra-total").textContent = extraTotal.toFixed(2);
         const participation = parseFloat(row.querySelector(".participation").value) || 0;
         const listNum = row.getAttribute("data-list");
-        const student = students.find(s => s.listNumber == listNum);
+        const student = students.find(s => s.listNumber == listNum && s.subject === currentSubject);
         let deductionSum = 0;
         if(student && student.partials[currentPartial] && Array.isArray(student.partials[currentPartial].deductions)) {
           deductionSum = student.partials[currentPartial].deductions.reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0);
@@ -856,7 +876,7 @@
           select.addEventListener("change", (e) => {
             const row = e.target.closest("tr");
             const listNum = row.getAttribute("data-list");
-            const student = students.find(s => s.listNumber == listNum);
+            const student = students.find(s => s.listNumber == listNum && s.subject === currentSubject);
             if(student) { student.team = e.target.value; }
             propagateTeamGradeForRow(row);
             debounceSaveData();
@@ -866,7 +886,7 @@
           cell.addEventListener("blur", (e) => {
             const row = e.target.closest("tr");
             const listNum = row.getAttribute("data-list");
-            const student = students.find(s => s.listNumber == listNum);
+            const student = students.find(s => s.listNumber == listNum && s.subject === currentSubject);
             if(student) { student.name = e.target.textContent.trim(); }
             debounceSaveData();
           });
@@ -875,37 +895,40 @@
           btn.addEventListener("click", (e) => {
             const row = e.target.closest("tr");
             const listNum = row.getAttribute("data-list");
-            const student = students.find(s => s.listNumber == listNum);
+            const student = students.find(s => s.listNumber == listNum && s.subject === currentSubject);
             if(student) { openDeductionModal(student); }
           });
         });
-        document.querySelectorAll(".row-action-btn").forEach(btn => {
-          btn.addEventListener("click", (e) => {
-            const row = e.target.closest("tr");
-            const listNum = row.getAttribute("data-list");
-            const student = students.find(s => s.listNumber == listNum);
-            if(student) { openDeductionModal(student, true); }
+        if (!isReadOnlyMode()) {
+          document.querySelectorAll(".row-action-btn").forEach(btn => {
+            btn.addEventListener("click", (e) => {
+              const row = e.target.closest("tr");
+              const listNum = row.getAttribute("data-list");
+              const student = students.find(s => s.listNumber == listNum && s.subject === currentSubject);
+              if(student) { openDeductionModal(student, true); }
+            });
           });
-        });
-        document.querySelectorAll(".delete-student").forEach(btn => {
-          btn.addEventListener("click", (e) => {
-            const row = e.target.closest("tr");
-            const listNum = parseInt(row.getAttribute("data-list"));
-            if(confirm("¿Estás seguro de eliminar este alumno?")) {
-              db.collection("students").doc("stu_" + listNum).delete()
-                .then(() => {
-                  students.splice(students.findIndex(s => s.listNumber === listNum), 1);
-                  buildGradeTable();
-                  debounceSaveData();
-                })
-                .catch(err => console.error("Error eliminando alumno", err));
-            }
+          document.querySelectorAll(".delete-student").forEach(btn => {
+            btn.addEventListener("click", (e) => {
+              const row = e.target.closest("tr");
+              const listNum = parseInt(row.getAttribute("data-list"));
+              if(confirm("¿Estás seguro de eliminar este alumno?")) {
+                db.collection("students").doc("stu_" + listNum).delete()
+                  .then(() => {
+                    const idx = students.findIndex(s => s.listNumber === listNum && s.subject === currentSubject);
+                    if(idx !== -1) { students.splice(idx, 1); }
+                    buildGradeTable();
+                    debounceSaveData();
+                  })
+                  .catch(err => console.error("Error eliminando alumno", err));
+              }
+            });
           });
-        });
+        }
       }
       function saveRowData(row) {
         const listNum = row.getAttribute("data-list");
-        const student = students.find(s => s.listNumber == listNum);
+        const student = students.find(s => s.listNumber == listNum && s.subject === currentSubject);
         if(!student) return;
         const partialData = student.partials[currentPartial];
         partialData.exams = [];
@@ -922,7 +945,7 @@
       }
       function propagateTeamGradeForRow(row) {
         const listNum = row.getAttribute("data-list");
-        const student = students.find(s => s.listNumber == listNum);
+        const student = students.find(s => s.listNumber == listNum && s.subject === currentSubject);
         if(!student) return;
         const subjectTeams = teams[currentSubject];
         const teamObj = subjectTeams.find(t => t.id === student.team);
@@ -933,6 +956,21 @@
         }
         recalculateRow(row);
         debounceSaveData();
+      }
+      // Función para mostrar resumen individual al hacer click en el número de lista
+      function showStudentSummary(student) {
+        let content = `<h3>Resumen de Alumno</h3>
+          <p><strong>N° Lista:</strong> ${student.listNumber}</p>
+          <p><strong>Nombre:</strong> ${student.name}</p>
+          <p><strong>Equipo:</strong> ${student.team}</p>
+          <p><strong>Materia:</strong> ${subjectsConfig[student.subject].name}</p>`;
+        if (student.partials[currentPartial]) {
+          content += `<h4>Parcial ${currentPartial}</h4>`;
+          content += `<pre>${JSON.stringify(student.partials[currentPartial], null, 2)}</pre>`;
+        } else {
+          content += `<p>No hay datos para el parcial ${currentPartial}.</p>`;
+        }
+        showModal(content);
       }
 
       /***********************
@@ -1155,227 +1193,43 @@
         }
       };
 
-      document.getElementById("addStudent").onclick = () => {
-        let content = `<h3>Agregar Alumno</h3>
-           <label>N° LS: <input type="number" id="newListNumber"></label><br>
-           <label>Alumno: <input type="text" id="newStudentName"></label><br>
-           <label>Equipo: 
-               <select id="newStudentTeam">
-                  ${teams[currentSubject].map(team => `<option value="${team.id}">${team.name}</option>`).join('')}
-               </select>
-           </label><br>
-           <button id="saveStudent" class="btn">Guardar</button>`;
-        showModal(content);
-        document.getElementById("saveStudent").onclick = () => {
-           const listNum = parseInt(document.getElementById("newListNumber").value);
-           const name = document.getElementById("newStudentName").value.trim();
-           const team = document.getElementById("newStudentTeam").value;
-           if(!listNum || !name) { alert("Complete todos los campos."); return; }
-           students.push({ listNumber: listNum, name, team, subject: currentSubject, partials: {} });
-           modalOverlay.style.display = "none";
-           buildGradeTable();
-           debounceSaveData();
-        };
-      };
-
-      document.getElementById("addTeam").onclick = () => {
-        let content = `<h3>Agregar Equipo</h3>
-           <label>ID: <input type="text" id="newTeamId"></label><br>
-           <label>Nombre: <input type="text" id="newTeamName"></label><br>
-           <label>Encargado: <input type="text" id="newTeamHead"></label><br>
-           <button id="saveTeamNew" class="btn">Guardar</button>`;
-        showModal(content);
-        document.getElementById("saveTeamNew").onclick = () => {
-           const id = document.getElementById("newTeamId").value.trim();
-           const name = document.getElementById("newTeamName").value.trim();
-           const head = document.getElementById("newTeamHead").value.trim();
-           if(!id || !name || !head) { alert("Complete todos los campos."); return; }
-           if(!teams[currentSubject]) teams[currentSubject] = [];
-           teams[currentSubject].push({ id, name, head, partials: {} });
-           modalOverlay.style.display = "none";
-           buildTeamTable();
-           buildGradeTable();
-           debounceSaveData();
-        };
-      };
-
-      document.getElementById("editSubject").onclick = () => {
-        const subj = subjectsConfig[currentSubject];
-        let content = `<h3>Editar Materia</h3>
-          <label>Nombre: <input type="text" id="editSubjName" value="${subj.name}"></label><br>
-          <label>Semestre: 
-            <select id="editSubjSemester">
-              <option value="ene-jul" ${subj.semester==="ene-jul"?"selected":""}>ene-jul</option>
-              <option value="ago-dic" ${subj.semester==="ago-dic"?"selected":""}>ago-dic</option>
-            </select>
-          </label><br>
-          <label>Año: <input type="number" id="editSubjYear" value="${subj.year}"></label><br>
-          <button id="saveSubjectEd" class="btn">Guardar</button>`;
-        showModal(content);
-        document.getElementById("saveSubjectEd").onclick = () => {
-          subj.name = document.getElementById("editSubjName").value.trim();
-          subj.semester = document.getElementById("editSubjSemester").value;
-          subj.year = parseInt(document.getElementById("editSubjYear").value);
-          modalOverlay.style.display = "none";
-          buildSubjectSelect();
-          buildDynamicHeader();
-          debounceSaveData();
-        };
-      };
-
-      document.getElementById("addSubject").onclick = () => {
-        let content = `<h3>Agregar Materia</h3>
-          <label>ID: <input type="text" id="newSubjectId"></label><br>
-          <label>Nombre: <input type="text" id="newSubjectName"></label><br>
-          <label>Semestre: 
-            <select id="newSubjectSemester">
-              <option value="ene-jul">ene-jul</option>
-              <option value="ago-dic">ago-dic</option>
-            </select>
-          </label><br>
-          <label>Año: <input type="number" id="newSubjectYear" value="2023"></label><br>
-          <button id="saveSubject" class="btn">Guardar Materia</button>`;
-        showModal(content);
-        document.getElementById("saveSubject").onclick = () => {
-          const id = document.getElementById("newSubjectId").value.trim();
-          const name = document.getElementById("newSubjectName").value.trim();
-          const semester = document.getElementById("newSubjectSemester").value;
-          const year = parseInt(document.getElementById("newSubjectYear").value);
-          if(!id || !name || !semester || isNaN(year)) { alert("Complete todos los campos."); return; }
-          subjectsConfig[id] = {
-            name: name,
-            semester: semester,
-            year: year,
-            rubric: { exam: 45, task: 25, practice: 30, participation: 5 },
-            parcials: {
-              "1": { examEvals: [], taskEvals: [], practiceEvals: [] },
-              "2": { examEvals: [], taskEvals: [], practiceEvals: [] },
-              "3": { examEvals: [], taskEvals: [], practiceEvals: [] },
-              "4": { examEvals: [], taskEvals: [], practiceEvals: [] }
-            }
-          };
-          teams[id] = [];
-          buildSubjectSelect();
-          modalOverlay.style.display = "none";
-          debounceSaveData();
-        };
-      };
-
-      document.getElementById("shareVersion").onclick = () => {
-        const url = new URL(window.location.href);
-        url.searchParams.set("subject", currentSubject);
-        url.searchParams.set("partial", currentPartial);
-        url.searchParams.set("readonly", "true");
-        prompt("Copia este enlace para compartir la versión de solo lectura:", url.toString());
-      };
-
-      document.getElementById("exportExcel").onclick = () => {
-        const table = document.getElementById("gradeTable");
-        let csv = "";
-        for (let row of table.rows) {
-          let rowData = [];
-          for (let cell of row.cells) {
-            let text = cell.innerText.trim();
-            if (!text) text = "0";
-            rowData.push('"' + text + '"');
-          }
-          csv += rowData.join(",") + "\n";
-        }
-        const blob = new Blob([csv], { type: "application/vnd.ms-excel" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = "calificaciones_" + currentSubject + "_parcial_" + currentPartial + ".xls";
-        a.click();
-        URL.revokeObjectURL(url);
-      };
-
-      document.getElementById("exportPDF").onclick = () => {
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF('landscape', 'pt', 'a4');
-        doc.setFontSize(10);
-        doc.text("Calificaciones - " + subjectsConfig[currentSubject].name + " - Parcial " + currentPartial, 40, 30);
-        const headerCells = [ "N° LS", "Alumno", "Equipo" ];
-        const cfg = subjectsConfig[currentSubject].parcials[currentPartial];
-        cfg.examEvals.forEach(e => headerCells.push(e.name));
-        headerCells.push("P-EX");
-        cfg.taskEvals.forEach(e => headerCells.push(e.name));
-        headerCells.push("P-TA");
-        cfg.practiceEvals.forEach(e => headerCells.push(e.name));
-        headerCells.push("P-PR");
-        headerCells.push("ExE");
-        headerCells.push("ExT");
-        headerCells.push("ExP");
-        headerCells.push("ExP-Gen");
-        headerCells.push("ExTOT");
-        headerCells.push("Par");
-        headerCells.push("Faltas");
-        headerCells.push("Ded");
-        headerCells.push("TOT");
-        headerCells.push("Firma");
-        const headers = [headerCells];
-        const data = [];
-        document.querySelectorAll("#gradeTable tbody tr").forEach(row => {
-          const rowData = [];
-          const cells = Array.from(row.querySelectorAll("td"));
-          cells.slice(0, cells.length - 1).forEach(cell => {
-            let text = cell.innerText.trim();
-            if (!text) text = "0";
-            rowData.push(text);
+      // Botón para copiar alumnos a otra materia
+      document.getElementById("copyStudentsBtn").onclick = () => {
+        const targetSubject = prompt("Ingrese el ID de la materia destino:");
+        if(targetSubject && subjectsConfig[targetSubject]) {
+          // Filtrar alumnos del sujeto actual
+          const sourceStudents = students.filter(s => s.subject === currentSubject);
+          // Obtener el mayor número de lista en la materia destino
+          const destStudents = students.filter(s => s.subject === targetSubject);
+          const maxList = destStudents.reduce((max, s) => Math.max(max, s.listNumber), 0);
+          sourceStudents.forEach(s => {
+            // Clonar el alumno y asignarle un nuevo número de lista
+            const newStudent = JSON.parse(JSON.stringify(s));
+            newStudent.listNumber = maxList + 1;
+            newStudent.subject = targetSubject;
+            students.push(newStudent);
           });
-          rowData.push("____________________________");
-          data.push(rowData);
-        });
-        doc.autoTable({
-          head: headers,
-          body: data,
-          startY: 50,
-          theme: 'grid',
-          styles: { fontSize: 7, cellPadding: 4, halign: 'center', valign: 'middle' },
-          headStyles: { fillColor: [0, 51, 102] },
-          columnStyles: { text: { cellWidth: 'auto' } }
-        });
-        doc.save("calificaciones_" + subjectsConfig[currentSubject].name + "_parcial_" + currentPartial + ".pdf");
+          alert("Alumnos copiados a la materia " + targetSubject);
+          debounceSaveData();
+        } else {
+          alert("El ID de la materia destino no es válido.");
+        }
       };
 
-      document.getElementById("printGrades").onclick = () => { window.print(); };
-
-      // Actualizar URL al cambiar de parcial o materia
-      document.querySelectorAll(".tab-btn").forEach(btn => {
-        btn.addEventListener("click", () => {
-          currentPartial = parseInt(btn.getAttribute("data-partial"));
-          document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
-          btn.classList.add("active");
-          updatePartialDisplay();
-          buildDynamicHeader();
-          buildGradeTable();
-          buildTeamTable();
-          updateURLParams();
-        });
-      });
-      document.getElementById("subjectSelect").addEventListener("change", (e) => {
-        currentSubject = e.target.value;
-        updateRubricDisplay();
-        buildDynamicHeader();
-        buildTeamTable();
-        buildGradeTable();
-        updateURLParams();
-      });
-      function updateURLParams() {
-        const url = new URL(window.location.href);
-        url.searchParams.set("subject", currentSubject);
-        url.searchParams.set("partial", currentPartial);
-        if (!readOnlyMode) { url.searchParams.delete("readonly"); }
-        window.history.pushState({}, '', url.toString());
-      }
-      function setReadOnly() {
-        document.querySelectorAll("input, select, button").forEach(el => { el.disabled = true; });
-        const notice = document.createElement("p");
-        notice.textContent = "Modo Solo Lectura – No se permite la edición";
-        notice.style.textAlign = "center";
-        notice.style.fontWeight = "bold";
-        notice.style.color = "#900";
-        document.getElementById("appContainer").insertBefore(notice, document.getElementById("appContainer").firstChild);
+      // Al hacer click en el número de lista se muestra resumen individual
+      function showStudentSummary(student) {
+        let content = `<h3>Resumen de Alumno</h3>
+          <p><strong>N° Lista:</strong> ${student.listNumber}</p>
+          <p><strong>Nombre:</strong> ${student.name}</p>
+          <p><strong>Equipo:</strong> ${student.team}</p>
+          <p><strong>Materia:</strong> ${subjectsConfig[student.subject].name}</p>`;
+        if (student.partials[currentPartial]) {
+          content += `<h4>Datos del Parcial ${currentPartial}</h4>
+                      <pre>${JSON.stringify(student.partials[currentPartial], null, 2)}</pre>`;
+        } else {
+          content += `<p>No hay datos para el Parcial ${currentPartial}.</p>`;
+        }
+        showModal(content);
       }
 
       /***********************
@@ -1428,7 +1282,7 @@
        ***********************/
       window.addEventListener("load", () => {
         if (isReadOnlyMode()) {
-          // Autenticación anónima para lectura
+          // Para el modo de solo lectura se utiliza autenticación anónima
           if (!auth.currentUser) {
             auth.signInAnonymously().catch(error => {
               console.error("Error en autenticación anónima:", error);
