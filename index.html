@@ -65,7 +65,7 @@
     .partial-tabs button:hover { background: #003d80; }
     .rubric-display button,
     .cred-btn { margin-left: 10px; padding: 5px 10px; font-size: 0.9rem; cursor: pointer; }
-    /* Botones de guardado manual y reset */
+    /* Botones de guardado manual y Reset DB */
     #manualSaveBtn, #resetDBBtn {
       padding: 8px 12px;
       border: none;
@@ -197,7 +197,7 @@
       z-index: 2000;
     }
   </style>
-  <!-- Incluir Firebase (compat) y dependencias -->
+  <!-- Incluir Firebase (compat) y dependencias desde los CDN -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
@@ -336,7 +336,7 @@
     /***********************
      * 1. Variables Globales: Datos
      ***********************/
-    // Datos iniciales de ejemplo
+    // Datos iniciales (estructuras de materias, estudiantes y equipos)
     const subjectsConfig = {
       circuitos: {
         name: "Circuitos Eléctricos",
@@ -445,7 +445,7 @@
     }
 
     /***********************
-     * 2. Persistencia en Firestore (guardado en servidor y en localStorage)
+     * 2. Persistencia en Firestore y localStorage
      ***********************/
     function saveSubjects() {
       return Promise.all(Object.keys(subjectsConfig).map(key => {
@@ -473,7 +473,7 @@
       console.log("Guardando datos en Firestore...");
       Promise.all([ saveSubjects(), saveStudents(), saveTeams() ])
         .then(() => {
-          // Guardar en localStorage para tener una copia local
+          // Guardar una copia en localStorage
           localStorage.setItem('subjectsConfig', JSON.stringify(subjectsConfig));
           localStorage.setItem('students', JSON.stringify(students));
           localStorage.setItem('teams', JSON.stringify(teams));
@@ -512,7 +512,7 @@
       .catch(function(error) { console.error("Error en la persistencia:", error); });
     const auth = firebase.auth();
     const db = firebase.firestore();
-    // Habilitar persistencia offline de Firestore (IndexedDB)
+    // Habilitar persistencia offline en Firestore
     db.enablePersistence()
       .catch(function(err) {
         if (err.code === 'failed-precondition') {
@@ -995,8 +995,7 @@
         <br>
         <button id="saveRubric" class="btn">Guardar Rúbrica</button>`;
       showModal(content);
-
-      // Cuando se presione "Guardar Rúbrica", se actualizan porcentajes y nombres
+      // Guardar cambios en porcentajes y nombres
       document.getElementById("saveRubric").onclick = () => {
         cfg.rubric.exam = parseFloat(document.getElementById("rubricExam").value) || 0;
         cfg.rubric.task = parseFloat(document.getElementById("rubricTask").value) || 0;
@@ -1021,8 +1020,7 @@
         buildGradeTable();
         debounceSaveData();
       };
-
-      // Funcionalidad de los botones "Quitar" y "Agregar evaluaciones"
+      // Funcionalidad de botones "Quitar" y "Agregar"
       document.querySelectorAll("#rubricEdits .removeEval").forEach(btn => {
         btn.addEventListener("click", (e) => {
           const li = e.target.closest("li");
@@ -1373,7 +1371,7 @@
     buildGradeTable();
 
     /***********************
-     * 7. Autenticación y Mostrar Datos del Usuario (opcional)
+     * 7. Autenticación y Datos del Usuario (opcional)
      ***********************/
     window.addEventListener("load", () => {
       const loginModal = document.getElementById("loginModal");
@@ -1383,6 +1381,7 @@
           loginModal.style.display = "none";
           document.getElementById("appContainer").style.display = "block";
           document.getElementById("userInfo").innerText = "Usuario: " + user.email;
+          // Si deseas restringir la edición a cierto usuario, por ejemplo, al propietario:
           if(user.email === "fco.lopezvelazquez@gmail.com") {
             document.getElementById("resetDBContainer").style.display = "block";
           } else {
