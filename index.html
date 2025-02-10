@@ -2,6 +2,8 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
+  <!-- Para que la página sea responsiva en smartphones -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sistema de Calificaciones - Institución XYZ</title>
   <style>
     /* ===== ESTILOS GENERALES Y RESPONSIVOS ===== */
@@ -45,6 +47,10 @@
     .rubric-display { font-weight: bold; }
     .subject-select select { margin-right: 5px; }
     .subject-select button { margin-right: 5px; padding: 5px 10px; font-size: 0.9em; }
+    /* Información del usuario */
+    #userInfo { font-weight: bold; color: #003366; }
+    /* Botón para cerrar sesión */
+    #logoutBtn { background: #ffc107; color: #000; padding: 8px 12px; border: none; border-radius: 4px; cursor: pointer; margin: 5px; }
     .partial-tabs button {
       background: #0056b3;
       color: #fff;
@@ -59,7 +65,7 @@
     .partial-tabs button:hover { background: #003d80; }
     .rubric-display button,
     .cred-btn { margin-left: 10px; padding: 5px 10px; font-size: 0.9rem; cursor: pointer; }
-    /* Botones de guardado manual y Reset DB */
+    /* Botones de guardado manual y reset */
     #manualSaveBtn, #resetDBBtn {
       padding: 8px 12px;
       border: none;
@@ -69,7 +75,6 @@
     }
     #manualSaveBtn { background: #28a745; color: #fff; }
     #resetDBBtn { background: #dc3545; color: #fff; }
-    /* Contenedor para el botón Reset DB (solo para propietario) */
     #resetDBContainer { display: none; }
     main { padding: 10px 0; }
     .eval-controls, .student-controls, .action-section { text-align: center; margin: 15px 0; }
@@ -200,7 +205,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body>
-  <!-- Indicador de guardado -->
+  <!-- Indicador de guardado (toast) -->
   <div id="saveIndicator">Guardado</div>
 
   <!-- Modal General -->
@@ -211,7 +216,7 @@
     </div>
   </div>
 
-  <!-- Modal de Login -->
+  <!-- Modal de Login (opcional para esta versión) -->
   <div id="loginModal" class="modal">
     <div class="modal-content">
       <span class="close">&times;</span>
@@ -222,7 +227,9 @@
       <input type="password" id="loginPass" placeholder="Ingrese contraseña">
       <button id="loginBtn" class="btn">Acceder</button>
       <button id="configCred" class="cred-btn">Configurar Credenciales</button>
-      <p style="text-align:center; font-size:0.8em; margin-top:10px;">Creada y diseñada por Francisco López Velázquez</p>
+      <p style="text-align:center; font-size:0.8em; margin-top:10px;">
+        Creada y diseñada por Francisco López Velazquez
+      </p>
     </div>
   </div>
 
@@ -238,6 +245,10 @@
           <button id="editSubject" class="cred-btn">Editar Materia</button>
           <button id="shareVersion" class="cred-btn">Compartir Versión</button>
         </div>
+        <!-- Información del usuario (opcional) -->
+        <div id="userInfo"></div>
+        <!-- Botón para cerrar sesión -->
+        <button id="logoutBtn">Cerrar sesión</button>
         <div class="partial-tabs">
           <button class="tab-btn" data-partial="1">Parcial 1</button>
           <button class="tab-btn" data-partial="2">Parcial 2</button>
@@ -245,10 +256,10 @@
           <button class="tab-btn" data-partial="4">Parcial 4</button>
         </div>
         <div class="rubric-display">
-          Rúbrica: Exámenes: <span id="weightExam">45%</span>, Tareas: <span id="weightTask">25%</span>, Prácticas: <span id="weightPractice">30%</span>, Participación: <span id="weightPart">5%</span>
+          Rúbrica: Exámenes: <span id="weightExam">45%</span>, Tareas: <span id="weightTask">25%</span>,
+          Prácticas: <span id="weightPractice">30%</span>, Participación: <span id="weightPart">5%</span>
           <button id="editRubric" class="btn">Editar Rúbrica</button>
         </div>
-        <!-- Botón Reset DB (solo para el propietario) -->
         <div id="resetDBContainer">
           <button id="resetDBBtn" class="cred-btn">Reset DB</button>
         </div>
@@ -266,7 +277,7 @@
       <section class="student-controls">
         <button id="addStudent" class="btn">Agregar Alumno</button>
       </section>
-      <!-- Botón de guardado manual (opcional) -->
+      <!-- Botón de guardado manual -->
       <section class="action-section">
         <button id="manualSaveBtn" class="btn">Forzar guardado</button>
       </section>
@@ -318,14 +329,14 @@
         <button id="printGrades" class="btn">Imprimir Parcial</button>
       </section>
     </main>
-    <footer>Pagina creada y diseñada por Francisco López Velázquez</footer>
+    <footer>Pagina creada y diseñada por Francisco López Velazquez</footer>
   </div>
 
   <script>
     /***********************
      * 1. Variables Globales: Datos
      ***********************/
-    // Cada materia tiene su objeto "parcials" para evaluaciones por parcial
+    // Datos iniciales de ejemplo
     const subjectsConfig = {
       circuitos: {
         name: "Circuitos Eléctricos",
@@ -403,9 +414,39 @@
     };
 
     /***********************
-     * 2. Persistencia en Firestore
+     * 1.1. Restaurar estado desde localStorage (si existe)
      ***********************/
-    // Funciones para guardar en Firestore (agrupando con Promise.all)
+    if (localStorage.getItem('subjectsConfig')) {
+      try {
+        const storedSubjects = JSON.parse(localStorage.getItem('subjectsConfig'));
+        Object.assign(subjectsConfig, storedSubjects);
+      } catch (e) {
+        console.error("Error al parsear subjectsConfig desde localStorage", e);
+      }
+    }
+    if (localStorage.getItem('students')) {
+      try {
+        const storedStudents = JSON.parse(localStorage.getItem('students'));
+        students.length = 0;
+        storedStudents.forEach(s => students.push(s));
+      } catch (e) {
+        console.error("Error al parsear students desde localStorage", e);
+      }
+    }
+    if (localStorage.getItem('teams')) {
+      try {
+        const storedTeams = JSON.parse(localStorage.getItem('teams'));
+        for (let subject in storedTeams) {
+          teams[subject] = storedTeams[subject];
+        }
+      } catch (e) {
+        console.error("Error al parsear teams desde localStorage", e);
+      }
+    }
+
+    /***********************
+     * 2. Persistencia en Firestore (guardado en servidor y en localStorage)
+     ***********************/
     function saveSubjects() {
       return Promise.all(Object.keys(subjectsConfig).map(key => {
         return db.collection("subjects").doc(key).set(subjectsConfig[key]);
@@ -425,40 +466,39 @@
       })).catch(err => console.error("Error guardando teams", err));
     }
     function saveData() {
+      if (!firebase.auth().currentUser) {
+        console.warn("No hay usuario autenticado; no se guardan datos.");
+        return;
+      }
       console.log("Guardando datos en Firestore...");
       Promise.all([ saveSubjects(), saveStudents(), saveTeams() ])
-        .then(() => { showSaveIndicator(); })
+        .then(() => {
+          // Guardar en localStorage para tener una copia local
+          localStorage.setItem('subjectsConfig', JSON.stringify(subjectsConfig));
+          localStorage.setItem('students', JSON.stringify(students));
+          localStorage.setItem('teams', JSON.stringify(teams));
+          showSaveIndicator();
+        })
         .catch(err => console.error("Error en saveData", err));
     }
-
-    // Debounce para agrupar escrituras: espera 15 segundos sin cambios
     let saveTimeout = null;
     function debounceSaveData() {
       if (saveTimeout) clearTimeout(saveTimeout);
-      saveTimeout = setTimeout(() => {
-        console.log("Guardado automático (debounce) a Firestore...");
-        saveData();
-      }, 15000);
+      saveTimeout = setTimeout(() => { saveData(); }, 15000);
     }
-
-    // Botón de guardado manual
-    document.getElementById("manualSaveBtn").addEventListener("click", () => {
-      console.log("Guardado manual a Firestore...");
-      saveData();
-      if (saveTimeout) clearTimeout(saveTimeout);
-    });
-
-    // Función para mostrar indicador de guardado (toast)
     function showSaveIndicator() {
       const indicator = document.getElementById("saveIndicator");
       indicator.style.display = "block";
       setTimeout(() => { indicator.style.display = "none"; }, 2000);
     }
+    document.getElementById("manualSaveBtn").addEventListener("click", () => {
+      saveData();
+      if (saveTimeout) clearTimeout(saveTimeout);
+    });
 
     /***********************
      * 3. Inicializar Firebase y Firestore
      ***********************/
-    // Nueva configuración del proyecto "paginaesco"
     const firebaseConfig = {
       apiKey: "AIzaSyC2VXIvR-OzF4iLlt8C69zt-cY1ZI_YhVo",
       authDomain: "paginaesco.firebaseapp.com",
@@ -468,8 +508,19 @@
       appId: "1:488675130286:web:003debfbff0b1f3ee7a63f"
     };
     firebase.initializeApp(firebaseConfig);
+    firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+      .catch(function(error) { console.error("Error en la persistencia:", error); });
     const auth = firebase.auth();
     const db = firebase.firestore();
+    // Habilitar persistencia offline de Firestore (IndexedDB)
+    db.enablePersistence()
+      .catch(function(err) {
+        if (err.code === 'failed-precondition') {
+          console.error("Solo una pestaña a la vez puede tener la persistencia offline.");
+        } else if (err.code === 'unimplemented') {
+          console.error("El navegador no soporta la persistencia offline.");
+        }
+      });
 
     /***********************
      * 4. Variables de Estado
@@ -478,7 +529,6 @@
     let readOnlyMode = urlParams.get("readonly") === "true";
     let urlSubject = urlParams.get("subject");
     let urlPartial = parseInt(urlParams.get("partial"));
-    // Si no se indica, se usa "circuitos" y parcial 1
     let currentSubject = (urlSubject && subjectsConfig[urlSubject]) ? urlSubject : "circuitos";
     let currentPartial = (!isNaN(urlPartial) && urlPartial > 0) ? urlPartial : 1;
 
@@ -497,7 +547,6 @@
       }
       select.value = currentSubject;
     }
-
     function updateRubricDisplay() {
       const cfg = subjectsConfig[currentSubject];
       document.getElementById("weightExam").textContent = cfg.rubric.exam + "%";
@@ -505,12 +554,9 @@
       document.getElementById("weightPractice").textContent = cfg.rubric.practice + "%";
       document.getElementById("weightPart").textContent = cfg.rubric.participation + "%";
     }
-
     function updatePartialDisplay() {
       document.getElementById("currentPartialDisplay").textContent = currentPartial;
     }
-
-    // Construir la cabecera de evaluaciones del parcial actual
     function buildGroupHeader() {
       const cfg = subjectsConfig[currentSubject].parcials[currentPartial];
       const examColspan = cfg.examEvals.length + 1;
@@ -520,7 +566,6 @@
       document.querySelector(".task-group").setAttribute("colspan", taskColspan);
       document.querySelector(".practice-group").setAttribute("colspan", practiceColspan);
     }
-
     function buildDynamicHeader() {
       const headerRow = document.getElementById("dynamicHeader");
       headerRow.innerHTML = "";
@@ -554,7 +599,6 @@
       headerRow.appendChild(thPracticeAvg);
       buildGroupHeader();
     }
-
     function buildTeamTable() {
       const teamTableHead = document.getElementById("teamHeader");
       const teamTableBody = document.querySelector("#teamTable tbody");
@@ -594,7 +638,6 @@
               team.partials[currentPartial] = Array(subjectsConfig[currentSubject].parcials[currentPartial].practiceEvals.length).fill(0);
             }
             team.partials[currentPartial][idx] = newVal;
-            // Actualizar en la tabla de alumnos
             document.querySelectorAll("#gradeTable tbody tr").forEach(row => {
               const stuTeamSelect = row.querySelector(".student-team");
               const stuTeam = stuTeamSelect ? stuTeamSelect.value : "";
@@ -648,7 +691,6 @@
         };
       });
     }
-
     function buildGradeTable() {
       const tbody = document.getElementById("gradeTable").querySelector("tbody");
       tbody.innerHTML = "";
@@ -730,7 +772,6 @@
       if(readOnlyMode) { setReadOnly(); }
       debounceSaveData();
     }
-
     function recalculateRow(row) {
       const rubric = subjectsConfig[currentSubject].rubric;
       let examSum = 0, examCount = 0;
@@ -755,19 +796,20 @@
       const listNum = row.getAttribute("data-list");
       const student = students.find(s => s.listNumber == listNum);
       let deductionSum = 0;
-      if(student && student.partials[currentPartial].deductions) {
+      if(student && student.partials[currentPartial] && Array.isArray(student.partials[currentPartial].deductions)) {
         deductionSum = student.partials[currentPartial].deductions.reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0);
       }
       row.querySelector(".deduction-sum").textContent = deductionSum.toFixed(2);
       const totalPartial = ((examAvg * rubric.exam/100) + (taskAvg * rubric.task/100) + (practiceAvg * rubric.practice/100) + extraTotal + (participation * rubric.participation/100)) - deductionSum - (parseFloat(row.querySelector(".absences").value) || 0);
       row.querySelector(".total-partial").textContent = totalPartial.toFixed(2);
-      if(student) { student.partials[currentPartial].total = totalPartial; }
+      if(student) { 
+        if(!student.partials[currentPartial]) { student.partials[currentPartial] = { deductions: [] }; }
+        student.partials[currentPartial].total = totalPartial;
+      }
     }
-
     function recalculateAll() {
       document.querySelectorAll("#gradeTable tbody tr").forEach(row => recalculateRow(row));
     }
-
     function attachTableListeners() {
       document.querySelectorAll("#gradeTable tbody input").forEach(input => {
         input.addEventListener("input", () => {
@@ -812,7 +854,6 @@
           if(student) { openDeductionModal(student, true); }
         });
       });
-      // Eliminar alumno: borrar de Firestore
       document.querySelectorAll(".delete-student").forEach(btn => {
         btn.addEventListener("click", (e) => {
           const row = e.target.closest("tr");
@@ -829,7 +870,6 @@
         });
       });
     }
-
     function saveRowData(row) {
       const listNum = row.getAttribute("data-list");
       const student = students.find(s => s.listNumber == listNum);
@@ -847,7 +887,6 @@
       partialData.absences = parseFloat(row.querySelector(".absences").value) || 0;
       debounceSaveData();
     }
-
     function propagateTeamGradeForRow(row) {
       const listNum = row.getAttribute("data-list");
       const student = students.find(s => s.listNumber == listNum);
@@ -864,9 +903,8 @@
     }
 
     /***********************
-     * 6. Funciones de Modal para Agregar/Editar Elementos
+     * 6. Funciones de Modal
      ***********************/
-    // Declaramos la variable del modal una sola vez (con el nombre modalOverlay para evitar duplicados)
     const modalOverlay = document.getElementById("modalOverlay");
     function showModal(contentHTML) {
       document.getElementById("modalBody").innerHTML = contentHTML;
@@ -882,14 +920,13 @@
         event.target.style.display = "none";
       }
     };
-
     function openDeductionModal(student, viewOnly = false) {
       let content = `<h3>Deducciones para ${student.name}</h3>
         <label>Monto (-): <input type="number" id="dedAmount" step="0.1"></label><br>
         <label>Motivo: <input type="text" id="dedReason"></label><br>
         <label>Fecha: <input type="date" id="dedDate"></label><br>`;
       if(!viewOnly) { content += `<button id="saveDed" class="btn">Agregar Deducción</button>`; }
-      if(student.partials[currentPartial].deductions && student.partials[currentPartial].deductions.length > 0) {
+      if(student.partials[currentPartial].deductions && Array.isArray(student.partials[currentPartial].deductions) && student.partials[currentPartial].deductions.length > 0) {
         content += `<h4>Deducciones Registradas:</h4><ul>`;
         student.partials[currentPartial].deductions.forEach((ded) => {
           content += `<li>${ded.date} - ${ded.reason}: ${ded.amount} pts</li>`;
@@ -913,8 +950,6 @@
         };
       }
     }
-
-    // Función para abrir el modal de "Editar Rúbrica" (con scroll y sin cerrar al quitar evaluaciones)
     function openRubricModal() {
       const cfg = subjectsConfig[currentSubject];
       const currParcial = subjectsConfig[currentSubject].parcials[currentPartial];
@@ -961,7 +996,33 @@
         <button id="saveRubric" class="btn">Guardar Rúbrica</button>`;
       showModal(content);
 
-      // Listener para eliminar evaluaciones sin cerrar el modal (se reabre actualizado)
+      // Cuando se presione "Guardar Rúbrica", se actualizan porcentajes y nombres
+      document.getElementById("saveRubric").onclick = () => {
+        cfg.rubric.exam = parseFloat(document.getElementById("rubricExam").value) || 0;
+        cfg.rubric.task = parseFloat(document.getElementById("rubricTask").value) || 0;
+        cfg.rubric.practice = parseFloat(document.getElementById("rubricPractice").value) || 0;
+        cfg.rubric.participation = parseFloat(document.getElementById("rubricPart").value) || 0;
+        // Actualizar nombres de evaluaciones
+        const examInputs = document.querySelectorAll("#examList .evalInput");
+        examInputs.forEach((input, index) => {
+          currParcial.examEvals[index].name = input.value.trim();
+        });
+        const taskInputs = document.querySelectorAll("#taskList .evalInput");
+        taskInputs.forEach((input, index) => {
+          currParcial.taskEvals[index].name = input.value.trim();
+        });
+        const practiceInputs = document.querySelectorAll("#practiceList .evalInput");
+        practiceInputs.forEach((input, index) => {
+          currParcial.practiceEvals[index].name = input.value.trim();
+        });
+        modalOverlay.style.display = "none";
+        updateRubricDisplay();
+        buildDynamicHeader();
+        buildGradeTable();
+        debounceSaveData();
+      };
+
+      // Funcionalidad de los botones "Quitar" y "Agregar evaluaciones"
       document.querySelectorAll("#rubricEdits .removeEval").forEach(btn => {
         btn.addEventListener("click", (e) => {
           const li = e.target.closest("li");
@@ -974,14 +1035,12 @@
           } else if(cat === "practice") {
             currParcial.practiceEvals.splice(index, 1);
           }
-          // Vuelve a abrir el modal actualizado sin cerrarlo
           openRubricModal();
           buildDynamicHeader();
           buildGradeTable();
           debounceSaveData();
         });
       });
-
       document.getElementById("addExamItem").onclick = () => {
         let newItem = prompt("Nuevo examen:");
         if(newItem && newItem.trim().toLowerCase() !== "acciones") {
@@ -1024,20 +1083,7 @@
           alert('El nombre "Acciones" no está permitido.');
         }
       };
-      document.getElementById("saveRubric").onclick = () => {
-        cfg.rubric.exam = parseFloat(document.getElementById("rubricExam").value) || 0;
-        cfg.rubric.task = parseFloat(document.getElementById("rubricTask").value) || 0;
-        cfg.rubric.practice = parseFloat(document.getElementById("rubricPractice").value) || 0;
-        cfg.rubric.participation = parseFloat(document.getElementById("rubricPart").value) || 0;
-        modalOverlay.style.display = "none";
-        updateRubricDisplay();
-        buildDynamicHeader();
-        buildGradeTable();
-        debounceSaveData();
-      };
     }
-
-    // Abrir el modal de Editar Rúbrica al hacer clic
     document.getElementById("editRubric").onclick = openRubricModal;
 
     document.getElementById("addExamEval").onclick = () => {
@@ -1232,7 +1278,6 @@
       headerCells.push("TOT");
       headerCells.push("Firma");
       const headers = [headerCells];
-      
       const data = [];
       document.querySelectorAll("#gradeTable tbody tr").forEach(row => {
         const rowData = [];
@@ -1245,7 +1290,6 @@
         rowData.push("____________________________");
         data.push(rowData);
       });
-      
       doc.autoTable({
         head: headers,
         body: data,
@@ -1299,18 +1343,14 @@
      ***********************/
     function attachRealtimeListeners() {
       db.collection("subjects").onSnapshot(snapshot => {
-        snapshot.forEach(doc => {
-          subjectsConfig[doc.id] = doc.data();
-        });
+        snapshot.forEach(doc => { subjectsConfig[doc.id] = doc.data(); });
         buildSubjectSelect();
         updateRubricDisplay();
         buildDynamicHeader();
       });
       db.collection("students").onSnapshot(snapshot => {
         students.length = 0;
-        snapshot.forEach(doc => {
-          students.push(doc.data());
-        });
+        snapshot.forEach(doc => { students.push(doc.data()); });
         buildGradeTable();
       });
       db.collection("teams").onSnapshot(snapshot => {
@@ -1333,47 +1373,45 @@
     buildGradeTable();
 
     /***********************
-     * 7. Autenticación y Restricción de Edición
+     * 7. Autenticación y Mostrar Datos del Usuario (opcional)
      ***********************/
     window.addEventListener("load", () => {
-      if (readOnlyMode) {
-        updateURLParams();
-        document.getElementById("appContainer").style.display = "block";
-        setReadOnly();
-      } else {
-        const loginModal = document.getElementById("loginModal");
-        loginModal.style.display = "block";
-        auth.onAuthStateChanged((user) => {
-          if (user) {
-            loginModal.style.display = "none";
-            document.getElementById("appContainer").style.display = "block";
-            // Solo el propietario puede editar y ver el botón Reset DB
-            if(user.email === "fco.lopezvelazquez@gmail.com") {
-              document.getElementById("resetDBContainer").style.display = "block";
-            } else {
-              setReadOnly();
-              document.getElementById("resetDBContainer").style.display = "none";
-            }
+      const loginModal = document.getElementById("loginModal");
+      loginModal.style.display = "block";
+      auth.onAuthStateChanged(user => {
+        if (user) {
+          loginModal.style.display = "none";
+          document.getElementById("appContainer").style.display = "block";
+          document.getElementById("userInfo").innerText = "Usuario: " + user.email;
+          if(user.email === "fco.lopezvelazquez@gmail.com") {
+            document.getElementById("resetDBContainer").style.display = "block";
           } else {
-            document.getElementById("appContainer").style.display = "none";
-            loginModal.style.display = "block";
+            setReadOnly();
+            document.getElementById("resetDBContainer").style.display = "none";
           }
-        });
-        document.getElementById("loginBtn").onclick = () => {
-          const email = document.getElementById("loginUser").value.trim();
-          const password = document.getElementById("loginPass").value;
-          auth.signInWithEmailAndPassword(email, password)
-            .then(() => {
-              document.getElementById("loginModal").style.display = "none";
-              document.getElementById("appContainer").style.display = "block";
-            })
-            .catch((error) => { alert("Error: " + error.message); });
-        };
-      }
+        } else {
+          document.getElementById("appContainer").style.display = "none";
+          loginModal.style.display = "block";
+        }
+      });
+      document.getElementById("loginBtn").onclick = () => {
+        const email = document.getElementById("loginUser").value.trim();
+        const password = document.getElementById("loginPass").value;
+        auth.signInWithEmailAndPassword(email, password)
+          .then(() => {
+            document.getElementById("loginModal").style.display = "none";
+            document.getElementById("appContainer").style.display = "block";
+          })
+          .catch(error => { alert("Error: " + error.message); });
+      };
+      document.getElementById("logoutBtn").addEventListener("click", () => {
+        auth.signOut().then(() => { window.location.reload(); })
+          .catch(err => console.error("Error al cerrar sesión", err));
+      });
     });
 
     /***********************
-     * 8. Botón para Resetear la Base de Datos en Firestore (solo para el propietario)
+     * 8. Botón para Resetear la Base de Datos (solo para el propietario)
      ***********************/
     document.getElementById("resetDBBtn").onclick = () => {
       const code = prompt("Para confirmar el reset, ingresa el código de seguridad:");
@@ -1383,21 +1421,13 @@
       }
       if(confirm("¿Estás seguro de borrar TODOS los datos de Firestore? Esta acción no se podrá deshacer.")) {
         Promise.all([
-          db.collection("subjects").get().then(snapshot => {
-            snapshot.forEach(doc => { doc.ref.delete(); });
-          }),
-          db.collection("students").get().then(snapshot => {
-            snapshot.forEach(doc => { doc.ref.delete(); });
-          }),
-          db.collection("teams").get().then(snapshot => {
-            snapshot.forEach(doc => { doc.ref.delete(); });
-          })
+          db.collection("subjects").get().then(snapshot => { snapshot.forEach(doc => { doc.ref.delete(); }); }),
+          db.collection("students").get().then(snapshot => { snapshot.forEach(doc => { doc.ref.delete(); }); }),
+          db.collection("teams").get().then(snapshot => { snapshot.forEach(doc => { doc.ref.delete(); }); })
         ]).then(() => {
           alert("Base de datos borrada. Recarga la página para reiniciar los datos.");
           window.location.reload();
-        }).catch(err => {
-          console.error("Error al resetear la base de datos:", err);
-        });
+        }).catch(err => { console.error("Error al resetear la base de datos:", err); });
       }
     };
   </script>
