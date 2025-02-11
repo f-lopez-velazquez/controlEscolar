@@ -123,7 +123,7 @@
     .exam-average, .task-average, .practice-average, .total-partial {
       background-color: #d1e7dd;
     }
-    /* Ocultar la columna de “Acciones” en modo solo lectura */
+    /* Ocultar columna de "Acciones" en modo solo lectura */
     .actions-column { display: none; }
     @media print {
       body { background: #fff; }
@@ -218,7 +218,7 @@
     </div>
   </div>
 
-  <!-- Modal de Login (solo se muestra en modo editable) -->
+  <!-- Modal de Login (solo en modo editable) -->
   <div id="loginModal" class="modal">
     <div class="modal-content">
       <span class="close">&times;</span>
@@ -246,11 +246,9 @@
           <button id="addSubject" class="cred-btn">Agregar Materia</button>
           <button id="editSubject" class="cred-btn">Editar Materia</button>
           <button id="shareVersion" class="cred-btn">Compartir Versión</button>
-          <button id="copyStudentsBtn">Copiar Alumnos</button>
+          <button id="copyStudentsBtn" class="cred-btn">Copiar Alumnos</button>
         </div>
-        <!-- Información del usuario (solo en modo editable) -->
         <div id="userInfo"></div>
-        <!-- Botón para cerrar sesión (solo en modo editable) -->
         <button id="logoutBtn">Cerrar sesión</button>
         <div class="partial-tabs">
           <button class="tab-btn" data-partial="1">Parcial 1</button>
@@ -270,21 +268,17 @@
     </header>
     
     <main>
-      <!-- Controles para agregar evaluaciones -->
       <section class="eval-controls">
         <button id="addExamEval" class="btn">Agregar Ex</button>
         <button id="addTaskEval" class="btn">Agregar Ta</button>
         <button id="addPracticeEval" class="btn">Agregar Pr</button>
       </section>
-      <!-- Administración de alumnos -->
       <section class="student-controls">
         <button id="addStudent" class="btn">Agregar Alumno</button>
       </section>
-      <!-- Botón de guardado manual (solo en modo editable) -->
       <section class="action-section">
         <button id="manualSaveBtn" class="btn">Forzar guardado</button>
       </section>
-      <!-- Tabla de equipos -->
       <section class="team-section">
         <h2>Equipos (Prácticas)</h2>
         <div class="table-container">
@@ -295,7 +289,6 @@
           </table>
         </div>
       </section>
-      <!-- Tabla de calificaciones -->
       <section class="grade-section">
         <h2>Calificaciones - Parcial <span id="currentPartialDisplay">1</span></h2>
         <div class="table-container">
@@ -325,7 +318,6 @@
           </table>
         </div>
       </section>
-      <!-- Botones de exportación -->
       <section class="action-section">
         <button id="exportExcel" class="btn">Exportar Excel</button>
         <button id="exportPDF" class="btn">Exportar PDF</button>
@@ -338,7 +330,6 @@
   <script>
     "use strict";
     (function() {
-
       /***********************
        * 0. Parámetros URL y Modo Solo Lectura
        ***********************/
@@ -595,7 +586,6 @@
         const headerRow = document.getElementById("dynamicHeader");
         headerRow.innerHTML = "";
         const cfg = subjectsConfig[currentSubject].parcials[currentPartial];
-        // Construir encabezado para exámenes
         cfg.examEvals.forEach(evalObj => {
           if (!evalObj.name || evalObj.name.trim() === "" || evalObj.name.toLowerCase() === "acciones") return;
           const th = document.createElement("th");
@@ -605,7 +595,6 @@
         const thExamAvg = document.createElement("th");
         thExamAvg.textContent = "Promedio Exámenes";
         headerRow.appendChild(thExamAvg);
-        // Tareas
         cfg.taskEvals.forEach(evalObj => {
           if (!evalObj.name || evalObj.name.trim() === "" || evalObj.name.toLowerCase() === "acciones") return;
           const th = document.createElement("th");
@@ -615,7 +604,6 @@
         const thTaskAvg = document.createElement("th");
         thTaskAvg.textContent = "Promedio Tareas";
         headerRow.appendChild(thTaskAvg);
-        // Prácticas
         cfg.practiceEvals.forEach(evalObj => {
           if (!evalObj.name || evalObj.name.trim() === "" || evalObj.name.toLowerCase() === "acciones") return;
           const th = document.createElement("th");
@@ -628,7 +616,7 @@
         buildGroupHeader();
       }
       
-      // ********** CORRECCIÓN EN buildTeamTable() **********
+      // ********** Función buildTeamTable() corregida para que solo se creen columnas de evaluaciones definidas **********
       function buildTeamTable() {
         const teamTableHead = document.getElementById("teamHeader");
         const teamTableBody = document.querySelector("#teamTable tbody");
@@ -636,7 +624,6 @@
         teamTableBody.innerHTML = "";
         const cfg = subjectsConfig[currentSubject].parcials[currentPartial];
         let headerHTML = "<tr><th>Equipo</th><th>Encargado</th>";
-        // Solo se crean columnas para cada evaluación de práctica definida
         cfg.practiceEvals.forEach(evalObj => {
           if (evalObj && evalObj.name && evalObj.name.trim() !== "" && evalObj.name.toLowerCase() !== "acciones") {
             headerHTML += `<th>${evalObj.name}</th>`;
@@ -648,7 +635,6 @@
         const subjectTeams = teams[currentSubject] || [];
         subjectTeams.forEach(team => {
           if (!team.partials) team.partials = {};
-          // Asegurarse de que la matriz de prácticas tenga la longitud EXACTA de practiceEvals
           if (!team.partials[currentPartial]) {
             team.partials[currentPartial] = Array(cfg.practiceEvals.length).fill(0);
           } else if (team.partials[currentPartial].length > cfg.practiceEvals.length) {
@@ -661,11 +647,11 @@
           }
           if (!isReadOnlyMode()) {
             rowHTML += `<td class="actions-column">
-                        <button class="edit-team btn">Editar</button>
-                        <button class="delete-team btn">Eliminar</button>
-                      </td>`;
+                          <button class="edit-team btn">Editar</button>
+                          <button class="delete-team btn">Eliminar</button>
+                        </td>`;
           }
-          rowHTML += `</tr>`;
+          rowHTML += "</tr>";
           teamTableBody.innerHTML += rowHTML;
         });
         document.querySelectorAll(".team-practice-input").forEach(input => {
@@ -675,7 +661,7 @@
             const newVal = parseFloat(e.target.value) || 0;
             const subjectTeams = teams[currentSubject];
             const team = subjectTeams.find(t => t.id === teamId);
-            if(team) {
+            if (team) {
               if (!team.partials) team.partials = {};
               if (!team.partials[currentPartial]) {
                 team.partials[currentPartial] = Array(cfg.practiceEvals.length).fill(0);
@@ -684,9 +670,9 @@
               document.querySelectorAll("#gradeTable tbody tr").forEach(row => {
                 const stuTeamSelect = row.querySelector(".student-team");
                 const stuTeam = stuTeamSelect ? stuTeamSelect.value : "";
-                if(stuTeam === teamId) {
+                if (stuTeam === teamId) {
                   const practiceInputs = row.querySelectorAll(".practice-input");
-                  if(practiceInputs[idx]) { practiceInputs[idx].value = newVal; recalculateRow(row); }
+                  if (practiceInputs[idx]) { practiceInputs[idx].value = newVal; recalculateRow(row); }
                 }
               });
               debounceSaveData();
@@ -700,7 +686,7 @@
               const teamId = row.getAttribute("data-team-id");
               const subjectTeams = teams[currentSubject];
               const team = subjectTeams.find(t => t.id === teamId);
-              if(team) {
+              if (team) {
                 let content = `<h3>Editar Equipo</h3>
                   <label>Nombre: <input type="text" id="editTeamName" value="${team.name}"></label><br>
                   <label>Encargado: <input type="text" id="editTeamHead" value="${team.head}"></label><br>
@@ -721,7 +707,7 @@
             btn.onclick = (e) => {
               const row = e.target.closest("tr");
               const teamId = row.getAttribute("data-team-id");
-              if(confirm("¿Estás seguro de eliminar este equipo?")) {
+              if (confirm("¿Estás seguro de eliminar este equipo?")) {
                 const docId = currentSubject + "_" + teamId;
                 db.collection("teams").doc(docId).delete()
                   .then(() => {
@@ -736,7 +722,6 @@
           });
         }
       }
-      // ********** FIN buildTeamTable() **********
 
       function buildGradeTable() {
         const tbody = document.getElementById("gradeTable").querySelector("tbody");
@@ -764,10 +749,7 @@
           } else {
             while (student.partials[currentPartial].exams.length < cfg.examEvals.length) { student.partials[currentPartial].exams.push(0); }
             while (student.partials[currentPartial].tasks.length < cfg.taskEvals.length) { student.partials[currentPartial].tasks.push(0); }
-            // Solo recorrer hasta el número de evaluaciones definidas para evitar columnas extra
-            while (student.partials[currentPartial].practices.length < cfg.practiceEvals.length) {
-              student.partials[currentPartial].practices.push(0);
-            }
+            while (student.partials[currentPartial].practices.length < cfg.practiceEvals.length) { student.partials[currentPartial].practices.push(0); }
             if (student.partials[currentPartial].extraParcial === undefined) { student.partials[currentPartial].extraParcial = 0; }
             if (!student.partials[currentPartial].deductions) { student.partials[currentPartial].deductions = []; }
           }
@@ -792,7 +774,7 @@
             rowHTML += `<td><input type="number" class="task-input" data-index="${index}" min="0" max="10" step="0.1" value="${val}"></td>`;
           });
           rowHTML += `<td class="task-average">0</td>`;
-          // Prácticas (solo se generan tantas celdas como evaluaciones definidas)
+          // Prácticas
           cfg.practiceEvals.forEach((evalObj, index) => {
             if (!evalObj.name || evalObj.name.trim() === "" || evalObj.name.toLowerCase() === "acciones") return;
             let grade = partialData.practices[index] || 0;
@@ -801,7 +783,6 @@
             if (teamObj && teamObj.partials && teamObj.partials[currentPartial] && typeof teamObj.partials[currentPartial][index] !== "undefined") {
               grade = teamObj.partials[currentPartial][index];
             }
-            // Asegurar que se guarda el valor obtenido
             partialData.practices[index] = grade;
             rowHTML += `<td><input type="number" class="practice-input" data-index="${index}" min="0" max="10" step="0.1" value="${grade}" readonly></td>`;
           });
@@ -820,15 +801,15 @@
             rowHTML += `<td class="actions-column"><button class="row-action-btn btn">Ver Ded.</button>
                         <button class="delete-student btn">Eliminar</button></td>`;
           }
-          rowHTML += `</tr>`;
+          rowHTML += "</tr>";
           tbody.innerHTML += rowHTML;
         });
-        // Listener para mostrar resumen al hacer clic en el número de lista
+        // Listener para mostrar resumen individual al hacer clic en el número de lista
         document.querySelectorAll(".list-cell").forEach(cell => {
           cell.addEventListener("click", () => {
             const listNum = cell.innerText.trim();
             const student = students.find(s => s.listNumber == listNum && s.subject === currentSubject);
-            if(student) { showStudentSummary(student); }
+            if (student) { showStudentSummary(student); }
           });
         });
         attachTableListeners();
@@ -836,6 +817,7 @@
         if (isReadOnlyMode()) { setReadOnly(); }
         debounceSaveData();
       }
+
       function recalculateRow(row) {
         const rubric = subjectsConfig[currentSubject].rubric;
         let examSum = 0, examCount = 0;
@@ -860,20 +842,22 @@
         const listNum = row.getAttribute("data-list");
         const student = students.find(s => s.listNumber == listNum && s.subject === currentSubject);
         let deductionSum = 0;
-        if(student && student.partials[currentPartial] && Array.isArray(student.partials[currentPartial].deductions)) {
+        if (student && student.partials[currentPartial] && Array.isArray(student.partials[currentPartial].deductions)) {
           deductionSum = student.partials[currentPartial].deductions.reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0);
         }
         row.querySelector(".deduction-sum").textContent = deductionSum.toFixed(2);
         const totalPartial = ((examAvg * rubric.exam/100) + (taskAvg * rubric.task/100) + (practiceAvg * rubric.practice/100) + extraTotal + (participation * rubric.participation/100)) - deductionSum - (parseFloat(row.querySelector(".absences").value) || 0);
         row.querySelector(".total-partial").textContent = totalPartial.toFixed(2);
-        if(student) { 
-          if(!student.partials[currentPartial]) { student.partials[currentPartial] = { deductions: [] }; }
+        if (student) {
+          if (!student.partials[currentPartial]) { student.partials[currentPartial] = { deductions: [] }; }
           student.partials[currentPartial].total = totalPartial;
         }
       }
+
       function recalculateAll() {
         document.querySelectorAll("#gradeTable tbody tr").forEach(row => recalculateRow(row));
       }
+
       function attachTableListeners() {
         document.querySelectorAll("#gradeTable tbody input").forEach(input => {
           input.addEventListener("input", () => {
@@ -888,7 +872,7 @@
             const row = e.target.closest("tr");
             const listNum = row.getAttribute("data-list");
             const student = students.find(s => s.listNumber == listNum && s.subject === currentSubject);
-            if(student) { student.team = e.target.value; }
+            if (student) { student.team = e.target.value; }
             propagateTeamGradeForRow(row);
             debounceSaveData();
           });
@@ -898,7 +882,7 @@
             const row = e.target.closest("tr");
             const listNum = row.getAttribute("data-list");
             const student = students.find(s => s.listNumber == listNum && s.subject === currentSubject);
-            if(student) { student.name = e.target.textContent.trim(); }
+            if (student) { student.name = e.target.textContent.trim(); }
             debounceSaveData();
           });
         });
@@ -907,7 +891,7 @@
             const row = e.target.closest("tr");
             const listNum = row.getAttribute("data-list");
             const student = students.find(s => s.listNumber == listNum && s.subject === currentSubject);
-            if(student) { openDeductionModal(student); }
+            if (student) { openDeductionModal(student); }
           });
         });
         if (!isReadOnlyMode()) {
@@ -916,17 +900,17 @@
               const row = e.target.closest("tr");
               const listNum = row.getAttribute("data-list");
               const student = students.find(s => s.listNumber == listNum && s.subject === currentSubject);
-              if(student) { openDeductionModal(student, true); }
+              if (student) { openDeductionModal(student, true); }
             });
             document.querySelectorAll(".delete-student").forEach(btn => {
               btn.addEventListener("click", (e) => {
                 const row = e.target.closest("tr");
                 const listNum = parseInt(row.getAttribute("data-list"));
-                if(confirm("¿Estás seguro de eliminar este alumno?")) {
+                if (confirm("¿Estás seguro de eliminar este alumno?")) {
                   db.collection("students").doc("stu_" + listNum).delete()
                     .then(() => {
                       const idx = students.findIndex(s => s.listNumber === listNum && s.subject === currentSubject);
-                      if(idx !== -1) { students.splice(idx, 1); }
+                      if (idx !== -1) { students.splice(idx, 1); }
                       buildGradeTable();
                       debounceSaveData();
                     })
@@ -934,13 +918,14 @@
                 }
               });
             });
-          }
+          });
         }
       }
+
       function saveRowData(row) {
         const listNum = row.getAttribute("data-list");
         const student = students.find(s => s.listNumber == listNum && s.subject === currentSubject);
-        if(!student) return;
+        if (!student) return;
         const partialData = student.partials[currentPartial];
         partialData.exams = [];
         row.querySelectorAll(".exam-input").forEach(input => { partialData.exams.push(parseFloat(input.value) || 0); });
@@ -954,15 +939,16 @@
         partialData.absences = parseFloat(row.querySelector(".absences").value) || 0;
         debounceSaveData();
       }
+
       function propagateTeamGradeForRow(row) {
         const listNum = row.getAttribute("data-list");
         const student = students.find(s => s.listNumber == listNum && s.subject === currentSubject);
-        if(!student) return;
+        if (!student) return;
         const subjectTeams = teams[currentSubject];
         const teamObj = subjectTeams.find(t => t.id === student.team);
-        if(teamObj && teamObj.partials && teamObj.partials[currentPartial]) {
+        if (teamObj && teamObj.partials && teamObj.partials[currentPartial]) {
           row.querySelectorAll(".practice-input").forEach((input, idx) => { 
-            if(typeof teamObj.partials[currentPartial][idx] !== "undefined") {
+            if (typeof teamObj.partials[currentPartial][idx] !== "undefined") {
               input.value = teamObj.partials[currentPartial][idx];
             }
           });
@@ -970,6 +956,7 @@
         recalculateRow(row);
         debounceSaveData();
       }
+
       function showStudentSummary(student) {
         let content = `<h3>Resumen de Alumno</h3>
           <p><strong>N° Lista:</strong> ${student.listNumber}</p>
@@ -1008,10 +995,10 @@
           <label>Monto (-): <input type="number" id="dedAmount" step="0.1"></label><br>
           <label>Motivo: <input type="text" id="dedReason"></label><br>
           <label>Fecha: <input type="date" id="dedDate"></label><br>`;
-        if(!viewOnly) { content += `<button id="saveDed" class="btn">Agregar Deducción</button>`; }
-        if(student.partials[currentPartial].deductions && Array.isArray(student.partials[currentPartial].deductions) && student.partials[currentPartial].deductions.length > 0) {
+        if (!viewOnly) { content += `<button id="saveDed" class="btn">Agregar Deducción</button>`; }
+        if (student.partials[currentPartial].deductions && Array.isArray(student.partials[currentPartial].deductions) && student.partials[currentPartial].deductions.length > 0) {
           content += `<h4>Deducciones Registradas:</h4><ul>`;
-          student.partials[currentPartial].deductions.forEach((ded) => {
+          student.partials[currentPartial].deductions.forEach(ded => {
             content += `<li>${ded.date} - ${ded.reason}: ${ded.amount} pts</li>`;
           });
           content += `</ul>`;
@@ -1019,13 +1006,13 @@
           content += `<p>No hay deducciones registradas.</p>`;
         }
         showModal(content);
-        if(!viewOnly) {
+        if (!viewOnly) {
           document.getElementById("saveDed").onclick = () => {
             const amount = parseFloat(document.getElementById("dedAmount").value) || 0;
             const reason = document.getElementById("dedReason").value.trim();
             const date = document.getElementById("dedDate").value;
-            if(amount <= 0 || !reason || !date) { alert("Complete todos los campos."); return; }
-            if(!student.partials[currentPartial].deductions) student.partials[currentPartial].deductions = [];
+            if (amount <= 0 || !reason || !date) { alert("Complete todos los campos."); return; }
+            if (!student.partials[currentPartial].deductions) student.partials[currentPartial].deductions = [];
             student.partials[currentPartial].deductions.push({ amount, reason, date });
             modalOverlay.style.display = "none";
             buildGradeTable();
@@ -1033,6 +1020,7 @@
           };
         }
       }
+
       function openRubricModal() {
         const cfg = subjectsConfig[currentSubject];
         const currParcial = subjectsConfig[currentSubject].parcials[currentPartial];
@@ -1106,14 +1094,13 @@
             const li = e.target.closest("li");
             const cat = li.getAttribute("data-cat");
             const index = parseInt(li.getAttribute("data-index"));
-            if(cat === "exam") {
+            if (cat === "exam") {
               currParcial.examEvals.splice(index, 1);
-            } else if(cat === "task") {
+            } else if (cat === "task") {
               currParcial.taskEvals.splice(index, 1);
-            } else if(cat === "practice") {
+            } else if (cat === "practice") {
               currParcial.practiceEvals.splice(index, 1);
             }
-            // Reabrir la modal para actualizar la lista
             openRubricModal();
             buildDynamicHeader();
             buildGradeTable();
@@ -1122,31 +1109,31 @@
         });
         document.getElementById("addExamItem").onclick = () => {
           let newItem = prompt("Nuevo examen:");
-          if(newItem && newItem.trim().toLowerCase() !== "acciones") {
+          if (newItem && newItem.trim().toLowerCase() !== "acciones") {
             currParcial.examEvals.push({ name: newItem.trim() });
             openRubricModal();
             buildDynamicHeader();
             buildGradeTable();
             debounceSaveData();
-          } else if(newItem) {
+          } else if (newItem) {
             alert('El nombre "Acciones" no está permitido.');
           }
         };
         document.getElementById("addTaskItem").onclick = () => {
           let newItem = prompt("Nueva tarea:");
-          if(newItem && newItem.trim().toLowerCase() !== "acciones") {
+          if (newItem && newItem.trim().toLowerCase() !== "acciones") {
             currParcial.taskEvals.push({ name: newItem.trim() });
             openRubricModal();
             buildDynamicHeader();
             buildGradeTable();
             debounceSaveData();
-          } else if(newItem) {
+          } else if (newItem) {
             alert('El nombre "Acciones" no está permitido.');
           }
         };
         document.getElementById("addPracticeItem").onclick = () => {
           let newItem = prompt("Nueva práctica:");
-          if(newItem && newItem.trim().toLowerCase() !== "acciones") {
+          if (newItem && newItem.trim().toLowerCase() !== "acciones") {
             currParcial.practiceEvals.push({ name: newItem.trim() });
             teams[currentSubject].forEach(team => {
               if (!team.partials) team.partials = {};
@@ -1158,7 +1145,7 @@
             buildTeamTable();
             buildGradeTable();
             debounceSaveData();
-          } else if(newItem) {
+          } else if (newItem) {
             alert('El nombre "Acciones" no está permitido.');
           }
         };
@@ -1168,73 +1155,252 @@
       // Botones para agregar evaluaciones desde la vista principal
       document.getElementById("addExamEval").onclick = () => {
         let newExam = prompt("Ingrese nombre del nuevo Examen:");
-        if(newExam && newExam.trim().toLowerCase() !== "acciones") {
+        if (newExam && newExam.trim().toLowerCase() !== "acciones") {
           subjectsConfig[currentSubject].parcials[currentPartial].examEvals.push({ name: newExam.trim() });
           buildDynamicHeader();
           buildGradeTable();
           debounceSaveData();
-        } else if(newExam) {
+        } else if (newExam) {
           alert('El nombre "Acciones" no está permitido.');
         }
       };
       document.getElementById("addTaskEval").onclick = () => {
         let newTask = prompt("Ingrese nombre de la nueva Tarea:");
-        if(newTask && newTask.trim().toLowerCase() !== "acciones") {
+        if (newTask && newTask.trim().toLowerCase() !== "acciones") {
           subjectsConfig[currentSubject].parcials[currentPartial].taskEvals.push({ name: newTask.trim() });
           buildDynamicHeader();
           buildGradeTable();
           debounceSaveData();
-        } else if(newTask) {
+        } else if (newTask) {
           alert('El nombre "Acciones" no está permitido.');
         }
       };
       document.getElementById("addPracticeEval").onclick = () => {
         let newPractice = prompt("Ingrese nombre de la nueva Práctica:");
-        if(newPractice && newPractice.trim().toLowerCase() !== "acciones") {
+        if (newPractice && newPractice.trim().toLowerCase() !== "acciones") {
           subjectsConfig[currentSubject].parcials[currentPartial].practiceEvals.push({ name: newPractice.trim() });
           teams[currentSubject].forEach(team => {
-            if(!team.partials) team.partials = {};
-            if(!team.partials[currentPartial]) { team.partials[currentPartial] = []; }
+            if (!team.partials) team.partials = {};
+            if (!team.partials[currentPartial]) { team.partials[currentPartial] = []; }
             team.partials[currentPartial].push(0);
           });
           buildDynamicHeader();
           buildTeamTable();
           buildGradeTable();
           debounceSaveData();
-        } else if(newPractice) {
+        } else if (newPractice) {
           alert('El nombre "Acciones" no está permitido.');
         }
       };
 
-      // Botón para copiar alumnos a otra materia
-      document.getElementById("copyStudentsBtn").onclick = () => {
-        const targetSubject = prompt("Ingrese el ID de la materia destino:");
-        if(targetSubject && subjectsConfig[targetSubject]) {
-          const sourceStudents = students.filter(s => s.subject === currentSubject);
-          const destStudents = students.filter(s => s.subject === targetSubject);
-          const maxList = destStudents.reduce((max, s) => Math.max(max, s.listNumber), 0);
-          sourceStudents.forEach(s => {
-            const newStudent = JSON.parse(JSON.stringify(s));
-            newStudent.listNumber = maxList + 1;
-            newStudent.subject = targetSubject;
-            students.push(newStudent);
-          });
-          alert("Alumnos copiados a la materia " + targetSubject);
+      document.getElementById("addStudent").onclick = () => {
+        let content = `<h3>Agregar Alumno</h3>
+           <label>N° LS: <input type="number" id="newListNumber"></label><br>
+           <label>Alumno: <input type="text" id="newStudentName"></label><br>
+           <label>Equipo: 
+               <select id="newStudentTeam">
+                  ${teams[currentSubject].map(team => `<option value="${team.id}">${team.name}</option>`).join('')}
+               </select>
+           </label><br>
+           <button id="saveStudent" class="btn">Guardar</button>`;
+        showModal(content);
+        document.getElementById("saveStudent").onclick = () => {
+          const listNum = parseInt(document.getElementById("newListNumber").value);
+          const name = document.getElementById("newStudentName").value.trim();
+          const team = document.getElementById("newStudentTeam").value;
+          if (!listNum || !name) { alert("Complete todos los campos."); return; }
+          students.push({ listNumber: listNum, name, team, subject: currentSubject, partials: {} });
+          modalOverlay.style.display = "none";
+          buildGradeTable();
           debounceSaveData();
-        } else {
-          alert("El ID de la materia destino no es válido.");
-        }
+        };
       };
 
-      // Al hacer clic en el número de lista se muestra el resumen individual
-      document.querySelectorAll(".list-cell").forEach(cell => {
-        cell.addEventListener("click", () => {
-          const listNum = cell.innerText.trim();
-          const student = students.find(s => s.listNumber == listNum && s.subject === currentSubject);
-          if(student) { showStudentSummary(student); }
+      document.getElementById("addTeam").onclick = () => {
+        let content = `<h3>Agregar Equipo</h3>
+           <label>ID: <input type="text" id="newTeamId"></label><br>
+           <label>Nombre: <input type="text" id="newTeamName"></label><br>
+           <label>Encargado: <input type="text" id="newTeamHead"></label><br>
+           <button id="saveTeamNew" class="btn">Guardar</button>`;
+        showModal(content);
+        document.getElementById("saveTeamNew").onclick = () => {
+          const id = document.getElementById("newTeamId").value.trim();
+          const name = document.getElementById("newTeamName").value.trim();
+          const head = document.getElementById("newTeamHead").value.trim();
+          if (!id || !name || !head) { alert("Complete todos los campos."); return; }
+          if (!teams[currentSubject]) teams[currentSubject] = [];
+          teams[currentSubject].push({ id, name, head, partials: {} });
+          modalOverlay.style.display = "none";
+          buildTeamTable();
+          buildGradeTable();
+          debounceSaveData();
+        };
+      };
+
+      document.getElementById("editSubject").onclick = () => {
+        const subj = subjectsConfig[currentSubject];
+        let content = `<h3>Editar Materia</h3>
+          <label>Nombre: <input type="text" id="editSubjName" value="${subj.name}"></label><br>
+          <label>Semestre: 
+            <select id="editSubjSemester">
+              <option value="ene-jul" ${subj.semester==="ene-jul"?"selected":""}>ene-jul</option>
+              <option value="ago-dic" ${subj.semester==="ago-dic"?"selected":""}>ago-dic</option>
+            </select>
+          </label><br>
+          <label>Año: <input type="number" id="editSubjYear" value="${subj.year}"></label><br>
+          <button id="saveSubjectEd" class="btn">Guardar</button>`;
+        showModal(content);
+        document.getElementById("saveSubjectEd").onclick = () => {
+          subj.name = document.getElementById("editSubjName").value.trim();
+          subj.semester = document.getElementById("editSubjSemester").value;
+          subj.year = parseInt(document.getElementById("editSubjYear").value);
+          modalOverlay.style.display = "none";
+          buildSubjectSelect();
+          buildDynamicHeader();
+          debounceSaveData();
+        };
+      };
+
+      document.getElementById("addSubject").onclick = () => {
+        let content = `<h3>Agregar Materia</h3>
+          <label>ID: <input type="text" id="newSubjectId"></label><br>
+          <label>Nombre: <input type="text" id="newSubjectName"></label><br>
+          <label>Semestre: 
+            <select id="newSubjectSemester">
+              <option value="ene-jul">ene-jul</option>
+              <option value="ago-dic">ago-dic</option>
+            </select>
+          </label><br>
+          <label>Año: <input type="number" id="newSubjectYear" value="2023"></label><br>
+          <button id="saveSubject" class="btn">Guardar Materia</button>`;
+        showModal(content);
+        document.getElementById("saveSubject").onclick = () => {
+          const id = document.getElementById("newSubjectId").value.trim();
+          const name = document.getElementById("newSubjectName").value.trim();
+          const semester = document.getElementById("newSubjectSemester").value;
+          const year = parseInt(document.getElementById("newSubjectYear").value);
+          if (!id || !name || !semester || isNaN(year)) { alert("Complete todos los campos."); return; }
+          subjectsConfig[id] = {
+            name: name,
+            semester: semester,
+            year: year,
+            rubric: { exam: 45, task: 25, practice: 30, participation: 5 },
+            parcials: {
+              "1": { examEvals: [], taskEvals: [], practiceEvals: [] },
+              "2": { examEvals: [], taskEvals: [], practiceEvals: [] },
+              "3": { examEvals: [], taskEvals: [], practiceEvals: [] },
+              "4": { examEvals: [], taskEvals: [], practiceEvals: [] }
+            }
+          };
+          teams[id] = [];
+          buildSubjectSelect();
+          modalOverlay.style.display = "none";
+          debounceSaveData();
+        };
+      };
+
+      document.getElementById("shareVersion").onclick = () => {
+        const url = new URL(window.location.href);
+        url.searchParams.set("subject", currentSubject);
+        url.searchParams.set("partial", currentPartial);
+        url.searchParams.set("readonly", "true");
+        prompt("Copia este enlace para compartir la versión de solo lectura:", url.toString());
+      };
+
+      document.getElementById("exportExcel").onclick = () => {
+        const table = document.getElementById("gradeTable");
+        let csv = "";
+        for (let row of table.rows) {
+          let rowData = [];
+          for (let cell of row.cells) {
+            let text = cell.innerText.trim();
+            if (!text) text = "0";
+            rowData.push('"' + text + '"');
+          }
+          csv += rowData.join(",") + "\n";
+        }
+        const blob = new Blob([csv], { type: "application/vnd.ms-excel" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "calificaciones_" + currentSubject + "_parcial_" + currentPartial + ".xls";
+        a.click();
+        URL.revokeObjectURL(url);
+      };
+
+      document.getElementById("exportPDF").onclick = () => {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('landscape', 'pt', 'a4');
+        doc.setFontSize(10);
+        doc.text("Calificaciones - " + subjectsConfig[currentSubject].name + " - Parcial " + currentPartial, 40, 30);
+        const headerCells = [ "N° LS", "Alumno", "Equipo" ];
+        const cfg = subjectsConfig[currentSubject].parcials[currentPartial];
+        cfg.examEvals.forEach(e => headerCells.push(e.name));
+        headerCells.push("P-EX");
+        cfg.taskEvals.forEach(e => headerCells.push(e.name));
+        headerCells.push("P-TA");
+        cfg.practiceEvals.forEach(e => headerCells.push(e.name));
+        headerCells.push("P-PR");
+        headerCells.push("ExE");
+        headerCells.push("ExT");
+        headerCells.push("ExP");
+        headerCells.push("ExP-Gen");
+        headerCells.push("ExTOT");
+        headerCells.push("Par");
+        headerCells.push("Faltas");
+        headerCells.push("Ded");
+        headerCells.push("TOT");
+        headerCells.push("Firma");
+        const headers = [headerCells];
+        const data = [];
+        document.querySelectorAll("#gradeTable tbody tr").forEach(row => {
+          const rowData = [];
+          const cells = Array.from(row.querySelectorAll("td"));
+          cells.slice(0, cells.length - 1).forEach(cell => {
+            let text = cell.innerText.trim();
+            if (!text) text = "0";
+            rowData.push(text);
+          });
+          rowData.push("____________________________");
+          data.push(rowData);
+        });
+        doc.autoTable({
+          head: headers,
+          body: data,
+          startY: 50,
+          theme: 'grid',
+          styles: { fontSize: 7, cellPadding: 4, halign: 'center', valign: 'middle' },
+          headStyles: { fillColor: [0, 51, 102] },
+          columnStyles: { text: { cellWidth: 'auto' } }
+        });
+        doc.save("calificaciones_" + subjectsConfig[currentSubject].name + "_parcial_" + currentPartial + ".pdf");
+      };
+
+      document.getElementById("printGrades").onclick = () => { window.print(); };
+
+      document.querySelectorAll(".tab-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          currentPartial = parseInt(btn.getAttribute("data-partial"));
+          document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+          btn.classList.add("active");
+          updatePartialDisplay();
+          buildDynamicHeader();
+          buildGradeTable();
+          buildTeamTable();
+          updateURLParams();
         });
       });
-
+      document.getElementById("subjectSelect").addEventListener("change", (e) => {
+        currentSubject = e.target.value;
+        // Al cambiar de materia, reiniciamos el parcial a 1
+        currentPartial = 1;
+        updatePartialDisplay();
+        updateRubricDisplay();
+        buildDynamicHeader();
+        buildTeamTable();
+        buildGradeTable();
+        updateURLParams();
+      });
       function updateURLParams() {
         const url = new URL(window.location.href);
         url.searchParams.set("subject", currentSubject);
@@ -1302,6 +1468,7 @@
        ***********************/
       window.addEventListener("load", () => {
         if (isReadOnlyMode()) {
+          // Para ver la versión de solo lectura, usamos autenticación anónima
           if (!auth.currentUser) {
             auth.signInAnonymously().catch(error => {
               console.error("Error en autenticación anónima:", error);
@@ -1317,7 +1484,7 @@
               loginModal.style.display = "none";
               document.getElementById("appContainer").style.display = "block";
               document.getElementById("userInfo").innerText = "Usuario: " + user.email;
-              if(user.email === "fco.lopezvelazquez@gmail.com") {
+              if (user.email === "fco.lopezvelazquez@gmail.com") {
                 document.getElementById("resetDBContainer").style.display = "block";
               } else {
                 setReadOnly();
@@ -1350,11 +1517,11 @@
        ***********************/
       document.getElementById("resetDBBtn").onclick = () => {
         const code = prompt("Para confirmar el reset, ingresa el código de seguridad:");
-        if(code !== "RESET2025") {
+        if (code !== "RESET2025") {
           alert("Código incorrecto. Operación cancelada.");
           return;
         }
-        if(confirm("¿Estás seguro de borrar TODOS los datos de Firestore? Esta acción no se podrá deshacer.")) {
+        if (confirm("¿Estás seguro de borrar TODOS los datos de Firestore? Esta acción no se podrá deshacer.")) {
           Promise.all([
             db.collection("subjects").get().then(snapshot => { snapshot.forEach(doc => { doc.ref.delete(); }); }),
             db.collection("students").get().then(snapshot => { snapshot.forEach(doc => { doc.ref.delete(); }); }),
@@ -1367,21 +1534,36 @@
       };
 
       /***********************
-       * 9. Actualizar Materia y reiniciar Parcial
+       * 9. Funcionalidad adicional: Copiar alumnos a otra materia y resumen individual
        ***********************/
-      document.getElementById("subjectSelect").addEventListener("change", (e) => {
-        const selected = e.target.value;
-        console.log("Cambio de materia a:", selected);
-        currentSubject = selected;
-        // Reiniciamos el parcial a 1
-        currentPartial = 1;
-        updatePartialDisplay();
-        updateRubricDisplay();
-        buildDynamicHeader();
-        buildTeamTable();
-        buildGradeTable();
-        updateURLParams();
+      document.getElementById("copyStudentsBtn").onclick = () => {
+        const targetSubject = prompt("Ingrese el ID de la materia destino:");
+        if (targetSubject && subjectsConfig[targetSubject]) {
+          const sourceStudents = students.filter(s => s.subject === currentSubject);
+          const destStudents = students.filter(s => s.subject === targetSubject);
+          const maxList = destStudents.reduce((max, s) => Math.max(max, s.listNumber), 0);
+          sourceStudents.forEach(s => {
+            const newStudent = JSON.parse(JSON.stringify(s));
+            newStudent.listNumber = maxList + 1;
+            newStudent.subject = targetSubject;
+            students.push(newStudent);
+          });
+          alert("Alumnos copiados a la materia " + targetSubject);
+          debounceSaveData();
+        } else {
+          alert("El ID de la materia destino no es válido.");
+        }
+      };
+
+      // Listener para que al hacer clic en el número de lista se muestre el resumen individual
+      document.querySelectorAll(".list-cell").forEach(cell => {
+        cell.addEventListener("click", () => {
+          const listNum = cell.innerText.trim();
+          const student = students.find(s => s.listNumber == listNum && s.subject === currentSubject);
+          if (student) { showStudentSummary(student); }
+        });
       });
+
       function updateURLParams() {
         const url = new URL(window.location.href);
         url.searchParams.set("subject", currentSubject);
@@ -1389,9 +1571,18 @@
         if (!readOnlyMode) { url.searchParams.delete("readonly"); }
         window.history.pushState({}, '', url.toString());
       }
+      function setReadOnly() {
+        document.querySelectorAll("input, select, button").forEach(el => { el.disabled = true; });
+        const notice = document.createElement("p");
+        notice.textContent = "Modo Solo Lectura – No se permite la edición";
+        notice.style.textAlign = "center";
+        notice.style.fontWeight = "bold";
+        notice.style.color = "#900";
+        document.getElementById("appContainer").insertBefore(notice, document.getElementById("appContainer").firstChild);
+      }
 
       /***********************
-       * 10. Mostrar resumen individual del alumno
+       * 10. Función para mostrar resumen individual del alumno
        ***********************/
       function showStudentSummary(student) {
         let content = `<h3>Resumen de Alumno</h3>
