@@ -123,8 +123,8 @@
     .exam-average, .task-average, .practice-average, .total-partial {
       background-color: #d1e7dd;
     }
-    /* Para que en modo solo lectura se oculte la columna "Acciones" */
-    .actions-column { display: none; }
+    /* La columna de acciones solo se muestra en modo edición */
+    .actions-column { }
     @media print {
       body { background: #fff; }
       .container { box-shadow: none; }
@@ -310,6 +310,7 @@
                 <th rowspan="2">Faltas</th>
                 <th rowspan="2">Deducciones</th>
                 <th rowspan="2">Total Parcial</th>
+                <!-- La columna de acciones solo se muestra en modo edición -->
                 <th rowspan="2" class="actions-column">Acciones</th>
               </tr>
               <tr id="dynamicHeader"></tr>
@@ -485,7 +486,6 @@
       if (!subjectsConfig[currentSubject].parcials[currentPartial]) {
         subjectsConfig[currentSubject].parcials[currentPartial] = { examEvals: [], taskEvals: [], practiceEvals: [] };
       }
-
       // Si se cambia de materia, reiniciamos el parcial a 1
       function resetPartial() {
         currentPartial = 1;
@@ -620,8 +620,10 @@
         headerRow.appendChild(thPracticeAvg);
         buildGroupHeader();
       }
-      
-      // Función buildTeamTable: se genera la columna "Acciones" solo si NO está en modo solo lectura.
+
+      /***********************
+       * Función buildTeamTable (Equipos)
+       ***********************/
       function buildTeamTable() {
         const teamTableHead = document.getElementById("teamHeader");
         const teamTableBody = document.querySelector("#teamTable tbody");
@@ -634,7 +636,7 @@
             headerHTML += `<th>${evalObj.name}</th>`;
           }
         });
-        // Si NO es modo solo lectura, agregamos la columna de Acciones
+        // Mostrar la columna de Acciones si NO es modo solo lectura
         if (!isReadOnlyMode()) { headerHTML += "<th>Acciones</th>"; }
         headerHTML += "</tr>";
         teamTableHead.innerHTML = headerHTML;
@@ -660,6 +662,7 @@
           rowHTML += "</tr>";
           teamTableBody.innerHTML += rowHTML;
         });
+        // Adjuntar event listeners para inputs de equipo
         document.querySelectorAll(".team-practice-input").forEach(input => {
           input.addEventListener("input", (e) => {
             const teamId = e.target.getAttribute("data-team-id");
@@ -667,18 +670,19 @@
             const newVal = parseFloat(e.target.value) || 0;
             const subjectTeams = teams[currentSubject];
             const team = subjectTeams.find(t => t.id === teamId);
-            if(team) {
+            if (team) {
               if (!team.partials) team.partials = {};
               if (!team.partials[currentPartial]) {
                 team.partials[currentPartial] = Array(cfg.practiceEvals.length).fill(0);
               }
               team.partials[currentPartial][idx] = newVal;
+              // Propagar cambio a la tabla de calificaciones
               document.querySelectorAll("#gradeTable tbody tr").forEach(row => {
                 const stuTeamSelect = row.querySelector(".student-team");
                 const stuTeam = stuTeamSelect ? stuTeamSelect.value : "";
-                if(stuTeam === teamId) {
+                if (stuTeam === teamId) {
                   const practiceInputs = row.querySelectorAll(".practice-input");
-                  if(practiceInputs[idx]) { practiceInputs[idx].value = newVal; recalculateRow(row); }
+                  if (practiceInputs[idx]) { practiceInputs[idx].value = newVal; recalculateRow(row); }
                 }
               });
               debounceSaveData();
@@ -686,13 +690,14 @@
           });
         });
         if (!isReadOnlyMode()) {
+          // Botón para editar equipo
           document.querySelectorAll(".edit-team").forEach(btn => {
             btn.onclick = (e) => {
               const row = e.target.closest("tr");
               const teamId = row.getAttribute("data-team-id");
               const subjectTeams = teams[currentSubject];
               const team = subjectTeams.find(t => t.id === teamId);
-              if(team) {
+              if (team) {
                 let content = `<h3>Editar Equipo</h3>
                   <label>Nombre: <input type="text" id="editTeamName" value="${team.name}"></label><br>
                   <label>Encargado: <input type="text" id="editTeamHead" value="${team.head}"></label><br>
@@ -709,11 +714,12 @@
               }
             };
           });
+          // Botón para eliminar equipo
           document.querySelectorAll(".delete-team").forEach(btn => {
             btn.onclick = (e) => {
               const row = e.target.closest("tr");
               const teamId = row.getAttribute("data-team-id");
-              if(confirm("¿Estás seguro de eliminar este equipo?")) {
+              if (confirm("¿Estás seguro de eliminar este equipo?")) {
                 const docId = currentSubject + "_" + teamId;
                 db.collection("teams").doc(docId).delete()
                   .then(() => {
@@ -729,6 +735,9 @@
         }
       }
 
+      /***********************
+       * Función buildGradeTable (Alumnos)
+       ***********************/
       function buildGradeTable() {
         const tbody = document.getElementById("gradeTable").querySelector("tbody");
         tbody.innerHTML = "";
@@ -753,11 +762,21 @@
               total: 0
             };
           } else {
-            while (student.partials[currentPartial].exams.length < cfg.examEvals.length) { student.partials[currentPartial].exams.push(0); }
-            while (student.partials[currentPartial].tasks.length < cfg.taskEvals.length) { student.partials[currentPartial].tasks.push(0); }
-            while (student.partials[currentPartial].practices.length < cfg.practiceEvals.length) { student.partials[currentPartial].practices.push(0); }
-            if (student.partials[currentPartial].extraParcial === undefined) { student.partials[currentPartial].extraParcial = 0; }
-            if (!student.partials[currentPartial].deductions) { student.partials[currentPartial].deductions = []; }
+            while (student.partials[currentPartial].exams.length < cfg.examEvals.length) {
+              student.partials[currentPartial].exams.push(0);
+            }
+            while (student.partials[currentPartial].tasks.length < cfg.taskEvals.length) {
+              student.partials[currentPartial].tasks.push(0);
+            }
+            while (student.partials[currentPartial].practices.length < cfg.practiceEvals.length) {
+              student.partials[currentPartial].practices.push(0);
+            }
+            if (student.partials[currentPartial].extraParcial === undefined) {
+              student.partials[currentPartial].extraParcial = 0;
+            }
+            if (!student.partials[currentPartial].deductions) {
+              student.partials[currentPartial].deductions = [];
+            }
           }
           const partialData = student.partials[currentPartial];
           let rowHTML = `<tr data-list="${student.listNumber}">
@@ -780,10 +799,11 @@
             rowHTML += `<td><input type="number" class="task-input" data-index="${index}" min="0" max="10" step="0.1" value="${val}"></td>`;
           });
           rowHTML += `<td class="task-average">0</td>`;
-          // Prácticas
+          // Prácticas (se ignoran columnas con nombre vacío o “acciones”)
           cfg.practiceEvals.forEach((evalObj, index) => {
             if (!evalObj.name || evalObj.name.trim() === "" || evalObj.name.toLowerCase() === "acciones") return;
             let grade = partialData.practices[index] || 0;
+            // Si existe calificación del equipo, la usamos
             const subjectTeams = teams[currentSubject];
             const teamObj = subjectTeams.find(t => t.id === student.team);
             if (teamObj && teamObj.partials && teamObj.partials[currentPartial] && typeof teamObj.partials[currentPartial][index] !== "undefined") {
@@ -856,7 +876,7 @@
         row.querySelector(".deduction-sum").textContent = deductionSum.toFixed(2);
         const totalPartial = ((examAvg * rubric.exam/100) + (taskAvg * rubric.task/100) + (practiceAvg * rubric.practice/100) + extraTotal + (participation * rubric.participation/100)) - deductionSum - (parseFloat(row.querySelector(".absences").value) || 0);
         row.querySelector(".total-partial").textContent = totalPartial.toFixed(2);
-        if (student) { 
+        if (student) {
           if (!student.partials[currentPartial]) { student.partials[currentPartial] = { deductions: [] }; }
           student.partials[currentPartial].total = totalPartial;
         }
@@ -966,7 +986,7 @@
       }
 
       /***********************
-       * 6. Funciones de Modal
+       * Funciones de Modal
        ***********************/
       const modalOverlay = document.getElementById("modalOverlay");
       function showModal(contentHTML) {
@@ -1460,7 +1480,7 @@
        ***********************/
       window.addEventListener("load", () => {
         if (isReadOnlyMode()) {
-          // En modo solo lectura usamos autenticación anónima para poder leer datos
+          // En modo solo lectura se usa autenticación anónima para leer datos
           if (!auth.currentUser) {
             auth.signInAnonymously().catch(error => {
               console.error("Error en autenticación anónima:", error);
@@ -1555,6 +1575,21 @@
         });
       });
 
+      function showStudentSummary(student) {
+        let content = `<h3>Resumen de Alumno</h3>
+          <p><strong>N° Lista:</strong> ${student.listNumber}</p>
+          <p><strong>Nombre:</strong> ${student.name}</p>
+          <p><strong>Equipo:</strong> ${student.team}</p>
+          <p><strong>Materia:</strong> ${subjectsConfig[student.subject].name}</p>`;
+        if (student.partials[currentPartial]) {
+          content += `<h4>Datos del Parcial ${currentPartial}</h4>`;
+          content += `<pre>${JSON.stringify(student.partials[currentPartial], null, 2)}</pre>`;
+        } else {
+          content += `<p>No hay datos para el Parcial ${currentPartial}.</p>`;
+        }
+        showModal(content);
+      }
+
       function updateURLParams() {
         const url = new URL(window.location.href);
         url.searchParams.set("subject", currentSubject);
@@ -1562,6 +1597,175 @@
         if (!readOnlyMode) { url.searchParams.delete("readonly"); }
         window.history.pushState({}, '', url.toString());
       }
+
+      /***********************
+       * 10. Iniciar carga y conexión Realtime (Firestore)
+       ***********************/
+      function attachRealtimeListeners() {
+        db.collection("subjects").onSnapshot(snapshot => {
+          snapshot.forEach(doc => {
+            let data = doc.data();
+            if (!data.parcials) {
+              data.parcials = {
+                "1": { examEvals: [], taskEvals: [], practiceEvals: [] },
+                "2": { examEvals: [], taskEvals: [], practiceEvals: [] },
+                "3": { examEvals: [], taskEvals: [], practiceEvals: [] },
+                "4": { examEvals: [], taskEvals: [], practiceEvals: [] }
+              };
+            }
+            subjectsConfig[doc.id] = data;
+          });
+          buildSubjectSelect();
+          updateRubricDisplay();
+          buildDynamicHeader();
+        });
+        db.collection("students").onSnapshot(snapshot => {
+          students.length = 0;
+          snapshot.forEach(doc => { students.push(doc.data()); });
+          buildGradeTable();
+        });
+        db.collection("teams").onSnapshot(snapshot => {
+          for (const subject in teams) { teams[subject] = []; }
+          snapshot.forEach(doc => {
+            const data = doc.data();
+            const subject = data.subject;
+            if (!teams[subject]) teams[subject] = [];
+            teams[subject].push(data);
+          });
+          buildTeamTable();
+        });
+      }
+      attachRealtimeListeners();
+      buildSubjectSelect();
+      updateRubricDisplay();
+      updatePartialDisplay();
+      buildDynamicHeader();
+      buildTeamTable();
+      buildGradeTable();
+
+      /***********************
+       * 11. Autenticación y Modo Solo Lectura
+       ***********************/
+      window.addEventListener("load", () => {
+        if (isReadOnlyMode()) {
+          // En modo solo lectura se usa autenticación anónima para leer datos
+          if (!auth.currentUser) {
+            auth.signInAnonymously().catch(error => {
+              console.error("Error en autenticación anónima:", error);
+            });
+          }
+          document.getElementById("appContainer").style.display = "block";
+          setReadOnly();
+        } else {
+          const loginModal = document.getElementById("loginModal");
+          loginModal.style.display = "block";
+          auth.onAuthStateChanged(user => {
+            if (user) {
+              loginModal.style.display = "none";
+              document.getElementById("appContainer").style.display = "block";
+              document.getElementById("userInfo").innerText = "Usuario: " + user.email;
+              if (user.email === "fco.lopezvelazquez@gmail.com") {
+                document.getElementById("resetDBContainer").style.display = "block";
+              } else {
+                setReadOnly();
+                document.getElementById("resetDBContainer").style.display = "none";
+              }
+            } else {
+              document.getElementById("appContainer").style.display = "none";
+              loginModal.style.display = "block";
+            }
+          });
+          document.getElementById("loginBtn").onclick = () => {
+            const email = document.getElementById("loginUser").value.trim();
+            const password = document.getElementById("loginPass").value;
+            auth.signInWithEmailAndPassword(email, password)
+              .then(() => {
+                document.getElementById("loginModal").style.display = "none";
+                document.getElementById("appContainer").style.display = "block";
+              })
+              .catch(error => { alert("Error: " + error.message); });
+          };
+          document.getElementById("logoutBtn").addEventListener("click", () => {
+            auth.signOut().then(() => { window.location.reload(); })
+              .catch(err => console.error("Error al cerrar sesión", err));
+          });
+        }
+      });
+
+      /***********************
+       * 12. Botón para Resetear la Base de Datos (solo para el propietario)
+       ***********************/
+      document.getElementById("resetDBBtn").onclick = () => {
+        const code = prompt("Para confirmar el reset, ingresa el código de seguridad:");
+        if (code !== "RESET2025") {
+          alert("Código incorrecto. Operación cancelada.");
+          return;
+        }
+        if (confirm("¿Estás seguro de borrar TODOS los datos de Firestore? Esta acción no se podrá deshacer.")) {
+          Promise.all([
+            db.collection("subjects").get().then(snapshot => { snapshot.forEach(doc => { doc.ref.delete(); }); }),
+            db.collection("students").get().then(snapshot => { snapshot.forEach(doc => { doc.ref.delete(); }); }),
+            db.collection("teams").get().then(snapshot => { snapshot.forEach(doc => { doc.ref.delete(); }); })
+          ]).then(() => {
+            alert("Base de datos borrada. Recarga la página para reiniciar los datos.");
+            window.location.reload();
+          }).catch(err => { console.error("Error al resetear la base de datos:", err); });
+        }
+      };
+
+      /***********************
+       * 13. Funcionalidades adicionales: Copiar alumnos y resumen individual
+       ***********************/
+      document.getElementById("copyStudentsBtn").onclick = () => {
+        const targetSubject = prompt("Ingrese el ID de la materia destino:");
+        if (targetSubject && subjectsConfig[targetSubject]) {
+          const sourceStudents = students.filter(s => s.subject === currentSubject);
+          const destStudents = students.filter(s => s.subject === targetSubject);
+          const maxList = destStudents.reduce((max, s) => Math.max(max, s.listNumber), 0);
+          sourceStudents.forEach(s => {
+            const newStudent = JSON.parse(JSON.stringify(s));
+            newStudent.listNumber = maxList + 1;
+            newStudent.subject = targetSubject;
+            students.push(newStudent);
+          });
+          alert("Alumnos copiados a la materia " + targetSubject);
+          debounceSaveData();
+        } else {
+          alert("El ID de la materia destino no es válido.");
+        }
+      };
+
+      document.querySelectorAll(".list-cell").forEach(cell => {
+        cell.addEventListener("click", () => {
+          const listNum = cell.innerText.trim();
+          const student = students.find(s => s.listNumber == listNum && s.subject === currentSubject);
+          if (student) { showStudentSummary(student); }
+        });
+      });
+
+      function showStudentSummary(student) {
+        let content = `<h3>Resumen de Alumno</h3>
+          <p><strong>N° Lista:</strong> ${student.listNumber}</p>
+          <p><strong>Nombre:</strong> ${student.name}</p>
+          <p><strong>Equipo:</strong> ${student.team}</p>
+          <p><strong>Materia:</strong> ${subjectsConfig[student.subject].name}</p>`;
+        if (student.partials[currentPartial]) {
+          content += `<h4>Datos del Parcial ${currentPartial}</h4>`;
+          content += `<pre>${JSON.stringify(student.partials[currentPartial], null, 2)}</pre>`;
+        } else {
+          content += `<p>No hay datos para el Parcial ${currentPartial}.</p>`;
+        }
+        showModal(content);
+      }
+
+      function updateURLParams() {
+        const url = new URL(window.location.href);
+        url.searchParams.set("subject", currentSubject);
+        url.searchParams.set("partial", currentPartial);
+        if (!readOnlyMode) { url.searchParams.delete("readonly"); }
+        window.history.pushState({}, '', url.toString());
+      }
+
       function setReadOnly() {
         document.querySelectorAll("input, select, button").forEach(el => { el.disabled = true; });
         const notice = document.createElement("p");
@@ -1573,7 +1777,122 @@
       }
 
       /***********************
-       * 10. Función para mostrar resumen individual del alumno
+       * 14. Iniciar la carga y conexión Realtime (Firestore)
+       ***********************/
+      function attachRealtimeListeners() {
+        db.collection("subjects").onSnapshot(snapshot => {
+          snapshot.forEach(doc => {
+            let data = doc.data();
+            if (!data.parcials) {
+              data.parcials = {
+                "1": { examEvals: [], taskEvals: [], practiceEvals: [] },
+                "2": { examEvals: [], taskEvals: [], practiceEvals: [] },
+                "3": { examEvals: [], taskEvals: [], practiceEvals: [] },
+                "4": { examEvals: [], taskEvals: [], practiceEvals: [] }
+              };
+            }
+            subjectsConfig[doc.id] = data;
+          });
+          buildSubjectSelect();
+          updateRubricDisplay();
+          buildDynamicHeader();
+        });
+        db.collection("students").onSnapshot(snapshot => {
+          students.length = 0;
+          snapshot.forEach(doc => { students.push(doc.data()); });
+          buildGradeTable();
+        });
+        db.collection("teams").onSnapshot(snapshot => {
+          for (const subject in teams) { teams[subject] = []; }
+          snapshot.forEach(doc => {
+            const data = doc.data();
+            const subject = data.subject;
+            if (!teams[subject]) teams[subject] = [];
+            teams[subject].push(data);
+          });
+          buildTeamTable();
+        });
+      }
+      attachRealtimeListeners();
+      buildSubjectSelect();
+      updateRubricDisplay();
+      updatePartialDisplay();
+      buildDynamicHeader();
+      buildTeamTable();
+      buildGradeTable();
+
+      /***********************
+       * 15. Autenticación y Modo Solo Lectura
+       ***********************/
+      window.addEventListener("load", () => {
+        if (isReadOnlyMode()) {
+          // En modo solo lectura se usa autenticación anónima para leer datos
+          if (!auth.currentUser) {
+            auth.signInAnonymously().catch(error => {
+              console.error("Error en autenticación anónima:", error);
+            });
+          }
+          document.getElementById("appContainer").style.display = "block";
+          setReadOnly();
+        } else {
+          const loginModal = document.getElementById("loginModal");
+          loginModal.style.display = "block";
+          auth.onAuthStateChanged(user => {
+            if (user) {
+              loginModal.style.display = "none";
+              document.getElementById("appContainer").style.display = "block";
+              document.getElementById("userInfo").innerText = "Usuario: " + user.email;
+              if (user.email === "fco.lopezvelazquez@gmail.com") {
+                document.getElementById("resetDBContainer").style.display = "block";
+              } else {
+                setReadOnly();
+                document.getElementById("resetDBContainer").style.display = "none";
+              }
+            } else {
+              document.getElementById("appContainer").style.display = "none";
+              loginModal.style.display = "block";
+            }
+          });
+          document.getElementById("loginBtn").onclick = () => {
+            const email = document.getElementById("loginUser").value.trim();
+            const password = document.getElementById("loginPass").value;
+            auth.signInWithEmailAndPassword(email, password)
+              .then(() => {
+                document.getElementById("loginModal").style.display = "none";
+                document.getElementById("appContainer").style.display = "block";
+              })
+              .catch(error => { alert("Error: " + error.message); });
+          };
+          document.getElementById("logoutBtn").addEventListener("click", () => {
+            auth.signOut().then(() => { window.location.reload(); })
+              .catch(err => console.error("Error al cerrar sesión", err));
+          });
+        }
+      });
+
+      /***********************
+       * 16. Botón para Resetear la Base de Datos (solo para el propietario)
+       ***********************/
+      document.getElementById("resetDBBtn").onclick = () => {
+        const code = prompt("Para confirmar el reset, ingresa el código de seguridad:");
+        if (code !== "RESET2025") {
+          alert("Código incorrecto. Operación cancelada.");
+          return;
+        }
+        if (confirm("¿Estás seguro de borrar TODOS los datos de Firestore? Esta acción no se podrá deshacer.")) {
+          Promise.all([
+            db.collection("subjects").get().then(snapshot => { snapshot.forEach(doc => { doc.ref.delete(); }); }),
+            db.collection("students").get().then(snapshot => { snapshot.forEach(doc => { doc.ref.delete(); }); }),
+            db.collection("teams").get().then(snapshot => { snapshot.forEach(doc => { doc.ref.delete(); }); })
+          ]).then(() => {
+            alert("Base de datos borrada. Recarga la página para reiniciar los datos.");
+            window.location.reload();
+          }).catch(err => { console.error("Error al resetear la base de datos:", err); });
+        }
+      };
+
+      /***********************
+       * 17. Funcionalidad adicional: Mostrar resumen individual del alumno
        ***********************/
       function showStudentSummary(student) {
         let content = `<h3>Resumen de Alumno</h3>
