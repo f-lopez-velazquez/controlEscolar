@@ -123,7 +123,7 @@
     .exam-average, .task-average, .practice-average, .total-partial {
       background-color: #d1e7dd;
     }
-    /* Ocultar columna de "Acciones" en modo solo lectura */
+    /* Para que en modo solo lectura se oculte la columna "Acciones" */
     .actions-column { display: none; }
     @media print {
       body { background: #fff; }
@@ -481,13 +481,15 @@
       let urlPartial = parseInt(urlParams.get("partial"));
       let currentSubject = (urlSubject && subjectsConfig[urlSubject]) ? urlSubject : "circuitos";
       let currentPartial = (!isNaN(urlPartial) && urlPartial > 0) ? urlPartial : 1;
-      // Al cambiar de materia se reinicia el parcial a 1
+      // Aseguramos que exista la estructura para el parcial actual
+      if (!subjectsConfig[currentSubject].parcials[currentPartial]) {
+        subjectsConfig[currentSubject].parcials[currentPartial] = { examEvals: [], taskEvals: [], practiceEvals: [] };
+      }
+
+      // Si se cambia de materia, reiniciamos el parcial a 1
       function resetPartial() {
         currentPartial = 1;
         updatePartialDisplay();
-      }
-      if (!subjectsConfig[currentSubject].parcials[currentPartial]) {
-        subjectsConfig[currentSubject].parcials[currentPartial] = { examEvals: [], taskEvals: [], practiceEvals: [] };
       }
 
       /***********************
@@ -586,6 +588,7 @@
         const headerRow = document.getElementById("dynamicHeader");
         headerRow.innerHTML = "";
         const cfg = subjectsConfig[currentSubject].parcials[currentPartial];
+        // Cabecera de exámenes
         cfg.examEvals.forEach(evalObj => {
           if (!evalObj.name || evalObj.name.trim() === "" || evalObj.name.toLowerCase() === "acciones") return;
           const th = document.createElement("th");
@@ -595,6 +598,7 @@
         const thExamAvg = document.createElement("th");
         thExamAvg.textContent = "Promedio Exámenes";
         headerRow.appendChild(thExamAvg);
+        // Cabecera de tareas
         cfg.taskEvals.forEach(evalObj => {
           if (!evalObj.name || evalObj.name.trim() === "" || evalObj.name.toLowerCase() === "acciones") return;
           const th = document.createElement("th");
@@ -604,6 +608,7 @@
         const thTaskAvg = document.createElement("th");
         thTaskAvg.textContent = "Promedio Tareas";
         headerRow.appendChild(thTaskAvg);
+        // Cabecera de prácticas
         cfg.practiceEvals.forEach(evalObj => {
           if (!evalObj.name || evalObj.name.trim() === "" || evalObj.name.toLowerCase() === "acciones") return;
           const th = document.createElement("th");
@@ -616,7 +621,7 @@
         buildGroupHeader();
       }
       
-      // ********** Función buildTeamTable() corregida para que solo se creen columnas de evaluaciones definidas **********
+      // Función buildTeamTable: se genera la columna "Acciones" solo si NO está en modo solo lectura.
       function buildTeamTable() {
         const teamTableHead = document.getElementById("teamHeader");
         const teamTableBody = document.querySelector("#teamTable tbody");
@@ -629,6 +634,7 @@
             headerHTML += `<th>${evalObj.name}</th>`;
           }
         });
+        // Si NO es modo solo lectura, agregamos la columna de Acciones
         if (!isReadOnlyMode()) { headerHTML += "<th>Acciones</th>"; }
         headerHTML += "</tr>";
         teamTableHead.innerHTML = headerHTML;
@@ -661,7 +667,7 @@
             const newVal = parseFloat(e.target.value) || 0;
             const subjectTeams = teams[currentSubject];
             const team = subjectTeams.find(t => t.id === teamId);
-            if (team) {
+            if(team) {
               if (!team.partials) team.partials = {};
               if (!team.partials[currentPartial]) {
                 team.partials[currentPartial] = Array(cfg.practiceEvals.length).fill(0);
@@ -670,9 +676,9 @@
               document.querySelectorAll("#gradeTable tbody tr").forEach(row => {
                 const stuTeamSelect = row.querySelector(".student-team");
                 const stuTeam = stuTeamSelect ? stuTeamSelect.value : "";
-                if (stuTeam === teamId) {
+                if(stuTeam === teamId) {
                   const practiceInputs = row.querySelectorAll(".practice-input");
-                  if (practiceInputs[idx]) { practiceInputs[idx].value = newVal; recalculateRow(row); }
+                  if(practiceInputs[idx]) { practiceInputs[idx].value = newVal; recalculateRow(row); }
                 }
               });
               debounceSaveData();
@@ -686,7 +692,7 @@
               const teamId = row.getAttribute("data-team-id");
               const subjectTeams = teams[currentSubject];
               const team = subjectTeams.find(t => t.id === teamId);
-              if (team) {
+              if(team) {
                 let content = `<h3>Editar Equipo</h3>
                   <label>Nombre: <input type="text" id="editTeamName" value="${team.name}"></label><br>
                   <label>Encargado: <input type="text" id="editTeamHead" value="${team.head}"></label><br>
@@ -707,7 +713,7 @@
             btn.onclick = (e) => {
               const row = e.target.closest("tr");
               const teamId = row.getAttribute("data-team-id");
-              if (confirm("¿Estás seguro de eliminar este equipo?")) {
+              if(confirm("¿Estás seguro de eliminar este equipo?")) {
                 const docId = currentSubject + "_" + teamId;
                 db.collection("teams").doc(docId).delete()
                   .then(() => {
@@ -798,8 +804,10 @@
             <td class="deductions"><span class="deduction-sum">0</span> ${!isReadOnlyMode() ? '<button class="deduct-btn btn">Ded</button>' : ''}</td>
             <td class="total-partial">0</td>`;
           if (!isReadOnlyMode()) {
-            rowHTML += `<td class="actions-column"><button class="row-action-btn btn">Ver Ded.</button>
-                        <button class="delete-student btn">Eliminar</button></td>`;
+            rowHTML += `<td class="actions-column">
+                          <button class="row-action-btn btn">Ver Ded.</button>
+                          <button class="delete-student btn">Eliminar</button>
+                        </td>`;
           }
           rowHTML += "</tr>";
           tbody.innerHTML += rowHTML;
@@ -848,7 +856,7 @@
         row.querySelector(".deduction-sum").textContent = deductionSum.toFixed(2);
         const totalPartial = ((examAvg * rubric.exam/100) + (taskAvg * rubric.task/100) + (practiceAvg * rubric.practice/100) + extraTotal + (participation * rubric.participation/100)) - deductionSum - (parseFloat(row.querySelector(".absences").value) || 0);
         row.querySelector(".total-partial").textContent = totalPartial.toFixed(2);
-        if (student) {
+        if (student) { 
           if (!student.partials[currentPartial]) { student.partials[currentPartial] = { deductions: [] }; }
           student.partials[currentPartial].total = totalPartial;
         }
@@ -902,21 +910,21 @@
               const student = students.find(s => s.listNumber == listNum && s.subject === currentSubject);
               if (student) { openDeductionModal(student, true); }
             });
-            document.querySelectorAll(".delete-student").forEach(btn => {
-              btn.addEventListener("click", (e) => {
-                const row = e.target.closest("tr");
-                const listNum = parseInt(row.getAttribute("data-list"));
-                if (confirm("¿Estás seguro de eliminar este alumno?")) {
-                  db.collection("students").doc("stu_" + listNum).delete()
-                    .then(() => {
-                      const idx = students.findIndex(s => s.listNumber === listNum && s.subject === currentSubject);
-                      if (idx !== -1) { students.splice(idx, 1); }
-                      buildGradeTable();
-                      debounceSaveData();
-                    })
-                    .catch(err => console.error("Error eliminando alumno", err));
-                }
-              });
+          });
+          document.querySelectorAll(".delete-student").forEach(btn => {
+            btn.addEventListener("click", (e) => {
+              const row = e.target.closest("tr");
+              const listNum = parseInt(row.getAttribute("data-list"));
+              if (confirm("¿Estás seguro de eliminar este alumno?")) {
+                db.collection("students").doc("stu_" + listNum).delete()
+                  .then(() => {
+                    const idx = students.findIndex(s => s.listNumber === listNum && s.subject === currentSubject);
+                    if (idx !== -1) { students.splice(idx, 1); }
+                    buildGradeTable();
+                    debounceSaveData();
+                  })
+                  .catch(err => console.error("Error eliminando alumno", err));
+              }
             });
           });
         }
@@ -955,21 +963,6 @@
         }
         recalculateRow(row);
         debounceSaveData();
-      }
-
-      function showStudentSummary(student) {
-        let content = `<h3>Resumen de Alumno</h3>
-          <p><strong>N° Lista:</strong> ${student.listNumber}</p>
-          <p><strong>Nombre:</strong> ${student.name}</p>
-          <p><strong>Equipo:</strong> ${student.team}</p>
-          <p><strong>Materia:</strong> ${subjectsConfig[student.subject].name}</p>`;
-        if (student.partials[currentPartial]) {
-          content += `<h4>Datos del Parcial ${currentPartial}</h4>`;
-          content += `<pre>${JSON.stringify(student.partials[currentPartial], null, 2)}</pre>`;
-        } else {
-          content += `<p>No hay datos para el Parcial ${currentPartial}.</p>`;
-        }
-        showModal(content);
       }
 
       /***********************
@@ -1020,7 +1013,6 @@
           };
         }
       }
-
       function openRubricModal() {
         const cfg = subjectsConfig[currentSubject];
         const currParcial = subjectsConfig[currentSubject].parcials[currentPartial];
@@ -1468,7 +1460,7 @@
        ***********************/
       window.addEventListener("load", () => {
         if (isReadOnlyMode()) {
-          // Para ver la versión de solo lectura, usamos autenticación anónima
+          // En modo solo lectura usamos autenticación anónima para poder leer datos
           if (!auth.currentUser) {
             auth.signInAnonymously().catch(error => {
               console.error("Error en autenticación anónima:", error);
@@ -1534,7 +1526,7 @@
       };
 
       /***********************
-       * 9. Funcionalidad adicional: Copiar alumnos a otra materia y resumen individual
+       * 9. Funcionalidades adicionales: Copiar alumnos y resumen individual
        ***********************/
       document.getElementById("copyStudentsBtn").onclick = () => {
         const targetSubject = prompt("Ingrese el ID de la materia destino:");
@@ -1555,7 +1547,6 @@
         }
       };
 
-      // Listener para que al hacer clic en el número de lista se muestre el resumen individual
       document.querySelectorAll(".list-cell").forEach(cell => {
         cell.addEventListener("click", () => {
           const listNum = cell.innerText.trim();
