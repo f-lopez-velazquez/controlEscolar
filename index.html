@@ -47,8 +47,6 @@
     .rubric-display { font-weight: bold; }
     .subject-select select { margin-right: 5px; }
     .subject-select button { margin-right: 5px; padding: 5px 10px; font-size: 0.9em; }
-    /* Botón para copiar alumnos a otra materia */
-    #copyStudentsBtn { background: #17a2b8; color: #fff; padding: 8px 12px; border: none; border-radius: 4px; cursor: pointer; margin-left: 10px; }
     /* Información del usuario */
     #userInfo { font-weight: bold; color: #003366; }
     /* Botón para cerrar sesión */
@@ -67,6 +65,8 @@
     .partial-tabs button:hover { background: #003d80; }
     .rubric-display button,
     .cred-btn { margin-left: 10px; padding: 5px 10px; font-size: 0.9rem; cursor: pointer; }
+    /* Botón para copiar alumnos a otra materia */
+    #copyStudentsBtn { background: #17a2b8; color: #fff; padding: 8px 12px; border: none; border-radius: 4px; cursor: pointer; margin-left: 10px; }
     /* Botones de guardado manual y reset */
     #manualSaveBtn, #resetDBBtn {
       padding: 8px 12px;
@@ -125,7 +125,7 @@
     .exam-average, .task-average, .practice-average, .total-partial {
       background-color: #d1e7dd;
     }
-    /* Ocultar columna de “Acciones” en modo solo lectura (opcional) */
+    /* Ocultar columna de “Acciones” en modo solo lectura */
     .actions-column { display: none; }
     @media print {
       body { background: #fff; }
@@ -319,8 +319,7 @@
                 <th rowspan="2">Faltas</th>
                 <th rowspan="2">Deducciones</th>
                 <th rowspan="2">Total Parcial</th>
-                <!-- La columna de "Acciones" solo se muestra en modo editable -->
-                <th rowspan="2" class="actions-column" style="display: none;">Acciones</th>
+                <th rowspan="2" class="actions-column">Acciones</th>
               </tr>
               <tr id="dynamicHeader"></tr>
             </thead>
@@ -351,7 +350,6 @@
 
       /***********************
        * 1. Variables Globales: Datos
-       * Estructuras iniciales para materias, alumnos y equipos.
        ***********************/
       const subjectsConfig = {
         circuitos: {
@@ -495,6 +493,12 @@
       let urlPartial = parseInt(urlParams.get("partial"));
       let currentSubject = (urlSubject && subjectsConfig[urlSubject]) ? urlSubject : "circuitos";
       let currentPartial = (!isNaN(urlPartial) && urlPartial > 0) ? urlPartial : 1;
+      // Al cambiar de materia se reinicia el parcial a 1 (esto ayuda a mantener la independencia)
+      function resetPartial() {
+        currentPartial = 1;
+        updatePartialDisplay();
+      }
+
       // Aseguramos que exista la estructura para el parcial actual
       if (!subjectsConfig[currentSubject].parcials[currentPartial]) {
         subjectsConfig[currentSubject].parcials[currentPartial] = { examEvals: [], taskEvals: [], practiceEvals: [] };
@@ -596,7 +600,6 @@
         const headerRow = document.getElementById("dynamicHeader");
         headerRow.innerHTML = "";
         const cfg = subjectsConfig[currentSubject].parcials[currentPartial];
-        // Para exámenes
         cfg.examEvals.forEach(evalObj => {
           if (evalObj.name.toLowerCase() === "acciones") return;
           const th = document.createElement("th");
@@ -606,7 +609,6 @@
         const thExamAvg = document.createElement("th");
         thExamAvg.textContent = "Promedio Exámenes";
         headerRow.appendChild(thExamAvg);
-        // Para tareas
         cfg.taskEvals.forEach(evalObj => {
           if (evalObj.name.toLowerCase() === "acciones") return;
           const th = document.createElement("th");
@@ -616,7 +618,6 @@
         const thTaskAvg = document.createElement("th");
         thTaskAvg.textContent = "Promedio Tareas";
         headerRow.appendChild(thTaskAvg);
-        // Para prácticas
         cfg.practiceEvals.forEach(evalObj => {
           if (evalObj.name.toLowerCase() === "acciones") return;
           const th = document.createElement("th");
@@ -636,7 +637,6 @@
         const cfg = subjectsConfig[currentSubject].parcials[currentPartial];
         let headerHTML = "<tr><th>Equipo</th><th>Encargado</th>";
         cfg.practiceEvals.forEach(evalObj => { headerHTML += `<th>${evalObj.name}</th>`; });
-        // La columna de Acciones se muestra solo en modo editable
         if (!isReadOnlyMode()) { headerHTML += "<th>Acciones</th>"; }
         headerHTML += "</tr>";
         teamTableHead.innerHTML = headerHTML;
@@ -731,7 +731,7 @@
         const tbody = document.getElementById("gradeTable").querySelector("tbody");
         tbody.innerHTML = "";
         const cfg = subjectsConfig[currentSubject].parcials[currentPartial];
-        // Filtrar y ordenar alumnos por número de lista (ascendente)
+        // Ordenar alumnos por número de lista (ascendente)
         const filteredStudents = students
           .filter(s => s.subject === currentSubject)
           .sort((a, b) => a.listNumber - b.listNumber);
@@ -787,7 +787,6 @@
             } else if (typeof partialData.practices[index] !== "undefined") {
               grade = partialData.practices[index];
             }
-            // Aseguramos almacenar la nota en el alumno
             partialData.practices[index] = grade;
             rowHTML += `<td><input type="number" class="practice-input" data-index="${index}" min="0" max="10" step="0.1" value="${grade}" readonly></td>`;
           });
@@ -802,7 +801,6 @@
             <td><input type="number" class="absences" min="0" step="1" value="${partialData.absences || 0}"></td>
             <td class="deductions"><span class="deduction-sum">0</span> ${!isReadOnlyMode() ? '<button class="deduct-btn btn">Ded</button>' : ''}</td>
             <td class="total-partial">0</td>`;
-          // Si se desea que al hacer click en la celda de acciones se muestren opciones, se pueden agregar botones (solo en modo editable)
           if (!isReadOnlyMode()) {
             rowHTML += `<td class="actions-column"><button class="row-action-btn btn">Ver Ded.</button>
                         <button class="delete-student btn">Eliminar</button></td>`;
@@ -810,7 +808,6 @@
           rowHTML += `</tr>`;
           tbody.innerHTML += rowHTML;
         });
-        // Agregar listener a la celda de número de lista para mostrar resumen individual
         document.querySelectorAll(".list-cell").forEach(cell => {
           cell.addEventListener("click", () => {
             const listNum = cell.innerText.trim();
@@ -957,7 +954,6 @@
         recalculateRow(row);
         debounceSaveData();
       }
-      // Función para mostrar resumen individual al hacer click en el número de lista
       function showStudentSummary(student) {
         let content = `<h3>Resumen de Alumno</h3>
           <p><strong>N° Lista:</strong> ${student.listNumber}</p>
@@ -965,10 +961,10 @@
           <p><strong>Equipo:</strong> ${student.team}</p>
           <p><strong>Materia:</strong> ${subjectsConfig[student.subject].name}</p>`;
         if (student.partials[currentPartial]) {
-          content += `<h4>Parcial ${currentPartial}</h4>`;
+          content += `<h4>Datos del Parcial ${currentPartial}</h4>`;
           content += `<pre>${JSON.stringify(student.partials[currentPartial], null, 2)}</pre>`;
         } else {
-          content += `<p>No hay datos para el parcial ${currentPartial}.</p>`;
+          content += `<p>No hay datos para el Parcial ${currentPartial}.</p>`;
         }
         showModal(content);
       }
@@ -1197,13 +1193,10 @@
       document.getElementById("copyStudentsBtn").onclick = () => {
         const targetSubject = prompt("Ingrese el ID de la materia destino:");
         if(targetSubject && subjectsConfig[targetSubject]) {
-          // Filtrar alumnos del sujeto actual
           const sourceStudents = students.filter(s => s.subject === currentSubject);
-          // Obtener el mayor número de lista en la materia destino
           const destStudents = students.filter(s => s.subject === targetSubject);
           const maxList = destStudents.reduce((max, s) => Math.max(max, s.listNumber), 0);
           sourceStudents.forEach(s => {
-            // Clonar el alumno y asignarle un nuevo número de lista
             const newStudent = JSON.parse(JSON.stringify(s));
             newStudent.listNumber = maxList + 1;
             newStudent.subject = targetSubject;
@@ -1216,7 +1209,7 @@
         }
       };
 
-      // Al hacer click en el número de lista se muestra resumen individual
+      // Al hacer click en la celda del número de lista se muestra resumen individual
       function showStudentSummary(student) {
         let content = `<h3>Resumen de Alumno</h3>
           <p><strong>N° Lista:</strong> ${student.listNumber}</p>
@@ -1224,8 +1217,8 @@
           <p><strong>Equipo:</strong> ${student.team}</p>
           <p><strong>Materia:</strong> ${subjectsConfig[student.subject].name}</p>`;
         if (student.partials[currentPartial]) {
-          content += `<h4>Datos del Parcial ${currentPartial}</h4>
-                      <pre>${JSON.stringify(student.partials[currentPartial], null, 2)}</pre>`;
+          content += `<h4>Datos del Parcial ${currentPartial}</h4>`;
+          content += `<pre>${JSON.stringify(student.partials[currentPartial], null, 2)}</pre>`;
         } else {
           content += `<p>No hay datos para el Parcial ${currentPartial}.</p>`;
         }
@@ -1282,7 +1275,7 @@
        ***********************/
       window.addEventListener("load", () => {
         if (isReadOnlyMode()) {
-          // Para el modo de solo lectura se utiliza autenticación anónima
+          // Autenticación anónima para el modo de solo lectura
           if (!auth.currentUser) {
             auth.signInAnonymously().catch(error => {
               console.error("Error en autenticación anónima:", error);
@@ -1346,6 +1339,40 @@
           }).catch(err => { console.error("Error al resetear la base de datos:", err); });
         }
       };
+
+      /***********************
+       * 9. Actualizar Materia (Subject)
+       ***********************/
+      document.getElementById("subjectSelect").addEventListener("change", (e) => {
+        const selected = e.target.value;
+        console.log("Cambio de materia a:", selected);
+        currentSubject = selected;
+        // Reiniciamos el parcial a 1 al cambiar de materia para evitar conflictos
+        currentPartial = 1;
+        updatePartialDisplay();
+        updateRubricDisplay();
+        buildDynamicHeader();
+        buildTeamTable();
+        buildGradeTable();
+        updateURLParams();
+      });
+      function updateURLParams() {
+        const url = new URL(window.location.href);
+        url.searchParams.set("subject", currentSubject);
+        url.searchParams.set("partial", currentPartial);
+        if (!isReadOnlyMode()) { url.searchParams.delete("readonly"); }
+        window.history.pushState({}, '', url.toString());
+      }
+      function setReadOnly() {
+        document.querySelectorAll("input, select, button").forEach(el => { el.disabled = true; });
+        const notice = document.createElement("p");
+        notice.textContent = "Modo Solo Lectura – No se permite la edición";
+        notice.style.textAlign = "center";
+        notice.style.fontWeight = "bold";
+        notice.style.color = "#900";
+        document.getElementById("appContainer").insertBefore(notice, document.getElementById("appContainer").firstChild);
+      }
+      // También se puede agregar un listener a las pestañas de parciales si es necesario
 
     })();
   </script>
