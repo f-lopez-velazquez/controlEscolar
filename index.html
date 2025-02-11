@@ -65,8 +65,6 @@
     .partial-tabs button:hover { background: #003d80; }
     .rubric-display button,
     .cred-btn { margin-left: 10px; padding: 5px 10px; font-size: 0.9rem; cursor: pointer; }
-    /* Botón para copiar alumnos a otra materia */
-    #copyStudentsBtn { background: #17a2b8; color: #fff; padding: 8px 12px; border: none; border-radius: 4px; cursor: pointer; margin-left: 10px; }
     /* Botones de guardado manual y reset */
     #manualSaveBtn, #resetDBBtn {
       padding: 8px 12px;
@@ -477,14 +475,13 @@
       const auth = firebase.auth();
       const db = firebase.firestore();
       // Habilitar persistencia offline (IndexedDB)
-      db.enablePersistence()
-        .catch(function(err) {
-          if (err.code === 'failed-precondition') {
-            console.error("Solo una pestaña a la vez puede tener la persistencia offline.");
-          } else if (err.code === 'unimplemented') {
-            console.error("El navegador no soporta la persistencia offline.");
-          }
-        });
+      db.enablePersistence().catch(function(err) {
+        if (err.code === 'failed-precondition') {
+          console.error("Solo una pestaña a la vez puede tener la persistencia offline.");
+        } else if (err.code === 'unimplemented') {
+          console.error("El navegador no soporta la persistencia offline.");
+        }
+      });
 
       /***********************
        * 3. Variables de Estado (según URL)
@@ -493,13 +490,11 @@
       let urlPartial = parseInt(urlParams.get("partial"));
       let currentSubject = (urlSubject && subjectsConfig[urlSubject]) ? urlSubject : "circuitos";
       let currentPartial = (!isNaN(urlPartial) && urlPartial > 0) ? urlPartial : 1;
-      // Al cambiar de materia se reinicia el parcial a 1 (esto ayuda a mantener la independencia)
+      // Al cambiar de materia se reinicia el parcial a 1 para mantener la independencia
       function resetPartial() {
         currentPartial = 1;
         updatePartialDisplay();
       }
-
-      // Aseguramos que exista la estructura para el parcial actual
       if (!subjectsConfig[currentSubject].parcials[currentPartial]) {
         subjectsConfig[currentSubject].parcials[currentPartial] = { examEvals: [], taskEvals: [], practiceEvals: [] };
       }
@@ -600,8 +595,9 @@
         const headerRow = document.getElementById("dynamicHeader");
         headerRow.innerHTML = "";
         const cfg = subjectsConfig[currentSubject].parcials[currentPartial];
+        // Construir encabezado para exámenes
         cfg.examEvals.forEach(evalObj => {
-          if (evalObj.name.toLowerCase() === "acciones") return;
+          if (!evalObj.name || evalObj.name.trim()==="" || evalObj.name.toLowerCase() === "acciones") return;
           const th = document.createElement("th");
           th.textContent = evalObj.name;
           headerRow.appendChild(th);
@@ -609,8 +605,9 @@
         const thExamAvg = document.createElement("th");
         thExamAvg.textContent = "Promedio Exámenes";
         headerRow.appendChild(thExamAvg);
+        // Tareas
         cfg.taskEvals.forEach(evalObj => {
-          if (evalObj.name.toLowerCase() === "acciones") return;
+          if (!evalObj.name || evalObj.name.trim()==="" || evalObj.name.toLowerCase() === "acciones") return;
           const th = document.createElement("th");
           th.textContent = evalObj.name;
           headerRow.appendChild(th);
@@ -618,8 +615,9 @@
         const thTaskAvg = document.createElement("th");
         thTaskAvg.textContent = "Promedio Tareas";
         headerRow.appendChild(thTaskAvg);
+        // Prácticas
         cfg.practiceEvals.forEach(evalObj => {
-          if (evalObj.name.toLowerCase() === "acciones") return;
+          if (!evalObj.name || evalObj.name.trim()==="" || evalObj.name.toLowerCase() === "acciones") return;
           const th = document.createElement("th");
           th.textContent = evalObj.name;
           headerRow.appendChild(th);
@@ -651,7 +649,7 @@
             rowHTML += `<td><input type="number" class="team-practice-input" data-team-id="${team.id}" data-index="${idx}" min="0" max="10" step="0.1" value="${(typeof val !== 'undefined' ? val : 0)}"></td>`;
           });
           if (!isReadOnlyMode()) {
-            rowHTML += `<td>
+            rowHTML += `<td class="actions-column">
                           <button class="edit-team btn">Editar</button>
                           <button class="delete-team btn">Eliminar</button>
                         </td>`;
@@ -753,7 +751,10 @@
           } else {
             while (student.partials[currentPartial].exams.length < cfg.examEvals.length) { student.partials[currentPartial].exams.push(0); }
             while (student.partials[currentPartial].tasks.length < cfg.taskEvals.length) { student.partials[currentPartial].tasks.push(0); }
-            while (student.partials[currentPartial].practices.length < cfg.practiceEvals.length) { student.partials[currentPartial].practices.push(0); }
+            while (student.partials[currentPartial].practices.length < cfg.practiceEvals.length) {
+              // Aquí, si ya existe un valor (por ejemplo para el alumno 1), se conserva
+              student.partials[currentPartial].practices.push( student.partials[currentPartial].practices.length > 0 ? student.partials[currentPartial].practices[student.partials[currentPartial].practices.length-1] : 0 );
+            }
             if (student.partials[currentPartial].extraParcial === undefined) { student.partials[currentPartial].extraParcial = 0; }
             if (!student.partials[currentPartial].deductions) { student.partials[currentPartial].deductions = []; }
           }
@@ -766,27 +767,31 @@
                 ${teams[currentSubject].map(team => `<option value="${team.id}" ${team.id === student.team ? "selected" : ""}>${team.name}</option>`).join('')}
               </select>
             </td>`;
+          // Exámenes
           cfg.examEvals.forEach((evalObj, index) => {
             let val = partialData.exams[index];
             if(val === "" || val == null) { val = 0; }
             rowHTML += `<td><input type="number" class="exam-input" data-index="${index}" min="0" max="10" step="0.1" value="${val}"></td>`;
           });
           rowHTML += `<td class="exam-average">0</td>`;
+          // Tareas
           cfg.taskEvals.forEach((evalObj, index) => {
             let val = partialData.tasks[index];
             if(val === "" || val == null) { val = 0; }
             rowHTML += `<td><input type="number" class="task-input" data-index="${index}" min="0" max="10" step="0.1" value="${val}"></td>`;
           });
           rowHTML += `<td class="task-average">0</td>`;
+          // Prácticas: aquí se utiliza el valor del equipo si existe; si no, se conserva el valor previo
           cfg.practiceEvals.forEach((evalObj, index) => {
+            // Solo incluir si el nombre existe y no es "acciones"
+            if (!evalObj.name || evalObj.name.trim() === "" || evalObj.name.toLowerCase() === "acciones") return;
+            let grade = partialData.practices[index] || 0;
             const subjectTeams = teams[currentSubject];
             const teamObj = subjectTeams.find(t => t.id === student.team);
-            let grade = 0;
-            if(teamObj && teamObj.partials && teamObj.partials[currentPartial] && typeof teamObj.partials[currentPartial][index] !== "undefined") { 
-              grade = teamObj.partials[currentPartial][index]; 
-            } else if (typeof partialData.practices[index] !== "undefined") {
-              grade = partialData.practices[index];
+            if(teamObj && teamObj.partials && teamObj.partials[currentPartial] && typeof teamObj.partials[currentPartial][index] !== "undefined") {
+              grade = teamObj.partials[currentPartial][index];
             }
+            // Guardar el valor obtenido en la estructura del alumno sin forzarlo a 0
             partialData.practices[index] = grade;
             rowHTML += `<td><input type="number" class="practice-input" data-index="${index}" min="0" max="10" step="0.1" value="${grade}" readonly></td>`;
           });
@@ -808,6 +813,7 @@
           rowHTML += `</tr>`;
           tbody.innerHTML += rowHTML;
         });
+        // Listener para mostrar resumen al hacer clic en el número de lista
         document.querySelectorAll(".list-cell").forEach(cell => {
           cell.addEventListener("click", () => {
             const listNum = cell.innerText.trim();
@@ -948,7 +954,10 @@
         const teamObj = subjectTeams.find(t => t.id === student.team);
         if(teamObj && teamObj.partials && teamObj.partials[currentPartial]) {
           row.querySelectorAll(".practice-input").forEach((input, idx) => { 
-            input.value = teamObj.partials[currentPartial][idx] || 0; 
+            // Si existe valor en el equipo, usarlo; de lo contrario, conservar el valor actual del alumno
+            if(typeof teamObj.partials[currentPartial][idx] !== "undefined") {
+              input.value = teamObj.partials[currentPartial][idx];
+            }
           });
         }
         recalculateRow(row);
@@ -1097,6 +1106,7 @@
             } else if(cat === "practice") {
               currParcial.practiceEvals.splice(index, 1);
             }
+            // Reabrir la modal para que se actualice la lista
             openRubricModal();
             buildDynamicHeader();
             buildGradeTable();
@@ -1209,20 +1219,32 @@
         }
       };
 
-      // Al hacer click en la celda del número de lista se muestra resumen individual
-      function showStudentSummary(student) {
-        let content = `<h3>Resumen de Alumno</h3>
-          <p><strong>N° Lista:</strong> ${student.listNumber}</p>
-          <p><strong>Nombre:</strong> ${student.name}</p>
-          <p><strong>Equipo:</strong> ${student.team}</p>
-          <p><strong>Materia:</strong> ${subjectsConfig[student.subject].name}</p>`;
-        if (student.partials[currentPartial]) {
-          content += `<h4>Datos del Parcial ${currentPartial}</h4>`;
-          content += `<pre>${JSON.stringify(student.partials[currentPartial], null, 2)}</pre>`;
-        } else {
-          content += `<p>No hay datos para el Parcial ${currentPartial}.</p>`;
-        }
-        showModal(content);
+      // Al hacer click en el número de lista se muestra un resumen individual del alumno
+      document.querySelectorAll(".list-cell").forEach(cell => {
+        cell.addEventListener("click", () => {
+          const listNum = cell.innerText.trim();
+          const student = students.find(s => s.listNumber == listNum && s.subject === currentSubject);
+          if(student) {
+            showStudentSummary(student);
+          }
+        });
+      });
+
+      function updateURLParams() {
+        const url = new URL(window.location.href);
+        url.searchParams.set("subject", currentSubject);
+        url.searchParams.set("partial", currentPartial);
+        if (!readOnlyMode) { url.searchParams.delete("readonly"); }
+        window.history.pushState({}, '', url.toString());
+      }
+      function setReadOnly() {
+        document.querySelectorAll("input, select, button").forEach(el => { el.disabled = true; });
+        const notice = document.createElement("p");
+        notice.textContent = "Modo Solo Lectura – No se permite la edición";
+        notice.style.textAlign = "center";
+        notice.style.fontWeight = "bold";
+        notice.style.color = "#900";
+        document.getElementById("appContainer").insertBefore(notice, document.getElementById("appContainer").firstChild);
       }
 
       /***********************
@@ -1275,7 +1297,7 @@
        ***********************/
       window.addEventListener("load", () => {
         if (isReadOnlyMode()) {
-          // Autenticación anónima para el modo de solo lectura
+          // En modo solo lectura, usamos autenticación anónima
           if (!auth.currentUser) {
             auth.signInAnonymously().catch(error => {
               console.error("Error en autenticación anónima:", error);
@@ -1341,13 +1363,13 @@
       };
 
       /***********************
-       * 9. Actualizar Materia (Subject)
+       * 9. Actualizar Materia (Subject) y reiniciar parcial
        ***********************/
       document.getElementById("subjectSelect").addEventListener("change", (e) => {
         const selected = e.target.value;
         console.log("Cambio de materia a:", selected);
         currentSubject = selected;
-        // Reiniciamos el parcial a 1 al cambiar de materia para evitar conflictos
+        // Reiniciamos el parcial a 1
         currentPartial = 1;
         updatePartialDisplay();
         updateRubricDisplay();
@@ -1360,19 +1382,27 @@
         const url = new URL(window.location.href);
         url.searchParams.set("subject", currentSubject);
         url.searchParams.set("partial", currentPartial);
-        if (!isReadOnlyMode()) { url.searchParams.delete("readonly"); }
+        if (!readOnlyMode) { url.searchParams.delete("readonly"); }
         window.history.pushState({}, '', url.toString());
       }
-      function setReadOnly() {
-        document.querySelectorAll("input, select, button").forEach(el => { el.disabled = true; });
-        const notice = document.createElement("p");
-        notice.textContent = "Modo Solo Lectura – No se permite la edición";
-        notice.style.textAlign = "center";
-        notice.style.fontWeight = "bold";
-        notice.style.color = "#900";
-        document.getElementById("appContainer").insertBefore(notice, document.getElementById("appContainer").firstChild);
+
+      /***********************
+       * 10. Mostrar resumen individual del alumno
+       ***********************/
+      function showStudentSummary(student) {
+        let content = `<h3>Resumen de Alumno</h3>
+          <p><strong>N° Lista:</strong> ${student.listNumber}</p>
+          <p><strong>Nombre:</strong> ${student.name}</p>
+          <p><strong>Equipo:</strong> ${student.team}</p>
+          <p><strong>Materia:</strong> ${subjectsConfig[student.subject].name}</p>`;
+        if (student.partials[currentPartial]) {
+          content += `<h4>Datos del Parcial ${currentPartial}</h4>`;
+          content += `<pre>${JSON.stringify(student.partials[currentPartial], null, 2)}</pre>`;
+        } else {
+          content += `<p>No hay datos para el Parcial ${currentPartial}.</p>`;
+        }
+        showModal(content);
       }
-      // También se puede agregar un listener a las pestañas de parciales si es necesario
 
     })();
   </script>
