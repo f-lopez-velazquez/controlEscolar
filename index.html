@@ -123,7 +123,7 @@
     .exam-average, .task-average, .practice-average, .total-partial {
       background-color: #d1e7dd;
     }
-    /* La columna de Acciones solo se muestra en modo edición */
+    /* La columna de Acciones se muestra solo en modo edición */
     .actions-column { }
     @media print {
       body { background: #fff; }
@@ -185,7 +185,7 @@
       th, td { font-size: 0.8em; padding: 6px; }
       .btn, .cred-btn { padding: 6px 10px; font-size: 0.8em; }
     }
-    /* ===== Indicador de guardado (toast) ===== */
+    /* ===== Indicador de guardado/de borrado (toast) ===== */
     #saveIndicator {
       position: fixed;
       bottom: 20px;
@@ -207,7 +207,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body>
-  <!-- Indicador de guardado (toast) -->
+  <!-- Indicador de guardado o acción (toast) -->
   <div id="saveIndicator">Guardado</div>
 
   <!-- Modal General -->
@@ -310,7 +310,6 @@
                 <th rowspan="2">Faltas</th>
                 <th rowspan="2">Deducciones</th>
                 <th rowspan="2">Total Parcial</th>
-                <!-- La columna de Acciones solo se muestra en modo edición -->
                 <th rowspan="2" class="actions-column" style="display: none;">Acciones</th>
               </tr>
               <tr id="dynamicHeader"></tr>
@@ -331,6 +330,7 @@
   <script>
     "use strict";
     (function() {
+
       /***********************
        * 0. Parámetros URL y Modo Solo Lectura
        ***********************/
@@ -528,7 +528,7 @@
             localStorage.setItem('subjectsConfig', JSON.stringify(subjectsConfig));
             localStorage.setItem('students', JSON.stringify(students));
             localStorage.setItem('teams', JSON.stringify(teams));
-            showSaveIndicator();
+            showIndicator("Guardado", "#28a745");
           })
           .catch(err => console.error("Error en saveData", err));
       }
@@ -538,8 +538,11 @@
         if (saveTimeout) clearTimeout(saveTimeout);
         saveTimeout = setTimeout(() => { saveData(); }, 15000);
       }
-      function showSaveIndicator() {
+      // Función para mostrar un mensaje indicador (toast)
+      function showIndicator(message, color) {
         const indicator = document.getElementById("saveIndicator");
+        indicator.innerText = message;
+        indicator.style.background = color;
         indicator.style.display = "block";
         setTimeout(() => { indicator.style.display = "none"; }, 2000);
       }
@@ -639,7 +642,9 @@
         if (!isReadOnlyMode()) { headerHTML += "<th>Acciones</th>"; }
         headerHTML += "</tr>";
         teamTableHead.innerHTML = headerHTML;
-        const subjectTeams = teams[currentSubject] || [];
+        // Ordenar los equipos por nombre antes de mostrarlos
+        let subjectTeams = teams[currentSubject] || [];
+        subjectTeams.sort((a, b) => a.name.localeCompare(b.name));
         subjectTeams.forEach(team => {
           if (!team.partials) team.partials = {};
           if (!team.partials[currentPartial]) {
@@ -661,6 +666,7 @@
           rowHTML += "</tr>";
           teamTableBody.innerHTML += rowHTML;
         });
+        // Listener para inputs de equipos
         document.querySelectorAll(".team-practice-input").forEach(input => {
           input.addEventListener("input", (e) => {
             const teamId = e.target.getAttribute("data-team-id");
@@ -719,11 +725,12 @@
                 const docId = currentSubject + "_" + teamId;
                 db.collection("teams").doc(docId).delete()
                   .then(() => {
-                    // Solo actualizamos la lista de equipos; NO se tocan los alumnos
+                    // Solo se actualiza la lista de equipos; NO se tocan los alumnos.
                     teams[currentSubject] = teams[currentSubject].filter(t => t.id !== teamId);
                     buildTeamTable();
                     buildGradeTable();
                     debounceSaveData();
+                    showIndicator("Se eliminó 1 equipo", "#dc3545");
                   })
                   .catch(err => console.error("Error eliminando equipo", err));
               }
@@ -744,7 +751,6 @@
           .filter(s => s.subject === currentSubject)
           .sort((a, b) => a.listNumber - b.listNumber);
         filteredStudents.forEach(student => {
-          // Aseguramos que la estructura de partials exista
           if (!student.partials[currentPartial]) {
             student.partials[currentPartial] = {
               exams: Array(cfg.examEvals.length).fill(0),
@@ -760,21 +766,11 @@
               total: 0
             };
           } else {
-            // Si existen, aseguramos que los arrays tengan la longitud correcta
-            if (!Array.isArray(student.partials[currentPartial].exams)) {
-              student.partials[currentPartial].exams = [];
-            }
             while (student.partials[currentPartial].exams.length < cfg.examEvals.length) {
               student.partials[currentPartial].exams.push(0);
             }
-            if (!Array.isArray(student.partials[currentPartial].tasks)) {
-              student.partials[currentPartial].tasks = [];
-            }
             while (student.partials[currentPartial].tasks.length < cfg.taskEvals.length) {
               student.partials[currentPartial].tasks.push(0);
-            }
-            if (!Array.isArray(student.partials[currentPartial].practices)) {
-              student.partials[currentPartial].practices = [];
             }
             while (student.partials[currentPartial].practices.length < cfg.practiceEvals.length) {
               student.partials[currentPartial].practices.push(0);
@@ -794,7 +790,6 @@
               <select class="student-team">
                 ${(() => {
                   const opts = teams[currentSubject].map(team => `<option value="${team.id}" ${team.id === student.team ? "selected" : ""}>${team.name}</option>`);
-                  // Si el equipo asignado no existe, lo mostramos como opción "Sin equipo"
                   if (!teams[currentSubject].some(t => t.id === student.team)) {
                     opts.push(`<option value="${student.team}" selected>Sin equipo</option>`);
                   }
@@ -820,7 +815,6 @@
           cfg.practiceEvals.forEach((evalObj, index) => {
             if (!evalObj.name || evalObj.name.trim() === "" || evalObj.name.toLowerCase() === "acciones") return;
             let grade = partialData.practices[index] || 0;
-            // Si existe calificación del equipo, la usamos
             const subjectTeams = teams[currentSubject];
             const teamObj = subjectTeams.find(t => t.id === student.team);
             if (teamObj && teamObj.partials && teamObj.partials[currentPartial] && typeof teamObj.partials[currentPartial][index] !== "undefined") {
@@ -849,7 +843,7 @@
           rowHTML += "</tr>";
           tbody.innerHTML += rowHTML;
         });
-        // Asignar listener para que al hacer clic en la celda de número de lista se muestre el resumen individual
+        // Listener para la celda de número de lista (para resumen individual)
         document.querySelectorAll(".list-cell").forEach(cell => {
           cell.addEventListener("click", () => {
             const listNum = cell.innerText.trim();
@@ -959,6 +953,7 @@
                     if (idx !== -1) { students.splice(idx, 1); }
                     buildGradeTable();
                     debounceSaveData();
+                    showIndicator("Se eliminó 1 alumno", "#dc3545");
                   })
                   .catch(err => console.error("Error eliminando alumno", err));
               }
@@ -1238,6 +1233,11 @@
           const name = document.getElementById("newStudentName").value.trim();
           const team = document.getElementById("newStudentTeam").value;
           if (!listNum || !name) { alert("Complete todos los campos."); return; }
+          // Se evita duplicar alumnos con el mismo número de lista y nombre en la misma materia
+          if (students.some(s => s.subject === currentSubject && s.listNumber === listNum && s.name === name)) {
+            alert("Ya existe un alumno con ese número de lista y nombre en esta materia.");
+            return;
+          }
           students.push({ listNumber: listNum, name, team, subject: currentSubject, partials: {} });
           modalOverlay.style.display = "none";
           buildGradeTable();
@@ -1257,6 +1257,11 @@
           const name = document.getElementById("newTeamName").value.trim();
           const head = document.getElementById("newTeamHead").value.trim();
           if (!id || !name || !head) { alert("Complete todos los campos."); return; }
+          // Evitamos duplicados: si ya existe un equipo con ese ID en la materia, se notifica
+          if (teams[currentSubject].some(t => t.id === id)) {
+            alert("Ya existe un equipo con ese ID en esta materia.");
+            return;
+          }
           if (!teams[currentSubject]) teams[currentSubject] = [];
           teams[currentSubject].push({ id, name, head, partials: {} });
           modalOverlay.style.display = "none";
@@ -1309,6 +1314,10 @@
           const semester = document.getElementById("newSubjectSemester").value;
           const year = parseInt(document.getElementById("newSubjectYear").value);
           if (!id || !name || !semester || isNaN(year)) { alert("Complete todos los campos."); return; }
+          if (subjectsConfig[id]) {
+            alert("Ya existe una materia con ese ID.");
+            return;
+          }
           subjectsConfig[id] = {
             name: name,
             semester: semester,
@@ -1421,8 +1430,7 @@
       });
       document.getElementById("subjectSelect").addEventListener("change", (e) => {
         currentSubject = e.target.value;
-        // Al cambiar de materia, reiniciamos el parcial a 1
-        currentPartial = 1;
+        currentPartial = 1; // Al cambiar de materia, reiniciamos el parcial a 1
         updatePartialDisplay();
         updateRubricDisplay();
         buildDynamicHeader();
@@ -1497,7 +1505,6 @@
        ***********************/
       window.addEventListener("load", () => {
         if (isReadOnlyMode()) {
-          // En modo solo lectura se usa autenticación anónima para leer datos
           if (!auth.currentUser) {
             auth.signInAnonymously().catch(error => {
               console.error("Error en autenticación anónima:", error);
@@ -1570,12 +1577,15 @@
         if (targetSubject && subjectsConfig[targetSubject]) {
           const sourceStudents = students.filter(s => s.subject === currentSubject);
           const destStudents = students.filter(s => s.subject === targetSubject);
-          const maxList = destStudents.reduce((max, s) => Math.max(max, s.listNumber), 0);
+          // Evitar duplicados: si ya existe un alumno (por nombre) en la materia destino, se omite
           sourceStudents.forEach(s => {
-            const newStudent = JSON.parse(JSON.stringify(s));
-            newStudent.listNumber = maxList + 1;
-            newStudent.subject = targetSubject;
-            students.push(newStudent);
+            if (!destStudents.some(d => d.name === s.name)) {
+              const maxList = destStudents.reduce((max, s) => Math.max(max, s.listNumber), 0);
+              const newStudent = JSON.parse(JSON.stringify(s));
+              newStudent.listNumber = maxList + 1;
+              newStudent.subject = targetSubject;
+              students.push(newStudent);
+            }
           });
           alert("Alumnos copiados a la materia " + targetSubject);
           debounceSaveData();
@@ -1665,7 +1675,6 @@
        ***********************/
       window.addEventListener("load", () => {
         if (isReadOnlyMode()) {
-          // En modo solo lectura se usa autenticación anónima para leer datos
           if (!auth.currentUser) {
             auth.signInAnonymously().catch(error => {
               console.error("Error en autenticación anónima:", error);
@@ -1738,12 +1747,15 @@
         if (targetSubject && subjectsConfig[targetSubject]) {
           const sourceStudents = students.filter(s => s.subject === currentSubject);
           const destStudents = students.filter(s => s.subject === targetSubject);
-          const maxList = destStudents.reduce((max, s) => Math.max(max, s.listNumber), 0);
           sourceStudents.forEach(s => {
-            const newStudent = JSON.parse(JSON.stringify(s));
-            newStudent.listNumber = maxList + 1;
-            newStudent.subject = targetSubject;
-            students.push(newStudent);
+            // Evitar duplicados: si ya existe un alumno con el mismo nombre en destino, se omite
+            if (!destStudents.some(d => d.name === s.name)) {
+              const maxList = destStudents.reduce((max, s) => Math.max(max, s.listNumber), 0);
+              const newStudent = JSON.parse(JSON.stringify(s));
+              newStudent.listNumber = maxList + 1;
+              newStudent.subject = targetSubject;
+              students.push(newStudent);
+            }
           });
           alert("Alumnos copiados a la materia " + targetSubject);
           debounceSaveData();
@@ -1751,37 +1763,6 @@
           alert("El ID de la materia destino no es válido.");
         }
       };
-
-      document.querySelectorAll(".list-cell").forEach(cell => {
-        cell.addEventListener("click", () => {
-          const listNum = cell.innerText.trim();
-          const student = students.find(s => s.listNumber == listNum && s.subject === currentSubject);
-          if (student) { showStudentSummary(student); }
-        });
-      });
-
-      function showStudentSummary(student) {
-        let content = `<h3>Resumen de Alumno</h3>
-          <p><strong>N° Lista:</strong> ${student.listNumber}</p>
-          <p><strong>Nombre:</strong> ${student.name}</p>
-          <p><strong>Equipo:</strong> ${student.team}</p>
-          <p><strong>Materia:</strong> ${subjectsConfig[student.subject].name}</p>`;
-        if (student.partials[currentPartial]) {
-          content += `<h4>Datos del Parcial ${currentPartial}</h4>`;
-          content += `<pre>${JSON.stringify(student.partials[currentPartial], null, 2)}</pre>`;
-        } else {
-          content += `<p>No hay datos para el Parcial ${currentPartial}.</p>`;
-        }
-        showModal(content);
-      }
-
-      function updateURLParams() {
-        const url = new URL(window.location.href);
-        url.searchParams.set("subject", currentSubject);
-        url.searchParams.set("partial", currentPartial);
-        if (!readOnlyMode) { url.searchParams.delete("readonly"); }
-        window.history.pushState({}, '', url.toString());
-      }
 
       /***********************
        * 14. Iniciar carga y conexión Realtime (Firestore)
@@ -1833,7 +1814,6 @@
        ***********************/
       window.addEventListener("load", () => {
         if (isReadOnlyMode()) {
-          // En modo solo lectura se usa autenticación anónima para leer datos
           if (!auth.currentUser) {
             auth.signInAnonymously().catch(error => {
               console.error("Error en autenticación anónima:", error);
@@ -1899,7 +1879,7 @@
       };
 
       /***********************
-       * 17. Funcionalidad adicional: Mostrar resumen individual del alumno
+       * 17. Funcionalidades adicionales: Mostrar resumen individual del alumno
        ***********************/
       function showStudentSummary(student) {
         let content = `<h3>Resumen de Alumno</h3>
@@ -1928,173 +1908,7 @@
       }
 
       /***********************
-       * 19. Funcionalidades adicionales para copiar alumnos (entre materias)
-       ***********************/
-      document.getElementById("copyStudentsBtn").onclick = () => {
-        const targetSubject = prompt("Ingrese el ID de la materia destino:");
-        if (targetSubject && subjectsConfig[targetSubject]) {
-          const sourceStudents = students.filter(s => s.subject === currentSubject);
-          const destStudents = students.filter(s => s.subject === targetSubject);
-          const maxList = destStudents.reduce((max, s) => Math.max(max, s.listNumber), 0);
-          sourceStudents.forEach(s => {
-            const newStudent = JSON.parse(JSON.stringify(s));
-            newStudent.listNumber = maxList + 1;
-            newStudent.subject = targetSubject;
-            students.push(newStudent);
-          });
-          alert("Alumnos copiados a la materia " + targetSubject);
-          debounceSaveData();
-        } else {
-          alert("El ID de la materia destino no es válido.");
-        }
-      };
-
-      /***********************
-       * 20. Iniciar carga y conexión Realtime (Firestore)
-       ***********************/
-      function attachRealtimeListeners() {
-        db.collection("subjects").onSnapshot(snapshot => {
-          snapshot.forEach(doc => {
-            let data = doc.data();
-            if (!data.parcials) {
-              data.parcials = {
-                "1": { examEvals: [], taskEvals: [], practiceEvals: [] },
-                "2": { examEvals: [], taskEvals: [], practiceEvals: [] },
-                "3": { examEvals: [], taskEvals: [], practiceEvals: [] },
-                "4": { examEvals: [], taskEvals: [], practiceEvals: [] }
-              };
-            }
-            subjectsConfig[doc.id] = data;
-          });
-          buildSubjectSelect();
-          updateRubricDisplay();
-          buildDynamicHeader();
-        });
-        db.collection("students").onSnapshot(snapshot => {
-          students.length = 0;
-          snapshot.forEach(doc => { students.push(doc.data()); });
-          buildGradeTable();
-        });
-        db.collection("teams").onSnapshot(snapshot => {
-          for (const subject in teams) { teams[subject] = []; }
-          snapshot.forEach(doc => {
-            const data = doc.data();
-            const subject = data.subject;
-            if (!teams[subject]) teams[subject] = [];
-            teams[subject].push(data);
-          });
-          buildTeamTable();
-        });
-      }
-      attachRealtimeListeners();
-      buildSubjectSelect();
-      updateRubricDisplay();
-      updatePartialDisplay();
-      buildDynamicHeader();
-      buildTeamTable();
-      buildGradeTable();
-
-      /***********************
-       * 21. Autenticación y Modo Solo Lectura
-       ***********************/
-      window.addEventListener("load", () => {
-        if (isReadOnlyMode()) {
-          // En modo solo lectura se usa autenticación anónima para leer datos
-          if (!auth.currentUser) {
-            auth.signInAnonymously().catch(error => {
-              console.error("Error en autenticación anónima:", error);
-            });
-          }
-          document.getElementById("appContainer").style.display = "block";
-          setReadOnly();
-        } else {
-          const loginModal = document.getElementById("loginModal");
-          loginModal.style.display = "block";
-          auth.onAuthStateChanged(user => {
-            if (user) {
-              loginModal.style.display = "none";
-              document.getElementById("appContainer").style.display = "block";
-              document.getElementById("userInfo").innerText = "Usuario: " + user.email;
-              if (user.email === "fco.lopezvelazquez@gmail.com") {
-                document.getElementById("resetDBContainer").style.display = "block";
-              } else {
-                setReadOnly();
-                document.getElementById("resetDBContainer").style.display = "none";
-              }
-            } else {
-              document.getElementById("appContainer").style.display = "none";
-              loginModal.style.display = "block";
-            }
-          });
-          document.getElementById("loginBtn").onclick = () => {
-            const email = document.getElementById("loginUser").value.trim();
-            const password = document.getElementById("loginPass").value;
-            auth.signInWithEmailAndPassword(email, password)
-              .then(() => {
-                document.getElementById("loginModal").style.display = "none";
-                document.getElementById("appContainer").style.display = "block";
-              })
-              .catch(error => { alert("Error: " + error.message); });
-          };
-          document.getElementById("logoutBtn").addEventListener("click", () => {
-            auth.signOut().then(() => { window.location.reload(); })
-              .catch(err => console.error("Error al cerrar sesión", err));
-          });
-        }
-      });
-
-      /***********************
-       * 22. Botón para Resetear la Base de Datos (solo para el propietario)
-       ***********************/
-      document.getElementById("resetDBBtn").onclick = () => {
-        const code = prompt("Para confirmar el reset, ingresa el código de seguridad:");
-        if (code !== "RESET2025") {
-          alert("Código incorrecto. Operación cancelada.");
-          return;
-        }
-        if (confirm("¿Estás seguro de borrar TODOS los datos de Firestore? Esta acción no se podrá deshacer.")) {
-          Promise.all([
-            db.collection("subjects").get().then(snapshot => { snapshot.forEach(doc => { doc.ref.delete(); }); }),
-            db.collection("students").get().then(snapshot => { snapshot.forEach(doc => { doc.ref.delete(); }); }),
-            db.collection("teams").get().then(snapshot => { snapshot.forEach(doc => { doc.ref.delete(); }); })
-          ]).then(() => {
-            alert("Base de datos borrada. Recarga la página para reiniciar los datos.");
-            window.location.reload();
-          }).catch(err => { console.error("Error al resetear la base de datos:", err); });
-        }
-      };
-
-      /***********************
-       * 23. Funcionalidades adicionales: Mostrar resumen individual del alumno
-       ***********************/
-      function showStudentSummary(student) {
-        let content = `<h3>Resumen de Alumno</h3>
-          <p><strong>N° Lista:</strong> ${student.listNumber}</p>
-          <p><strong>Nombre:</strong> ${student.name}</p>
-          <p><strong>Equipo:</strong> ${student.team}</p>
-          <p><strong>Materia:</strong> ${subjectsConfig[student.subject].name}</p>`;
-        if (student.partials[currentPartial]) {
-          content += `<h4>Datos del Parcial ${currentPartial}</h4>`;
-          content += `<pre>${JSON.stringify(student.partials[currentPartial], null, 2)}</pre>`;
-        } else {
-          content += `<p>No hay datos para el Parcial ${currentPartial}.</p>`;
-        }
-        showModal(content);
-      }
-
-      /***********************
-       * 24. Actualizar URL
-       ***********************/
-      function updateURLParams() {
-        const url = new URL(window.location.href);
-        url.searchParams.set("subject", currentSubject);
-        url.searchParams.set("partial", currentPartial);
-        if (!readOnlyMode) { url.searchParams.delete("readonly"); }
-        window.history.pushState({}, '', url.toString());
-      }
-
-      /***********************
-       * 25. Funcionalidad adicional: Al hacer clic en el número de lista, mostrar resumen individual (ya implementado)
+       * 19. Funcionalidad adicional: Al hacer clic en el número de lista, se muestra el resumen individual (ya implementado)
        ***********************/
 
     })();
