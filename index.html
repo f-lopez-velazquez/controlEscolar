@@ -6,9 +6,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sistema de Calificaciones - Institución XYZ</title>
   <style>
-    /* ================================
-       Estilos Generales y Responsivos
-    =================================== */
+    /* ======================
+       ESTILOS GENERALES Y RESPONSIVOS
+       ====================== */
     * { box-sizing: border-box; }
     body {
       font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
@@ -49,73 +49,48 @@
     .rubric-display { font-weight: bold; }
     .subject-select select { margin-right: 5px; }
     .subject-select button { margin-right: 5px; padding: 5px 10px; font-size: 0.9em; }
+    /* Información de usuario y botones */
     #userInfo { font-weight: bold; color: #003366; }
     #logoutBtn { background: #ffc107; color: #000; padding: 8px 12px; border: none; border-radius: 4px; cursor: pointer; margin: 5px; }
     .partial-tabs button {
-      background: #0056b3;
-      color: #fff;
-      border: none;
-      padding: 8px 16px;
-      margin: 0 5px;
-      border-radius: 4px;
-      cursor: pointer;
-      transition: background 0.3s;
+      background: #0056b3; color: #fff; border: none; padding: 8px 16px;
+      margin: 0 5px; border-radius: 4px; cursor: pointer; transition: background 0.3s;
     }
     .partial-tabs button.active,
     .partial-tabs button:hover { background: #003d80; }
     .rubric-display button,
     .cred-btn { margin-left: 10px; padding: 5px 10px; font-size: 0.9rem; cursor: pointer; }
-    #manualSaveBtn, #resetDBBtn { padding: 8px 12px; border: none; border-radius: 4px; cursor: pointer; margin: 5px; }
+    /* Botones de guardado y reset */
+    #manualSaveBtn, #resetDBBtn {
+      padding: 8px 12px; border: none; border-radius: 4px; cursor: pointer; margin: 5px;
+    }
     #manualSaveBtn { background: #28a745; color: #fff; }
     #resetDBBtn { background: #dc3545; color: #fff; }
     #resetDBContainer { display: none; }
     main { padding: 10px 0; }
     .eval-controls, .student-controls, .action-section { text-align: center; margin: 15px 0; }
     .btn {
-      background: #007bff;
-      color: #fff;
-      border: none;
-      padding: 8px 12px;
-      margin: 5px;
-      border-radius: 4px;
-      cursor: pointer;
-      transition: background 0.3s;
+      background: #007bff; color: #fff; border: none; padding: 8px 12px; margin: 5px;
+      border-radius: 4px; cursor: pointer; transition: background 0.3s;
     }
     .btn:hover { background: #0056b3; }
+    /* ===== TABLAS ===== */
     .table-container {
-      overflow-x: auto;
-      background: #fff;
-      border-radius: 4px;
-      margin-bottom: 20px;
+      overflow-x: auto; background: #fff; border-radius: 4px; margin-bottom: 20px;
     }
     table {
-      width: 100%;
-      border-collapse: collapse;
-      min-width: 1200px;
+      width: 100%; border-collapse: collapse; min-width: 1200px;
     }
     table, th, td { border: 1px solid #ccc; }
     th {
-      background: #003366;
-      color: #fff;
-      padding: 10px;
-      text-align: center;
-      white-space: nowrap;
+      background: #003366; color: #fff; padding: 10px; text-align: center; white-space: nowrap;
     }
-    td {
-      padding: 8px;
-      text-align: center;
-      white-space: nowrap;
-    }
+    td { padding: 8px; text-align: center; white-space: nowrap; }
     td input, td select {
-      padding: 4px;
-      text-align: center;
-      border: 1px solid #aaa;
-      border-radius: 3px;
+      padding: 4px; text-align: center; border: 1px solid #aaa; border-radius: 3px;
     }
-    .exam-average, .task-average, .practice-average, .total-partial {
-      background-color: #d1e7dd;
-    }
-    /* La columna de Acciones se muestra solo en modo edición */
+    .exam-average, .task-average, .practice-average, .total-partial { background-color: #d1e7dd; }
+    /* La columna de Acciones se muestra sólo en modo edición */
     .actions-column { }
     @media print {
       body { background: #fff; }
@@ -124,37 +99,22 @@
       td::after { content: ""; display: block; border-bottom: 1px dashed #000; margin-top: 5px; }
       @page { size: A4 landscape; margin: 20mm; }
     }
-    /* ================================
-       Estilos del Modal
-    =================================== */
+    /* ===== MODAL ===== */
     .modal {
-      display: none;
-      position: fixed;
-      z-index: 1000;
-      left: 0;
-      top: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0,0,0,0.5);
+      display: none; position: fixed; z-index: 1000; left: 0; top: 0;
+      width: 100%; height: 100%; background: rgba(0,0,0,0.5);
     }
     .modal-content {
-      background: #fff;
-      margin: 10% auto;
-      padding: 20px;
-      border-radius: 8px;
-      max-width: 500px;
-      max-height: 80vh;
-      overflow-y: auto;
-      position: relative;
+      background: #fff; margin: 10% auto; padding: 20px; border-radius: 8px;
+      max-width: 500px; max-height: 80vh; overflow-y: auto; position: relative;
       box-shadow: 0 0 10px rgba(0,0,0,0.3);
     }
     .close { position: absolute; right: 15px; top: 10px; font-size: 24px; cursor: pointer; color: #333; }
-    /* ================================
-       Estilos del Login Modal
-    =================================== */
+    /* LOGIN MODAL */
     #loginModal .modal-content { max-width: 400px; }
     #loginModal h2 { margin-top: 0; text-align: center; }
     #loginModal input { width: 100%; padding: 8px; margin: 10px 0; }
+    /* PIE DE PÁGINA */
     footer { text-align: center; margin-top: 20px; font-size: 0.8em; color: #555; }
     @media (max-width: 768px) {
       .container { margin: 10px; padding: 10px; }
@@ -163,23 +123,13 @@
       th, td { font-size: 0.8em; padding: 6px; }
       .btn, .cred-btn { padding: 6px 10px; font-size: 0.8em; }
     }
-    /* ================================
-       Toast de Guardado
-    =================================== */
+    /* ===== Indicador de guardado (toast) ===== */
     #saveIndicator {
-      position: fixed;
-      bottom: 20px;
-      right: 20px;
-      background: #28a745;
-      color: #fff;
-      padding: 10px 15px;
-      border-radius: 4px;
-      font-size: 0.9em;
-      display: none;
-      z-index: 2000;
+      position: fixed; bottom: 20px; right: 20px; background: #28a745; color: #fff;
+      padding: 10px 15px; border-radius: 4px; font-size: 0.9em; display: none; z-index: 2000;
     }
   </style>
-  <!-- Cargar Firebase (compat) y dependencias desde CDN -->
+  <!-- Cargar Firebase (compat) y dependencias -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
@@ -187,7 +137,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body>
-  <!-- Toast de Guardado -->
+  <!-- Indicador de guardado -->
   <div id="saveIndicator">Guardado</div>
 
   <!-- Modal General -->
@@ -198,7 +148,7 @@
     </div>
   </div>
 
-  <!-- Modal de Login (solo en modo editable) -->
+  <!-- Modal de Login (solo en modo edición) -->
   <div id="loginModal" class="modal">
     <div class="modal-content">
       <span class="close">&times;</span>
@@ -215,7 +165,7 @@
     </div>
   </div>
 
-  <!-- Contenedor Principal -->
+  <!-- Contenedor principal -->
   <div class="container" id="appContainer" style="display:none;">
     <header>
       <h1>Sistema de Calificaciones</h1>
@@ -241,7 +191,7 @@
           Prácticas: <span id="weightPractice">30%</span>, Participación: <span id="weightPart">5%</span>
           <button id="editRubric" class="btn">Editar Rúbrica</button>
         </div>
-        <div id="resetDBContainer" style="display:none;">
+        <div id="resetDBContainer">
           <button id="resetDBBtn" class="cred-btn">Reset DB</button>
         </div>
       </div>
@@ -306,6 +256,7 @@
     <footer>Pagina creada y diseñada por Francisco López Velazquez</footer>
   </div>
 
+  <!-- Código JavaScript -->
   <script>
     "use strict";
     (function() {
@@ -318,49 +269,76 @@
       function isReadOnlyMode() { return readOnlyMode; }
 
       /***********************
-       * 1. Variables Globales: Datos
-       * Se inicializan contenedores vacíos; la estructura se llenará desde Firestore.
+       * 1. Estructura Base (sin datos de ejemplo; se leerán de Firestore)
        ***********************/
-      const subjectsConfig = {}; // Colección "subjects"
-      const students = [];       // Colección "students"
-      const teams = {};          // Colección "teams"
+      // La estructura esperada para cada materia. (Se actualizará con Firestore)
+      const subjectsConfig = {
+        circuitos: {
+          name: "Circuitos Eléctricos",
+          semester: "ene-jul",
+          year: 2023,
+          rubric: { exam: 45, task: 25, practice: 30, participation: 5 },
+          parcials: { "1": { examEvals: [], taskEvals: [], practiceEvals: [] },
+                      "2": { examEvals: [], taskEvals: [], practiceEvals: [] },
+                      "3": { examEvals: [], taskEvals: [], practiceEvals: [] },
+                      "4": { examEvals: [], taskEvals: [], practiceEvals: [] } }
+        },
+        tt6: {
+          name: "TT6",
+          semester: "ene-jul",
+          year: 2023,
+          rubric: { exam: 45, task: 25, practice: 30, participation: 5 },
+          parcials: { "1": { examEvals: [], taskEvals: [], practiceEvals: [] },
+                      "2": { examEvals: [], taskEvals: [], practiceEvals: [] },
+                      "3": { examEvals: [], taskEvals: [], practiceEvals: [] },
+                      "4": { examEvals: [], taskEvals: [], practiceEvals: [] } }
+        },
+        instalaciones: {
+          name: "Instalaciones y Control Eléctrico",
+          semester: "ago-dic",
+          year: 2023,
+          rubric: { exam: 45, task: 25, practice: 30, participation: 5 },
+          parcials: { "1": { examEvals: [], taskEvals: [], practiceEvals: [] },
+                      "2": { examEvals: [], taskEvals: [], practiceEvals: [] },
+                      "3": { examEvals: [], taskEvals: [], practiceEvals: [] },
+                      "4": { examEvals: [], taskEvals: [], practiceEvals: [] } }
+        },
+        fisica4: {
+          name: "Física 4",
+          semester: "ago-dic",
+          year: 2023,
+          rubric: { exam: 45, task: 25, practice: 30, participation: 5 },
+          parcials: { "1": { examEvals: [], taskEvals: [], practiceEvals: [] },
+                      "2": { examEvals: [], taskEvals: [], practiceEvals: [] },
+                      "3": { examEvals: [], taskEvals: [], practiceEvals: [] },
+                      "4": { examEvals: [], taskEvals: [], practiceEvals: [] } }
+        }
+      };
+
+      // Los arrays de estudiantes y equipos se leerán de Firestore.
+      const students = [];
+      const teams = { circuitos: [], tt6: [], instalaciones: [], fisica4: [] };
 
       /***********************
-       * 2. Función de RESET de la DB (usar solo en desarrollo)
+       * (Opcional) Restaurar desde localStorage (modo edición)
        ***********************/
-      function resetDatabase() {
-        Promise.all([
-          db.collection("subjects").get().then(snapshot => snapshot.forEach(doc => doc.ref.delete())),
-          db.collection("students").get().then(snapshot => snapshot.forEach(doc => doc.ref.delete())),
-          db.collection("teams").get().then(snapshot => snapshot.forEach(doc => doc.ref.delete()))
-        ]).then(() => {
-          alert("Base de datos borrada. Se creará la estructura vacía.");
-          // Definir estructura base para cada materia (sin datos de ejemplo)
-          const materias = ["circuitos", "tt6", "instalaciones", "fisica4"];
-          materias.forEach(mat => {
-            subjectsConfig[mat] = {
-              name: "",
-              semester: "",
-              year: 0,
-              rubric: { exam: 45, task: 25, practice: 30, participation: 5 },
-              parcials: {
-                "1": { examEvals: [], taskEvals: [], practiceEvals: [] },
-                "2": { examEvals: [], taskEvals: [], practiceEvals: [] },
-                "3": { examEvals: [], taskEvals: [], practiceEvals: [] },
-                "4": { examEvals: [], taskEvals: [], practiceEvals: [] }
-              }
-            };
-            db.collection("subjects").doc(mat).set(subjectsConfig[mat]);
-            teams[mat] = [];
-          });
-          window.location.reload();
-        }).catch(err => console.error("Error reiniciando la base de datos:", err));
+      if (!isReadOnlyMode() && localStorage.getItem('subjectsConfig')) {
+        try { Object.assign(subjectsConfig, JSON.parse(localStorage.getItem('subjectsConfig'))); }
+        catch(e){ console.error("Error restaurando subjectsConfig:", e); }
       }
-      // Descomenta la siguiente línea solo en desarrollo para reiniciar la DB:
-      // resetDatabase();
+      if (!isReadOnlyMode() && localStorage.getItem('students')) {
+        try { JSON.parse(localStorage.getItem('students')).forEach(s => students.push(s)); }
+        catch(e){ console.error("Error restaurando students:", e); }
+      }
+      if (!isReadOnlyMode() && localStorage.getItem('teams')) {
+        try { 
+          const stored = JSON.parse(localStorage.getItem('teams'));
+          for (let subj in stored) { teams[subj] = stored[subj]; }
+        } catch(e){ console.error("Error restaurando teams:", e); }
+      }
 
       /***********************
-       * 3. Configuración de Firebase y Firestore
+       * 2. Configuración de Firebase y Firestore
        ***********************/
       const firebaseConfig = {
         apiKey: "AIzaSyC2VXIvR-OzF4iLlt8C69zt-cY1ZI_YhVo",
@@ -372,64 +350,67 @@
       };
       firebase.initializeApp(firebaseConfig);
       firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL)
-        .catch(error => { console.error("Error en la persistencia:", error); });
+        .catch(error => { console.error("Error en persistencia:", error); });
       const auth = firebase.auth();
       const db = firebase.firestore();
       db.enablePersistence().catch(err => {
         if (err.code === 'failed-precondition') {
-          console.error("Solo una pestaña a la vez puede tener la persistencia offline.");
+          console.error("Solo una pestaña puede tener persistencia offline.");
         } else if (err.code === 'unimplemented') {
-          console.error("El navegador no soporta la persistencia offline.");
+          console.error("El navegador no soporta persistencia offline.");
         }
       });
 
       /***********************
-       * 4. Variables de Estado (según URL)
+       * 3. Estado inicial (según URL)
        ***********************/
       let urlSubject = urlParams.get("subject");
       let urlPartial = parseInt(urlParams.get("partial"));
       let currentSubject = (urlSubject && subjectsConfig[urlSubject]) ? urlSubject : "circuitos";
       let currentPartial = (!isNaN(urlPartial) && urlPartial > 0) ? urlPartial : 1;
+      if (!subjectsConfig[currentSubject].parcials[currentPartial]) {
+        subjectsConfig[currentSubject].parcials[currentPartial] = { examEvals: [], taskEvals: [], practiceEvals: [] };
+      }
+      function resetPartial() {
+        currentPartial = 1;
+        updatePartialDisplay();
+      }
 
       /***********************
-       * 5. Funciones de Persistencia (Firestore)
+       * 4. Funciones de Guardado en Firestore
        ***********************/
       function saveSubjects() {
-        return Promise.all(Object.keys(subjectsConfig).map(key => {
-          return db.collection("subjects").doc(key).set(subjectsConfig[key]);
-        })).catch(err => console.error("Error guardando subjects", err));
+        return Promise.all(Object.keys(subjectsConfig).map(key =>
+          db.collection("subjects").doc(key).set(subjectsConfig[key])
+        )).catch(err => console.error("Error guardando subjects:", err));
       }
       function saveStudents() {
-        return Promise.all(students.map(student => {
-          return db.collection("students").doc("stu_" + student.listNumber).set(student);
-        })).catch(err => console.error("Error guardando students", err));
+        return Promise.all(students.map(student =>
+          db.collection("students").doc(student.subject + "_" + student.listNumber).set(student)
+        )).catch(err => console.error("Error guardando students:", err));
       }
       function saveTeams() {
-        return Promise.all(Object.keys(teams).map(subject => {
-          return Promise.all(teams[subject].map(team => {
-            const docId = subject + "_" + team.id;
-            return db.collection("teams").doc(docId).set({ ...team, subject: subject });
-          }));
-        })).catch(err => console.error("Error guardando teams", err));
+        return Promise.all(Object.keys(teams).map(subj =>
+          Promise.all(teams[subj].map(team => {
+            const docId = subj + "_" + team.id;
+            return db.collection("teams").doc(docId).set({ ...team, subject: subj });
+          }))
+        )).catch(err => console.error("Error guardando teams:", err));
       }
       function saveData() {
-        if (isReadOnlyMode()) {
-          console.log("Modo solo lectura: no se guardan datos.");
-          return;
-        }
-        if (!auth.currentUser) {
-          console.warn("No hay usuario autenticado; no se guardan datos.");
-          return;
-        }
+        if (isReadOnlyMode()) { console.log("Modo solo lectura: no se guardan datos."); return; }
+        if (!auth.currentUser) { console.warn("No hay usuario autenticado; no se guardan datos."); return; }
         console.log("Guardando datos en Firestore...");
         Promise.all([ saveSubjects(), saveStudents(), saveTeams() ])
           .then(() => {
-            localStorage.setItem('subjectsConfig', JSON.stringify(subjectsConfig));
-            localStorage.setItem('students', JSON.stringify(students));
-            localStorage.setItem('teams', JSON.stringify(teams));
+            if (!isReadOnlyMode()) {
+              localStorage.setItem('subjectsConfig', JSON.stringify(subjectsConfig));
+              localStorage.setItem('students', JSON.stringify(students));
+              localStorage.setItem('teams', JSON.stringify(teams));
+            }
             showSaveIndicator();
           })
-          .catch(err => console.error("Error en saveData", err));
+          .catch(err => console.error("Error en saveData:", err));
       }
       let saveTimeout = null;
       function debounceSaveData() {
@@ -443,14 +424,11 @@
         setTimeout(() => { indicator.style.display = "none"; }, 2000);
       }
       document.getElementById("manualSaveBtn").addEventListener("click", () => {
-        if (!isReadOnlyMode()) {
-          saveData();
-          if (saveTimeout) clearTimeout(saveTimeout);
-        }
+        if (!isReadOnlyMode()) { saveData(); if (saveTimeout) clearTimeout(saveTimeout); }
       });
 
       /***********************
-       * 6. Funciones de Interfaz
+       * 5. Funciones de Interfaz
        ***********************/
       function buildSubjectSelect() {
         const select = document.getElementById("subjectSelect");
@@ -466,13 +444,7 @@
       }
       function updateRubricDisplay() {
         const cfg = subjectsConfig[currentSubject];
-        if (!cfg || !cfg.rubric) {
-          document.getElementById("weightExam").textContent = "0%";
-          document.getElementById("weightTask").textContent = "0%";
-          document.getElementById("weightPractice").textContent = "0%";
-          document.getElementById("weightPart").textContent = "0%";
-          return;
-        }
+        if (!cfg || !cfg.rubric) return;
         document.getElementById("weightExam").textContent = cfg.rubric.exam + "%";
         document.getElementById("weightTask").textContent = cfg.rubric.task + "%";
         document.getElementById("weightPractice").textContent = cfg.rubric.practice + "%";
@@ -482,25 +454,19 @@
         document.getElementById("currentPartialDisplay").textContent = currentPartial;
       }
       function buildGroupHeader() {
-        const subj = subjectsConfig[currentSubject];
-        if (!subj || !subj.parcials || !subj.parcials[currentPartial]) return;
-        const cfg = subj.parcials[currentPartial];
+        const cfg = subjectsConfig[currentSubject].parcials[currentPartial];
         const examColspan = cfg.examEvals.length + 1;
         const taskColspan = cfg.taskEvals.length + 1;
         const practiceColspan = cfg.practiceEvals.length + 1;
-        const examGroup = document.querySelector(".exam-group");
-        const taskGroup = document.querySelector(".task-group");
-        const practiceGroup = document.querySelector(".practice-group");
-        if (examGroup) examGroup.setAttribute("colspan", examColspan);
-        if (taskGroup) taskGroup.setAttribute("colspan", taskColspan);
-        if (practiceGroup) practiceGroup.setAttribute("colspan", practiceColspan);
+        document.querySelector(".exam-group").setAttribute("colspan", examColspan);
+        document.querySelector(".task-group").setAttribute("colspan", taskColspan);
+        document.querySelector(".practice-group").setAttribute("colspan", practiceColspan);
       }
       function buildDynamicHeader() {
         const headerRow = document.getElementById("dynamicHeader");
         headerRow.innerHTML = "";
-        const subj = subjectsConfig[currentSubject];
-        if (!subj || !subj.parcials || !subj.parcials[currentPartial]) return;
-        const cfg = subj.parcials[currentPartial];
+        const cfg = subjectsConfig[currentSubject].parcials[currentPartial];
+        // Exámenes
         cfg.examEvals.forEach(evalObj => {
           if (!evalObj.name || evalObj.name.trim() === "" || evalObj.name.toLowerCase() === "acciones") return;
           const th = document.createElement("th");
@@ -510,6 +476,7 @@
         const thExamAvg = document.createElement("th");
         thExamAvg.textContent = "Promedio Exámenes";
         headerRow.appendChild(thExamAvg);
+        // Tareas
         cfg.taskEvals.forEach(evalObj => {
           if (!evalObj.name || evalObj.name.trim() === "" || evalObj.name.toLowerCase() === "acciones") return;
           const th = document.createElement("th");
@@ -519,6 +486,7 @@
         const thTaskAvg = document.createElement("th");
         thTaskAvg.textContent = "Promedio Tareas";
         headerRow.appendChild(thTaskAvg);
+        // Prácticas
         cfg.practiceEvals.forEach(evalObj => {
           if (!evalObj.name || evalObj.name.trim() === "" || evalObj.name.toLowerCase() === "acciones") return;
           const th = document.createElement("th");
@@ -539,20 +507,16 @@
         const teamTableBody = document.querySelector("#teamTable tbody");
         teamTableHead.innerHTML = "";
         teamTableBody.innerHTML = "";
-        const subj = subjectsConfig[currentSubject];
-        if (!subj || !subj.parcials || !subj.parcials[currentPartial]) return;
-        const cfg = subj.parcials[currentPartial];
+        const cfg = subjectsConfig[currentSubject].parcials[currentPartial];
         let headerHTML = "<tr><th>Equipo</th><th>Encargado</th>";
         cfg.practiceEvals.forEach(evalObj => {
-          if (evalObj && evalObj.name && evalObj.name.trim() !== "" && evalObj.name.toLowerCase() !== "acciones") {
+          if (evalObj && evalObj.name && evalObj.name.trim() !== "" && evalObj.name.toLowerCase() !== "acciones")
             headerHTML += `<th>${evalObj.name}</th>`;
-          }
         });
         if (!isReadOnlyMode()) { headerHTML += "<th>Acciones</th>"; }
         headerHTML += "</tr>";
         teamTableHead.innerHTML = headerHTML;
-        let subjectTeams = teams[currentSubject] || [];
-        subjectTeams.sort((a, b) => a.name.localeCompare(b.name));
+        const subjectTeams = teams[currentSubject] || [];
         subjectTeams.forEach(team => {
           if (!team.partials) team.partials = {};
           if (!team.partials[currentPartial]) {
@@ -579,7 +543,7 @@
             const teamId = e.target.getAttribute("data-team-id");
             const idx = parseInt(e.target.getAttribute("data-index"));
             const newVal = parseFloat(e.target.value) || 0;
-            let subjectTeams = teams[currentSubject];
+            const subjectTeams = teams[currentSubject];
             const team = subjectTeams.find(t => t.id === teamId);
             if (team) {
               if (!team.partials) team.partials = {};
@@ -587,11 +551,10 @@
                 team.partials[currentPartial] = Array(cfg.practiceEvals.length).fill(0);
               }
               team.partials[currentPartial][idx] = newVal;
-              // Propagar a la tabla de alumnos
+              // Actualizar en la tabla de alumnos
               document.querySelectorAll("#gradeTable tbody tr").forEach(row => {
                 const stuTeamSelect = row.querySelector(".student-team");
-                const stuTeam = stuTeamSelect ? stuTeamSelect.value : "";
-                if (stuTeam === teamId) {
+                if (stuTeamSelect && stuTeamSelect.value === teamId) {
                   const practiceInputs = row.querySelectorAll(".practice-input");
                   if (practiceInputs[idx]) { practiceInputs[idx].value = newVal; recalculateRow(row); }
                 }
@@ -605,7 +568,7 @@
             btn.onclick = (e) => {
               const row = e.target.closest("tr");
               const teamId = row.getAttribute("data-team-id");
-              let subjectTeams = teams[currentSubject];
+              const subjectTeams = teams[currentSubject];
               const team = subjectTeams.find(t => t.id === teamId);
               if (team) {
                 let content = `<h3>Editar Equipo</h3>
@@ -613,19 +576,19 @@
                   <label>Encargado: <input type="text" id="editTeamHead" value="${team.head}"></label><br>
                   <button id="saveTeam" class="btn">Guardar</button>`;
                 showModal(content);
-                setTimeout(() => {
-                  const saveBtn = document.getElementById("saveTeam");
-                  if (saveBtn) {
-                    saveBtn.onclick = () => {
-                      team.name = document.getElementById("editTeamName").value.trim();
-                      team.head = document.getElementById("editTeamHead").value.trim();
-                      modalOverlay.style.display = "none";
-                      buildTeamTable();
-                      buildGradeTable();
-                      debounceSaveData();
-                    };
-                  }
-                }, 100);
+                document.getElementById("saveTeam").onclick = () => {
+                  const newName = document.getElementById("editTeamName").value.trim();
+                  const newHead = document.getElementById("editTeamHead").value.trim();
+                  // Verificar que no se repita el nombre de equipo en la misma materia
+                  const duplicate = teams[currentSubject].some(t => t.id !== team.id && t.name.toLowerCase() === newName.toLowerCase());
+                  if (duplicate) { alert("Ya existe un equipo con ese nombre en esta materia."); return; }
+                  team.name = newName;
+                  team.head = newHead;
+                  modalOverlay.style.display = "none";
+                  buildTeamTable();
+                  buildGradeTable();
+                  debounceSaveData();
+                };
               }
             };
           });
@@ -633,7 +596,7 @@
             btn.onclick = (e) => {
               const row = e.target.closest("tr");
               const teamId = row.getAttribute("data-team-id");
-              if (confirm("¿Estás seguro de eliminar este equipo?")) {
+              if (confirm("¿Estás seguro de eliminar este equipo? (Esta acción solo afecta la colección de equipos, los alumnos no se eliminarán)")) {
                 const docId = currentSubject + "_" + teamId;
                 db.collection("teams").doc(docId).delete()
                   .then(() => {
@@ -642,7 +605,7 @@
                     buildGradeTable();
                     debounceSaveData();
                   })
-                  .catch(err => console.error("Error eliminando equipo", err));
+                  .catch(err => console.error("Error eliminando equipo:", err));
               }
             };
           });
@@ -655,10 +618,7 @@
       function buildGradeTable() {
         const tbody = document.getElementById("gradeTable").querySelector("tbody");
         tbody.innerHTML = "";
-        const subj = subjectsConfig[currentSubject];
-        if (!subj || !subj.parcials || !subj.parcials[currentPartial]) return;
-        const cfg = subj.parcials[currentPartial];
-        // Ordenar alumnos por número de lista (ascendente)
+        const cfg = subjectsConfig[currentSubject].parcials[currentPartial];
         const filteredStudents = students
           .filter(s => s.subject === currentSubject)
           .sort((a, b) => a.listNumber - b.listNumber);
@@ -687,12 +647,10 @@
             while (student.partials[currentPartial].practices.length < cfg.practiceEvals.length) {
               student.partials[currentPartial].practices.push(0);
             }
-            if (student.partials[currentPartial].extraParcial === undefined) {
+            if (student.partials[currentPartial].extraParcial === undefined)
               student.partials[currentPartial].extraParcial = 0;
-            }
-            if (!student.partials[currentPartial].deductions) {
+            if (!student.partials[currentPartial].deductions)
               student.partials[currentPartial].deductions = [];
-            }
           }
           const partialData = student.partials[currentPartial];
           let rowHTML = `<tr data-list="${student.listNumber}">
@@ -700,32 +658,33 @@
             <td contenteditable="true" class="student-name">${student.name}</td>
             <td>
               <select class="student-team">
-                ${ (teams[currentSubject] || []).map(team => `<option value="${team.id}" ${team.id === student.team ? "selected" : ""}>${team.name}</option>`).join('') }
+                ${(() => {
+                  let opts = teams[currentSubject].map(team => `<option value="${team.id}" ${team.id === student.team ? "selected" : ""}>${team.name}</option>`);
+                  if (!teams[currentSubject].some(t => t.id === student.team)) {
+                    opts.push(`<option value="${student.team}" selected>Sin equipo</option>`);
+                  }
+                  return opts.join('');
+                })()}
               </select>
             </td>`;
-          // Exámenes
           cfg.examEvals.forEach((evalObj, index) => {
             if (!evalObj.name || evalObj.name.trim() === "" || evalObj.name.toLowerCase() === "acciones") return;
             let val = partialData.exams[index] || 0;
             rowHTML += `<td><input type="number" class="exam-input" data-index="${index}" min="0" max="10" step="0.1" value="${val}"></td>`;
           });
           rowHTML += `<td class="exam-average">0</td>`;
-          // Tareas
           cfg.taskEvals.forEach((evalObj, index) => {
             if (!evalObj.name || evalObj.name.trim() === "" || evalObj.name.toLowerCase() === "acciones") return;
             let val = partialData.tasks[index] || 0;
             rowHTML += `<td><input type="number" class="task-input" data-index="${index}" min="0" max="10" step="0.1" value="${val}"></td>`;
           });
           rowHTML += `<td class="task-average">0</td>`;
-          // Prácticas
           cfg.practiceEvals.forEach((evalObj, index) => {
             if (!evalObj.name || evalObj.name.trim() === "" || evalObj.name.toLowerCase() === "acciones") return;
             let grade = partialData.practices[index] || 0;
-            const subjectTeams = teams[currentSubject];
-            const teamObj = subjectTeams ? subjectTeams.find(t => t.id === student.team) : null;
-            if (teamObj && teamObj.partials && teamObj.partials[currentPartial] && typeof teamObj.partials[currentPartial][index] !== "undefined") {
+            const teamObj = teams[currentSubject].find(t => t.id === student.team);
+            if (teamObj && teamObj.partials && teamObj.partials[currentPartial] && typeof teamObj.partials[currentPartial][index] !== "undefined")
               grade = teamObj.partials[currentPartial][index];
-            }
             partialData.practices[index] = grade;
             rowHTML += `<td><input type="number" class="practice-input" data-index="${index}" min="0" max="10" step="0.1" value="${grade}" readonly></td>`;
           });
@@ -738,7 +697,7 @@
             <td class="extra-total">0</td>
             <td><input type="number" class="participation" min="0" max="5" step="0.1" value="${partialData.participation || 0}"></td>
             <td><input type="number" class="absences" min="0" step="1" value="${partialData.absences || 0}"></td>
-            <td class="deductions"><span class="deduction-sum">0</span> ${!isReadOnlyMode() ? '<button class="deduct-btn btn">Ded</button>' : ''}</td>
+            <td class="deductions"><span class="deduction-sum">0</span>${!isReadOnlyMode() ? ' <button class="deduct-btn btn">Ded</button>' : ''}</td>
             <td class="total-partial">0</td>`;
           if (!isReadOnlyMode()) {
             rowHTML += `<td class="actions-column">
@@ -763,9 +722,7 @@
       }
 
       function recalculateRow(row) {
-        const subj = subjectsConfig[currentSubject];
-        if (!subj || !subj.rubric) return;
-        const rubric = subj.rubric;
+        const rubric = subjectsConfig[currentSubject].rubric;
         let examSum = 0, examCount = 0;
         row.querySelectorAll(".exam-input").forEach(input => { examSum += parseFloat(input.value) || 0; examCount++; });
         const examAvg = examCount ? examSum / examCount : 0;
@@ -854,14 +811,14 @@
               const row = e.target.closest("tr");
               const listNum = parseInt(row.getAttribute("data-list"));
               if (confirm("¿Estás seguro de eliminar este alumno?")) {
-                db.collection("students").doc("stu_" + listNum).delete()
+                db.collection("students").doc(currentSubject + "_" + listNum).delete()
                   .then(() => {
                     const idx = students.findIndex(s => s.listNumber === listNum && s.subject === currentSubject);
                     if (idx !== -1) { students.splice(idx, 1); }
                     buildGradeTable();
                     debounceSaveData();
                   })
-                  .catch(err => console.error("Error eliminando alumno", err));
+                  .catch(err => console.error("Error eliminando alumno:", err));
               }
             });
           });
@@ -890,10 +847,9 @@
         const listNum = row.getAttribute("data-list");
         const student = students.find(s => s.listNumber == listNum && s.subject === currentSubject);
         if (!student) return;
-        const subjectTeams = teams[currentSubject];
-        const teamObj = subjectTeams ? subjectTeams.find(t => t.id === student.team) : null;
+        const teamObj = teams[currentSubject].find(t => t.id === student.team);
         if (teamObj && teamObj.partials && teamObj.partials[currentPartial]) {
-          row.querySelectorAll(".practice-input").forEach((input, idx) => { 
+          row.querySelectorAll(".practice-input").forEach((input, idx) => {
             if (typeof teamObj.partials[currentPartial][idx] !== "undefined") {
               input.value = teamObj.partials[currentPartial][idx];
             }
@@ -912,14 +868,10 @@
         modalOverlay.style.display = "block";
       }
       document.querySelectorAll(".modal .close").forEach(closeBtn => {
-        closeBtn.onclick = function() {
-          this.parentElement.parentElement.style.display = "none";
-        };
+        closeBtn.onclick = function() { this.parentElement.parentElement.style.display = "none"; };
       });
       window.onclick = function(event) {
-        if (event.target.classList.contains("modal")) {
-          event.target.style.display = "none";
-        }
+        if (event.target.classList.contains("modal")) { event.target.style.display = "none"; }
       };
       function openDeductionModal(student, viewOnly = false) {
         let content = `<h3>Deducciones para ${student.name}</h3>
@@ -927,8 +879,7 @@
           <label>Motivo: <input type="text" id="dedReason"></label><br>
           <label>Fecha: <input type="date" id="dedDate"></label><br>`;
         if (!viewOnly) { content += `<button id="saveDed" class="btn">Agregar Deducción</button>`; }
-        if (student.partials[currentPartial] && student.partials[currentPartial].deductions &&
-            Array.isArray(student.partials[currentPartial].deductions) && student.partials[currentPartial].deductions.length > 0) {
+        if (student.partials[currentPartial] && Array.isArray(student.partials[currentPartial].deductions) && student.partials[currentPartial].deductions.length > 0) {
           content += `<h4>Deducciones Registradas:</h4><ul>`;
           student.partials[currentPartial].deductions.forEach(ded => {
             content += `<li>${ded.date} - ${ded.reason}: ${ded.amount} pts</li>`;
@@ -944,7 +895,7 @@
             const reason = document.getElementById("dedReason").value.trim();
             const date = document.getElementById("dedDate").value;
             if (amount <= 0 || !reason || !date) { alert("Complete todos los campos."); return; }
-            if (!student.partials[currentPartial].deductions) student.partials[currentPartial].deductions = [];
+            if (!student.partials[currentPartial].deductions) { student.partials[currentPartial].deductions = []; }
             student.partials[currentPartial].deductions.push({ amount, reason, date });
             modalOverlay.style.display = "none";
             buildGradeTable();
@@ -953,10 +904,8 @@
         }
       }
       function openRubricModal() {
-        const subj = subjectsConfig[currentSubject];
-        if (!subj || !subj.rubric || !subj.parcials || !subj.parcials[currentPartial]) return;
-        const cfg = subj;
-        const currParcial = subj.parcials[currentPartial];
+        const cfg = subjectsConfig[currentSubject];
+        const currParcial = subjectsConfig[currentSubject].parcials[currentPartial];
         let content = `<h3>Editar Rúbrica</h3>
           <h4>Porcentajes</h4>
           <label>Exámenes (%): <input type="number" id="rubricExam" value="${cfg.rubric.exam}" min="0" max="100"></label><br>
@@ -1021,13 +970,9 @@
             const li = e.target.closest("li");
             const cat = li.getAttribute("data-cat");
             const index = parseInt(li.getAttribute("data-index"));
-            if (cat === "exam") {
-              currParcial.examEvals.splice(index, 1);
-            } else if (cat === "task") {
-              currParcial.taskEvals.splice(index, 1);
-            } else if (cat === "practice") {
-              currParcial.practiceEvals.splice(index, 1);
-            }
+            if (cat === "exam") { currParcial.examEvals.splice(index, 1); }
+            else if (cat === "task") { currParcial.taskEvals.splice(index, 1); }
+            else if (cat === "practice") { currParcial.practiceEvals.splice(index, 1); }
             openRubricModal();
             buildDynamicHeader();
             buildGradeTable();
@@ -1108,276 +1053,100 @@
         } else if (newPractice) { alert('El nombre "Acciones" no está permitido.'); }
       };
 
-      // CORRECCIÓN DEL BOTÓN "Agregar Alumno"
+      // Botón para agregar alumno (verifica duplicados en número de lista)
       document.getElementById("addStudent").onclick = () => {
         let content = `<h3>Agregar Alumno</h3>
            <label>N° LS: <input type="number" id="newListNumber"></label><br>
            <label>Alumno: <input type="text" id="newStudentName"></label><br>
            <label>Equipo: 
                <select id="newStudentTeam">
-                  ${ (teams[currentSubject] || []).map(team => `<option value="${team.id}">${team.name}</option>`).join('') }
+                  ${teams[currentSubject].map(team => `<option value="${team.id}">${team.name}</option>`).join('')}
                </select>
            </label><br>
            <button id="saveStudent" class="btn">Guardar</button>`;
         showModal(content);
-        setTimeout(() => {
-          const saveBtn = document.getElementById("saveStudent");
-          if (saveBtn) {
-            saveBtn.onclick = () => {
-              const listNum = parseInt(document.getElementById("newListNumber").value);
-              const name = document.getElementById("newStudentName").value.trim();
-              const team = document.getElementById("newStudentTeam").value;
-              if (!listNum || !name) { alert("Complete todos los campos."); return; }
-              if (students.some(s => s.listNumber === listNum && s.subject === currentSubject)) {
-                if (!confirm("Ya existe un alumno con ese número de lista en esta materia. ¿Desea sobreescribirlo?")) { return; }
-                const idx = students.findIndex(s => s.listNumber === listNum && s.subject === currentSubject);
-                if (idx !== -1) { students.splice(idx, 1); }
-              }
-              students.push({ listNumber: listNum, name, team, subject: currentSubject, partials: {} });
-              modalOverlay.style.display = "none";
-              buildGradeTable();
-              debounceSaveData();
-            };
-          }
-        }, 100);
-      };
-
-      document.getElementById("addTeam").onclick = () => {
-        let content = `<h3>Agregar Equipo</h3>
-           <label>ID: <input type="text" id="newTeamId"></label><br>
-           <label>Nombre: <input type="text" id="newTeamName"></label><br>
-           <label>Encargado: <input type="text" id="newTeamHead"></label><br>
-           <button id="saveTeamNew" class="btn">Guardar</button>`;
-        showModal(content);
-        setTimeout(() => {
-          const saveBtn = document.getElementById("saveTeamNew");
-          if (saveBtn) {
-            saveBtn.onclick = () => {
-              const id = document.getElementById("newTeamId").value.trim();
-              const name = document.getElementById("newTeamName").value.trim();
-              const head = document.getElementById("newTeamHead").value.trim();
-              if (!id || !name || !head) { alert("Complete todos los campos."); return; }
-              if (!teams[currentSubject]) teams[currentSubject] = [];
-              teams[currentSubject].push({ id, name, head, partials: {} });
-              modalOverlay.style.display = "none";
-              buildTeamTable();
-              buildGradeTable();
-              debounceSaveData();
-            };
-          }
-        }, 100);
-      };
-
-      document.getElementById("editSubject").onclick = () => {
-        const subj = subjectsConfig[currentSubject];
-        let content = `<h3>Editar Materia</h3>
-          <label>Nombre: <input type="text" id="editSubjName" value="${subj.name}"></label><br>
-          <label>Semestre: 
-            <select id="editSubjSemester">
-              <option value="ene-jul" ${subj.semester==="ene-jul"?"selected":""}>ene-jul</option>
-              <option value="ago-dic" ${subj.semester==="ago-dic"?"selected":""}>ago-dic</option>
-            </select>
-          </label><br>
-          <label>Año: <input type="number" id="editSubjYear" value="${subj.year}"></label><br>
-          <button id="saveSubjectEd" class="btn">Guardar</button>`;
-        showModal(content);
-        setTimeout(() => {
-          const saveBtn = document.getElementById("saveSubjectEd");
-          if (saveBtn) {
-            saveBtn.onclick = () => {
-              subj.name = document.getElementById("editSubjName").value.trim();
-              subj.semester = document.getElementById("editSubjSemester").value;
-              subj.year = parseInt(document.getElementById("editSubjYear").value);
-              modalOverlay.style.display = "none";
-              buildSubjectSelect();
-              buildDynamicHeader();
-              debounceSaveData();
-            };
-          }
-        }, 100);
-      };
-
-      document.getElementById("addSubject").onclick = () => {
-        let content = `<h3>Agregar Materia</h3>
-          <label>ID: <input type="text" id="newSubjectId"></label><br>
-          <label>Nombre: <input type="text" id="newSubjectName"></label><br>
-          <label>Semestre: 
-            <select id="newSubjectSemester">
-              <option value="ene-jul">ene-jul</option>
-              <option value="ago-dic">ago-dic</option>
-            </select>
-          </label><br>
-          <label>Año: <input type="number" id="newSubjectYear" value="2023"></label><br>
-          <button id="saveSubject" class="btn">Guardar Materia</button>`;
-        showModal(content);
-        setTimeout(() => {
-          const saveBtn = document.getElementById("saveSubject");
-          if (saveBtn) {
-            saveBtn.onclick = () => {
-              const id = document.getElementById("newSubjectId").value.trim();
-              const name = document.getElementById("newSubjectName").value.trim();
-              const semester = document.getElementById("newSubjectSemester").value;
-              const year = parseInt(document.getElementById("newSubjectYear").value);
-              if (!id || !name || !semester || isNaN(year)) { alert("Complete todos los campos."); return; }
-              subjectsConfig[id] = {
-                name: name,
-                semester: semester,
-                year: year,
-                rubric: { exam: 45, task: 25, practice: 30, participation: 5 },
-                parcials: {
-                  "1": { examEvals: [], taskEvals: [], practiceEvals: [] },
-                  "2": { examEvals: [], taskEvals: [], practiceEvals: [] },
-                  "3": { examEvals: [], taskEvals: [], practiceEvals: [] },
-                  "4": { examEvals: [], taskEvals: [], practiceEvals: [] }
-                }
-              };
-              teams[id] = [];
-              buildSubjectSelect();
-              modalOverlay.style.display = "none";
-              debounceSaveData();
-            };
-          }
-        }, 100);
-      };
-
-      document.getElementById("shareVersion").onclick = () => {
-        const url = new URL(window.location.href);
-        url.searchParams.set("subject", currentSubject);
-        url.searchParams.set("partial", currentPartial);
-        url.searchParams.set("readonly", "true");
-        prompt("Copia este enlace para compartir la versión de solo lectura:", url.toString());
-      };
-
-      document.getElementById("exportExcel").onclick = () => {
-        const table = document.getElementById("gradeTable");
-        let csv = "";
-        for (let row of table.rows) {
-          let rowData = [];
-          for (let cell of row.cells) {
-            let text = cell.innerText.trim();
-            if (!text) text = "0";
-            rowData.push('"' + text + '"');
-          }
-          csv += rowData.join(",") + "\n";
-        }
-        const blob = new Blob([csv], { type: "application/vnd.ms-excel" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = "calificaciones_" + currentSubject + "_parcial_" + currentPartial + ".xls";
-        a.click();
-        URL.revokeObjectURL(url);
-      };
-
-      document.getElementById("exportPDF").onclick = () => {
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF('landscape', 'pt', 'a4');
-        doc.setFontSize(10);
-        doc.text("Calificaciones - " + subjectsConfig[currentSubject].name + " - Parcial " + currentPartial, 40, 30);
-        const headerCells = [ "N° LS", "Alumno", "Equipo" ];
-        const cfg = subjectsConfig[currentSubject].parcials[currentPartial];
-        cfg.examEvals.forEach(e => headerCells.push(e.name));
-        headerCells.push("P-EX");
-        cfg.taskEvals.forEach(e => headerCells.push(e.name));
-        headerCells.push("P-TA");
-        cfg.practiceEvals.forEach(e => headerCells.push(e.name));
-        headerCells.push("P-PR");
-        headerCells.push("ExE");
-        headerCells.push("ExT");
-        headerCells.push("ExP");
-        headerCells.push("ExP-Gen");
-        headerCells.push("ExTOT");
-        headerCells.push("Par");
-        headerCells.push("Faltas");
-        headerCells.push("Ded");
-        headerCells.push("TOT");
-        headerCells.push("Firma");
-        const headers = [headerCells];
-        const data = [];
-        document.querySelectorAll("#gradeTable tbody tr").forEach(row => {
-          const rowData = [];
-          const cells = Array.from(row.querySelectorAll("td"));
-          cells.slice(0, cells.length - 1).forEach(cell => {
-            let text = cell.innerText.trim();
-            if (!text) text = "0";
-            rowData.push(text);
-          });
-          rowData.push("____________________________");
-          data.push(rowData);
-        });
-        doc.autoTable({
-          head: headers,
-          body: data,
-          startY: 50,
-          theme: 'grid',
-          styles: { fontSize: 7, cellPadding: 4, halign: 'center', valign: 'middle' },
-          headStyles: { fillColor: [0, 51, 102] },
-          columnStyles: { text: { cellWidth: 'auto' } }
-        });
-        doc.save("calificaciones_" + subjectsConfig[currentSubject].name + "_parcial_" + currentPartial + ".pdf");
-      };
-
-      document.getElementById("printGrades").onclick = () => { window.print(); };
-
-      document.querySelectorAll(".tab-btn").forEach(btn => {
-        btn.addEventListener("click", () => {
-          currentPartial = parseInt(btn.getAttribute("data-partial"));
-          document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
-          btn.classList.add("active");
-          updatePartialDisplay();
-          buildDynamicHeader();
+        document.getElementById("saveStudent").onclick = () => {
+          const listNum = parseInt(document.getElementById("newListNumber").value);
+          const name = document.getElementById("newStudentName").value.trim();
+          const team = document.getElementById("newStudentTeam").value;
+          if (!listNum || !name) { alert("Complete todos los campos."); return; }
+          const exists = students.some(s => s.subject === currentSubject && s.listNumber === listNum);
+          if (exists) { alert("Ya existe un alumno con ese número de lista en esta materia."); return; }
+          students.push({ listNumber: listNum, name, team, subject: currentSubject, partials: {} });
+          modalOverlay.style.display = "none";
           buildGradeTable();
-          buildTeamTable();
-          updateURLParams();
+          debounceSaveData();
+        };
+      };
+
+      // Botón para copiar alumnos (se mantienen en origen y se agregan a la materia destino)
+      document.getElementById("copyStudentsBtn").onclick = () => {
+        const targetSubject = prompt("Ingrese el ID de la materia destino (Ej. circuitos, tt6, instalaciones, fisica4):");
+        if (targetSubject && subjectsConfig[targetSubject]) {
+          const sourceStudents = students.filter(s => s.subject === currentSubject);
+          const destStudents = students.filter(s => s.subject === targetSubject);
+          let newListNumber = destStudents.reduce((max, s) => Math.max(max, s.listNumber), 0);
+          sourceStudents.forEach(s => {
+            const newStudent = JSON.parse(JSON.stringify(s));
+            // Si ya existe un alumno con ese número en la materia destino, se asigna un nuevo
+            if (destStudents.some(d => d.listNumber === s.listNumber)) { newListNumber++; newStudent.listNumber = newListNumber; }
+            newStudent.subject = targetSubject;
+            students.push(newStudent);
+          });
+          alert("Alumnos copiados a la materia " + targetSubject + ".");
+          debounceSaveData();
+        } else { alert("El ID de la materia destino no es válido."); }
+      };
+
+      document.querySelectorAll(".list-cell").forEach(cell => {
+        cell.addEventListener("click", () => {
+          const listNum = cell.innerText.trim();
+          const student = students.find(s => s.listNumber == listNum && s.subject === currentSubject);
+          if (student) { showStudentSummary(student); }
         });
       });
-      document.getElementById("subjectSelect").addEventListener("change", (e) => {
-        currentSubject = e.target.value;
-        currentPartial = 1;
-        updatePartialDisplay();
-        updateRubricDisplay();
-        buildDynamicHeader();
-        buildTeamTable();
-        buildGradeTable();
-        updateURLParams();
-      });
+      function showStudentSummary(student) {
+        let content = `<h3>Resumen de Alumno</h3>
+          <p><strong>N° Lista:</strong> ${student.listNumber}</p>
+          <p><strong>Nombre:</strong> ${student.name}</p>
+          <p><strong>Equipo:</strong> ${student.team}</p>
+          <p><strong>Materia:</strong> ${subjectsConfig[student.subject].name}</p>`;
+        if (student.partials[currentPartial]) {
+          content += `<h4>Datos del Parcial ${currentPartial}</h4>
+                      <pre>${JSON.stringify(student.partials[currentPartial], null, 2)}</pre>`;
+        } else {
+          content += `<p>No hay datos para el Parcial ${currentPartial}.</p>`;
+        }
+        showModal(content);
+      }
       function updateURLParams() {
         const url = new URL(window.location.href);
         url.searchParams.set("subject", currentSubject);
         url.searchParams.set("partial", currentPartial);
-        if (!readOnlyMode) { url.searchParams.delete("readonly"); }
-        window.history.pushState({}, '', url.toString());
-      }
-      function setReadOnly() {
-        document.querySelectorAll("input, select, button").forEach(el => { el.disabled = true; });
-        const notice = document.createElement("p");
-        notice.textContent = "Modo Solo Lectura – No se permite la edición";
-        notice.style.textAlign = "center";
-        notice.style.fontWeight = "bold";
-        notice.style.color = "#900";
-        document.getElementById("appContainer").insertBefore(notice, document.getElementById("appContainer").firstChild);
+        if (isReadOnlyMode()) { url.searchParams.set("readonly", "true"); }
+        else { url.searchParams.delete("readonly"); }
+        window.history.replaceState({}, '', url.toString());
       }
 
       /***********************
-       * 7. Carga Inicial y Realtime (Firestore)
+       * 6. Conexión Realtime (Firestore)
        ***********************/
       function attachRealtimeListeners() {
         db.collection("subjects").onSnapshot(snapshot => {
           snapshot.forEach(doc => {
             let data = doc.data();
             if (!data.parcials) {
-              data.parcials = {
-                "1": { examEvals: [], taskEvals: [], practiceEvals: [] },
-                "2": { examEvals: [], taskEvals: [], practiceEvals: [] },
-                "3": { examEvals: [], taskEvals: [], practiceEvals: [] },
-                "4": { examEvals: [], taskEvals: [], practiceEvals: [] }
-              };
+              data.parcials = { "1": { examEvals: [], taskEvals: [], practiceEvals: [] },
+                                "2": { examEvals: [], taskEvals: [], practiceEvals: [] },
+                                "3": { examEvals: [], taskEvals: [], practiceEvals: [] },
+                                "4": { examEvals: [], taskEvals: [], practiceEvals: [] } };
             }
             subjectsConfig[doc.id] = data;
           });
           buildSubjectSelect();
           updateRubricDisplay();
           buildDynamicHeader();
+          updateURLParams();
         });
         db.collection("students").onSnapshot(snapshot => {
           students.length = 0;
@@ -1385,12 +1154,12 @@
           buildGradeTable();
         });
         db.collection("teams").onSnapshot(snapshot => {
-          for (const subject in teams) { teams[subject] = []; }
+          for (const subj in teams) { teams[subj] = []; }
           snapshot.forEach(doc => {
             const data = doc.data();
-            const subject = data.subject;
-            if (!teams[subject]) teams[subject] = [];
-            teams[subject].push(data);
+            const subj = data.subject;
+            if (!teams[subj]) { teams[subj] = []; }
+            teams[subj].push(data);
           });
           buildTeamTable();
         });
@@ -1402,10 +1171,9 @@
       buildDynamicHeader();
       buildTeamTable();
       buildGradeTable();
-      updateURLParams();
 
       /***********************
-       * 8. Autenticación y Modo Solo Lectura
+       * 7. Autenticación y Modo Solo Lectura
        ***********************/
       window.addEventListener("load", () => {
         if (isReadOnlyMode()) {
@@ -1445,26 +1213,24 @@
           };
           document.getElementById("logoutBtn").addEventListener("click", () => {
             auth.signOut().then(() => { window.location.reload(); })
-              .catch(err => console.error("Error al cerrar sesión", err));
+              .catch(err => console.error("Error al cerrar sesión:", err));
           });
         }
       });
 
       /***********************
-       * 9. Botón para Resetear la Base de Datos (solo para el propietario)
+       * 8. Botón para Resetear la Base de Datos
        ***********************/
       document.getElementById("resetDBBtn").onclick = () => {
         const code = prompt("Para confirmar el reset, ingresa el código de seguridad:");
-        if (code !== "RESET2025") {
-          alert("Código incorrecto. Operación cancelada.");
-          return;
-        }
+        if (code !== "RESET2025") { alert("Código incorrecto. Operación cancelada."); return; }
         if (confirm("¿Estás seguro de borrar TODOS los datos de Firestore? Esta acción no se podrá deshacer.")) {
           Promise.all([
             db.collection("subjects").get().then(snapshot => snapshot.forEach(doc => doc.ref.delete())),
             db.collection("students").get().then(snapshot => snapshot.forEach(doc => doc.ref.delete())),
             db.collection("teams").get().then(snapshot => snapshot.forEach(doc => doc.ref.delete()))
           ]).then(() => {
+            localStorage.clear();
             alert("Base de datos borrada. Recarga la página para reiniciar los datos.");
             window.location.reload();
           }).catch(err => { console.error("Error al resetear la base de datos:", err); });
@@ -1472,36 +1238,35 @@
       };
 
       /***********************
-       * 10. Funcionalidad adicional: Copiar lista de alumnos (entre materias)
+       * 9. Funcionalidades adicionales: Copiar alumnos y mostrar resumen individual
        ***********************/
       document.getElementById("copyStudentsBtn").onclick = () => {
-        let targetSubject = prompt("Ingrese el ID de la materia destino:\n(ID disponibles: " + Object.keys(subjectsConfig).join(", ") + ")");
+        const targetSubject = prompt("Ingrese el ID de la materia destino (Ej. circuitos, tt6, instalaciones, fisica4):");
         if (targetSubject && subjectsConfig[targetSubject]) {
-          if (confirm("Se BORRARÁ la lista de alumnos actual de la materia destino. ¿Está seguro de copiar la lista de alumnos de " + currentSubject + " a " + targetSubject + "?")) {
-            // Borrar alumnos de la materia destino
-            for (let i = students.length - 1; i >= 0; i--) {
-              if (students[i].subject === targetSubject) { students.splice(i, 1); }
-            }
-            let newList = 1;
-            const sourceStudents = students.filter(s => s.subject === currentSubject);
-            sourceStudents.forEach(s => {
-              const newStudent = JSON.parse(JSON.stringify(s));
-              newStudent.listNumber = newList++;
-              newStudent.subject = targetSubject;
-              students.push(newStudent);
-            });
-            alert("Alumnos copiados a la materia " + targetSubject);
-            debounceSaveData();
-            buildGradeTable();
-          }
+          const sourceStudents = students.filter(s => s.subject === currentSubject);
+          // No se borra el origen; se copian en la materia destino asignando nuevos números de lista.
+          const destStudents = students.filter(s => s.subject === targetSubject);
+          let newListNumber = destStudents.reduce((max, s) => Math.max(max, s.listNumber), 0);
+          sourceStudents.forEach(s => {
+            const newStudent = JSON.parse(JSON.stringify(s));
+            if (destStudents.some(d => d.listNumber === s.listNumber)) { newListNumber++; newStudent.listNumber = newListNumber; }
+            newStudent.subject = targetSubject;
+            students.push(newStudent);
+          });
+          alert("Alumnos copiados a la materia " + targetSubject + ".");
+          debounceSaveData();
         } else {
           alert("El ID de la materia destino no es válido.");
         }
       };
 
-      /***********************
-       * 11. Funcionalidad adicional: Mostrar resumen individual del alumno
-       ***********************/
+      document.querySelectorAll(".list-cell").forEach(cell => {
+        cell.addEventListener("click", () => {
+          const listNum = cell.innerText.trim();
+          const student = students.find(s => s.listNumber == listNum && s.subject === currentSubject);
+          if (student) { showStudentSummary(student); }
+        });
+      });
       function showStudentSummary(student) {
         let content = `<h3>Resumen de Alumno</h3>
           <p><strong>N° Lista:</strong> ${student.listNumber}</p>
@@ -1509,23 +1274,315 @@
           <p><strong>Equipo:</strong> ${student.team}</p>
           <p><strong>Materia:</strong> ${subjectsConfig[student.subject].name}</p>`;
         if (student.partials[currentPartial]) {
-          content += `<h4>Datos del Parcial ${currentPartial}</h4>`;
-          content += `<pre>${JSON.stringify(student.partials[currentPartial], null, 2)}</pre>`;
+          content += `<h4>Datos del Parcial ${currentPartial}</h4>
+                      <pre>${JSON.stringify(student.partials[currentPartial], null, 2)}</pre>`;
         } else {
           content += `<p>No hay datos para el Parcial ${currentPartial}.</p>`;
         }
         showModal(content);
       }
 
+      function updateURLParams() {
+        const url = new URL(window.location.href);
+        url.searchParams.set("subject", currentSubject);
+        url.searchParams.set("partial", currentPartial);
+        if (isReadOnlyMode()) { url.searchParams.set("readonly", "true"); }
+        else { url.searchParams.delete("readonly"); }
+        window.history.replaceState({}, '', url.toString());
+      }
+
       /***********************
-       * 12. Actualizar URL
+       * 10. Función para Agregar Equipo (Corregida)
+       ***********************/
+      document.getElementById("addTeam").onclick = () => {
+        let content = `<h3>Agregar Equipo</h3>
+           <label>ID: <input type="text" id="newTeamId"></label><br>
+           <label>Nombre: <input type="text" id="newTeamName"></label><br>
+           <label>Encargado: <input type="text" id="newTeamHead"></label><br>
+           <button id="saveTeamNew" class="btn">Guardar</button>`;
+        showModal(content);
+        // Asegurarse de que se asigne el listener después de insertar el contenido en el modal.
+        setTimeout(() => {
+          const btn = document.getElementById("saveTeamNew");
+          if (btn) {
+            btn.onclick = () => {
+              const id = document.getElementById("newTeamId").value.trim();
+              const name = document.getElementById("newTeamName").value.trim();
+              const head = document.getElementById("newTeamHead").value.trim();
+              if (!id || !name || !head) { alert("Complete todos los campos."); return; }
+              // Verificar que el ID o el nombre no se repitan en la materia
+              const duplicate = teams[currentSubject].some(t => t.id.toLowerCase() === id.toLowerCase() || t.name.toLowerCase() === name.toLowerCase());
+              if (duplicate) { alert("Ya existe un equipo con ese ID o nombre en esta materia."); return; }
+              if (!teams[currentSubject]) teams[currentSubject] = [];
+              teams[currentSubject].push({ id, name, head, partials: {} });
+              modalOverlay.style.display = "none";
+              buildTeamTable();
+              buildGradeTable();
+              debounceSaveData();
+            };
+          }
+        }, 100);
+      };
+
+      /***********************
+       * 11. Conexión Realtime (Firestore)
+       ***********************/
+      function attachRealtimeListeners() {
+        db.collection("subjects").onSnapshot(snapshot => {
+          snapshot.forEach(doc => {
+            let data = doc.data();
+            if (!data.parcials) {
+              data.parcials = { "1": { examEvals: [], taskEvals: [], practiceEvals: [] },
+                                "2": { examEvals: [], taskEvals: [], practiceEvals: [] },
+                                "3": { examEvals: [], taskEvals: [], practiceEvals: [] },
+                                "4": { examEvals: [], taskEvals: [], practiceEvals: [] } };
+            }
+            subjectsConfig[doc.id] = data;
+          });
+          buildSubjectSelect();
+          updateRubricDisplay();
+          buildDynamicHeader();
+          updateURLParams();
+        });
+        db.collection("students").onSnapshot(snapshot => {
+          students.length = 0;
+          snapshot.forEach(doc => { students.push(doc.data()); });
+          buildGradeTable();
+        });
+        db.collection("teams").onSnapshot(snapshot => {
+          for (const subj in teams) { teams[subj] = []; }
+          snapshot.forEach(doc => {
+            const data = doc.data();
+            const subj = data.subject;
+            if (!teams[subj]) { teams[subj] = []; }
+            teams[subj].push(data);
+          });
+          buildTeamTable();
+        });
+      }
+      attachRealtimeListeners();
+      buildSubjectSelect();
+      updateRubricDisplay();
+      updatePartialDisplay();
+      buildDynamicHeader();
+      buildTeamTable();
+      buildGradeTable();
+
+      /***********************
+       * 12. Autenticación y Modo Solo Lectura
+       ***********************/
+      window.addEventListener("load", () => {
+        if (isReadOnlyMode()) {
+          if (!auth.currentUser) {
+            auth.signInAnonymously().catch(error => { console.error("Error en autenticación anónima:", error); });
+          }
+          document.getElementById("appContainer").style.display = "block";
+          setReadOnly();
+        } else {
+          const loginModal = document.getElementById("loginModal");
+          loginModal.style.display = "block";
+          auth.onAuthStateChanged(user => {
+            if (user) {
+              loginModal.style.display = "none";
+              document.getElementById("appContainer").style.display = "block";
+              document.getElementById("userInfo").innerText = "Usuario: " + user.email;
+              if (user.email === "fco.lopezvelazquez@gmail.com") {
+                document.getElementById("resetDBContainer").style.display = "block";
+              } else {
+                setReadOnly();
+                document.getElementById("resetDBContainer").style.display = "none";
+              }
+            } else {
+              document.getElementById("appContainer").style.display = "none";
+              loginModal.style.display = "block";
+            }
+          });
+          document.getElementById("loginBtn").onclick = () => {
+            const email = document.getElementById("loginUser").value.trim();
+            const password = document.getElementById("loginPass").value;
+            auth.signInWithEmailAndPassword(email, password)
+              .then(() => {
+                document.getElementById("loginModal").style.display = "none";
+                document.getElementById("appContainer").style.display = "block";
+              })
+              .catch(error => { alert("Error: " + error.message); });
+          };
+          document.getElementById("logoutBtn").addEventListener("click", () => {
+            auth.signOut().then(() => { window.location.reload(); })
+              .catch(err => console.error("Error al cerrar sesión:", err));
+          });
+        }
+      });
+
+      /***********************
+       * 13. Botón para Resetear la Base de Datos
+       ***********************/
+      document.getElementById("resetDBBtn").onclick = () => {
+        const code = prompt("Para confirmar el reset, ingresa el código de seguridad:");
+        if (code !== "RESET2025") { alert("Código incorrecto. Operación cancelada."); return; }
+        if (confirm("¿Estás seguro de borrar TODOS los datos de Firestore? Esta acción no se podrá deshacer.")) {
+          Promise.all([
+            db.collection("subjects").get().then(snapshot => snapshot.forEach(doc => doc.ref.delete())),
+            db.collection("students").get().then(snapshot => snapshot.forEach(doc => doc.ref.delete())),
+            db.collection("teams").get().then(snapshot => snapshot.forEach(doc => doc.ref.delete()))
+          ]).then(() => {
+            localStorage.clear();
+            alert("Base de datos borrada. Recarga la página para reiniciar los datos.");
+            window.location.reload();
+          }).catch(err => { console.error("Error al resetear la base de datos:", err); });
+        }
+      };
+
+      /***********************
+       * 14. Funcionalidades adicionales: Copiar alumnos y mostrar resumen individual
+       ***********************/
+      document.getElementById("copyStudentsBtn").onclick = () => {
+        const targetSubject = prompt("Ingrese el ID de la materia destino (Ej. circuitos, tt6, instalaciones, fisica4):");
+        if (targetSubject && subjectsConfig[targetSubject]) {
+          const sourceStudents = students.filter(s => s.subject === currentSubject);
+          const destStudents = students.filter(s => s.subject === targetSubject);
+          let newListNumber = destStudents.reduce((max, s) => Math.max(max, s.listNumber), 0);
+          sourceStudents.forEach(s => {
+            const newStudent = JSON.parse(JSON.stringify(s));
+            // Si ya existe el mismo número en la materia destino, se asigna un nuevo.
+            if (destStudents.some(d => d.listNumber === s.listNumber)) { newListNumber++; newStudent.listNumber = newListNumber; }
+            newStudent.subject = targetSubject;
+            students.push(newStudent);
+          });
+          alert("Alumnos copiados a la materia " + targetSubject + ".");
+          debounceSaveData();
+        } else { alert("El ID de la materia destino no es válido."); }
+      };
+
+      document.querySelectorAll(".list-cell").forEach(cell => {
+        cell.addEventListener("click", () => {
+          const listNum = cell.innerText.trim();
+          const student = students.find(s => s.listNumber == listNum && s.subject === currentSubject);
+          if (student) { showStudentSummary(student); }
+        });
+      });
+      function showStudentSummary(student) {
+        let content = `<h3>Resumen de Alumno</h3>
+          <p><strong>N° Lista:</strong> ${student.listNumber}</p>
+          <p><strong>Nombre:</strong> ${student.name}</p>
+          <p><strong>Equipo:</strong> ${student.team}</p>
+          <p><strong>Materia:</strong> ${subjectsConfig[student.subject].name}</p>`;
+        if (student.partials[currentPartial]) {
+          content += `<h4>Datos del Parcial ${currentPartial}</h4>
+                      <pre>${JSON.stringify(student.partials[currentPartial], null, 2)}</pre>`;
+        } else {
+          content += `<p>No hay datos para el Parcial ${currentPartial}.</p>`;
+        }
+        showModal(content);
+      }
+
+      function updateURLParams() {
+        const url = new URL(window.location.href);
+        url.searchParams.set("subject", currentSubject);
+        url.searchParams.set("partial", currentPartial);
+        if (isReadOnlyMode()) { url.searchParams.set("readonly", "true"); }
+        else { url.searchParams.delete("readonly"); }
+        window.history.replaceState({}, '', url.toString());
+      }
+
+      /***********************
+       * 15. Cambio de materia y parcial
+       ***********************/
+      document.querySelectorAll(".tab-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          currentPartial = parseInt(btn.getAttribute("data-partial"));
+          document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+          btn.classList.add("active");
+          updatePartialDisplay();
+          buildDynamicHeader();
+          buildGradeTable();
+          buildTeamTable();
+          updateURLParams();
+        });
+      });
+      document.getElementById("subjectSelect").addEventListener("change", (e) => {
+        currentSubject = e.target.value;
+        currentPartial = 1; // Reiniciamos parcial
+        updatePartialDisplay();
+        updateRubricDisplay();
+        buildDynamicHeader();
+        buildTeamTable();
+        buildGradeTable();
+        updateURLParams();
+      });
+
+      /***********************
+       * 16. Iniciar Conexión Realtime
+       ***********************/
+      attachRealtimeListeners();
+      buildSubjectSelect();
+      updateRubricDisplay();
+      updatePartialDisplay();
+      buildDynamicHeader();
+      buildTeamTable();
+      buildGradeTable();
+
+      /***********************
+       * 17. Autenticación y Modo Solo Lectura
+       ***********************/
+      window.addEventListener("load", () => {
+        if (isReadOnlyMode()) {
+          if (!auth.currentUser) {
+            auth.signInAnonymously().catch(error => { console.error("Error en autenticación anónima:", error); });
+          }
+          document.getElementById("appContainer").style.display = "block";
+          setReadOnly();
+        } else {
+          const loginModal = document.getElementById("loginModal");
+          loginModal.style.display = "block";
+          auth.onAuthStateChanged(user => {
+            if (user) {
+              loginModal.style.display = "none";
+              document.getElementById("appContainer").style.display = "block";
+              document.getElementById("userInfo").innerText = "Usuario: " + user.email;
+              if (user.email === "fco.lopezvelazquez@gmail.com") {
+                document.getElementById("resetDBContainer").style.display = "block";
+              } else {
+                setReadOnly();
+                document.getElementById("resetDBContainer").style.display = "none";
+              }
+            } else {
+              document.getElementById("appContainer").style.display = "none";
+              loginModal.style.display = "block";
+            }
+          });
+          document.getElementById("loginBtn").onclick = () => {
+            const email = document.getElementById("loginUser").value.trim();
+            const password = document.getElementById("loginPass").value;
+            auth.signInWithEmailAndPassword(email, password)
+              .then(() => {
+                document.getElementById("loginModal").style.display = "none";
+                document.getElementById("appContainer").style.display = "block";
+              })
+              .catch(error => { alert("Error: " + error.message); });
+          };
+          document.getElementById("logoutBtn").addEventListener("click", () => {
+            auth.signOut().then(() => { window.location.reload(); })
+              .catch(err => console.error("Error al cerrar sesión:", err));
+          });
+        }
+      });
+
+      /***********************
+       * 18. (Opcional) Funcionalidad adicional: Mostrar resumen individual
+       ***********************/
+      // Ya se asigna en el listener de .list-cell.
+
+      /***********************
+       * 19. Actualizar URL
        ***********************/
       function updateURLParams() {
         const url = new URL(window.location.href);
         url.searchParams.set("subject", currentSubject);
         url.searchParams.set("partial", currentPartial);
-        if (!readOnlyMode) { url.searchParams.delete("readonly"); }
-        window.history.pushState({}, '', url.toString());
+        if (isReadOnlyMode()) { url.searchParams.set("readonly", "true"); }
+        else { url.searchParams.delete("readonly"); }
+        window.history.replaceState({}, '', url.toString());
       }
 
     })();
