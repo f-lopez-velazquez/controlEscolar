@@ -324,7 +324,6 @@
     </main>
     <footer>Pagina creada y diseñada por Francisco López Velazquez</footer>
   </div>
-  
   <!-- Código JavaScript -->
   <script>
     "use strict";
@@ -736,12 +735,13 @@
           rowHTML += "</tr>";
           tbody.innerHTML += rowHTML;
         });
-        document.querySelectorAll(".list-cell").forEach(cell => {
-          cell.addEventListener("click", () => {
-            const listNum = cell.innerText.trim();
+        // Uso de delegación de eventos para que siempre funcione el clic en la celda del N° Lista
+        document.getElementById("gradeTable").addEventListener("click", function(e) {
+          if(e.target && e.target.classList.contains("list-cell")){
+            const listNum = e.target.innerText.trim();
             const student = students.find(s => s.listNumber == listNum && s.subject === currentSubject);
             if (student) { showStudentSummary(student); }
-          });
+          }
         });
         attachTableListeners();
         recalculateAll();
@@ -778,7 +778,6 @@
           deductionSum = student.partials[currentPartial].deductions.reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0);
         }
         row.querySelector(".deduction-sum").textContent = deductionSum.toFixed(2);
-        // Se resta el valor de faltas: absences * (rubric.faltas)
         const totalPartial = ((examAvg * rubric.exam/100) + (taskAvg * rubric.task/100) + (practiceAvg * rubric.practice/100) + extraTotal + (participation * rubric.participation/100))
                               - deductionSum - (absences * (rubric.faltas || 1));
         row.querySelector(".total-partial").textContent = totalPartial.toFixed(2);
@@ -951,6 +950,7 @@
           };
         }
       }
+      
       // Función openRubricModal para editar porcentajes, etiquetas y gestionar evaluaciones (agregar/quitar) y el valor de faltas
       function openRubricModal() {
         const cfg = subjectsConfig[currentSubject];
@@ -1205,10 +1205,108 @@
       }
       
       /***********************
-       * 24. Función para Exportar a Excel y PDF
-       * En el PDF se exportan TODAS las calificaciones; la columna "Total Parcial" se toma del objeto alumno
-       * y la columna "Firma" contiene una línea en blanco.
+       * 20. Función para Exportar a Excel y PDF
+       * En el PDF se exportan TODAS las calificaciones tal como se muestran en la web.
+       * Se obtienen los valores reales de las columnas calculadas (Extra Total, Participación, Faltas, Deducciones y Total Parcial)
+       * para que el PDF refleje lo que se ve en pantalla. La columna "Firma" contendrá una línea en blanco.
        ***********************/
+      document.getElementById("exportPDF").onclick = () => {
+        recalculateAll();
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('landscape', 'pt', 'a4');
+        const teacherName = "Francisco López Velazquez";
+        const genDate = new Date().toLocaleDateString();
+        doc.setFontSize(10);
+        doc.text("Calificaciones - " + subjectsConfig[currentSubject].name + " - Parcial " + currentPartial, 40, 30);
+        doc.text("Profesor: " + teacherName + "    Fecha: " + genDate, 40, 45);
+        let rubricText = "Rúbrica: " +
+          subjectsConfig[currentSubject].rubric.examLabel + " " + subjectsConfig[currentSubject].rubric.exam + "%, " +
+          subjectsConfig[currentSubject].rubric.taskLabel + " " + subjectsConfig[currentSubject].rubric.task + "%, " +
+          subjectsConfig[currentSubject].rubric.practiceLabel + " " + subjectsConfig[currentSubject].rubric.practice + "%, " +
+          subjectsConfig[currentSubject].rubric.participationLabel + " " + subjectsConfig[currentSubject].rubric.participation + "%";
+        doc.text(rubricText, 40, 60);
+        const headerCells = ["N° LS", "Alumno", "Equipo"];
+        const cfg = subjectsConfig[currentSubject].parcials[currentPartial];
+        cfg.examEvals.forEach(e => headerCells.push(e.name));
+        headerCells.push("Prom. Ex");
+        cfg.taskEvals.forEach(e => headerCells.push(e.name));
+        headerCells.push("Prom. Ta");
+        cfg.practiceEvals.forEach(e => headerCells.push(e.name));
+        headerCells.push("Prom. Pr", "Extra Total", "Participación", "Faltas", "Deducciones", "Total Parcial", "Firma");
+        const headers = [headerCells];
+        // Definir estilos de columna para las columnas verdes (las que aparecen en web con fondo #d1e7dd)
+        const greenColumns = ["Prom. Ex", "Prom. Ta", "Prom. Pr", "Total Parcial"];
+        const colStyles = {};
+        for (let i = 0; i < headerCells.length; i++) {
+          if (greenColumns.includes(headerCells[i])) {
+            colStyles[i] = { fillColor: [209, 231, 221] };
+          }
+        }
+        const data = [];
+        const colCount = headerCells.length;
+        document.querySelectorAll("#gradeTable tbody tr").forEach(row => {
+          const cells = Array.from(row.querySelectorAll("td"));
+          const rowData = [];
+          const listNum = row.getAttribute("data-list");
+          const student = students.find(s => s.listNumber == listNum && s.subject === currentSubject);
+          const partialData = student && student.partials[currentPartial] ? student.partials[currentPartial] : {};
+          for (let i = 0; i < colCount - 1; i++) {
+            let cellText = "";
+            if (student && partialData) {
+              // Para columnas calculadas se obtienen los valores reales
+              if (i === headerCells.indexOf("Extra Total")) {
+                const extraTotal = (partialData.extraExam * subjectsConfig[currentSubject].rubric.exam/100) +
+                                   (partialData.extraTask * subjectsConfig[currentSubject].rubric.task/100) +
+                                   (partialData.extraPractice * subjectsConfig[currentSubject].rubric.practice/100) +
+                                   partialData.extraParcial;
+                cellText = extraTotal.toFixed(2);
+              } else if (i === headerCells.indexOf("Participación")) {
+                cellText = (partialData.participation || 0).toString();
+              } else if (i === headerCells.indexOf("Faltas")) {
+                cellText = (partialData.absences || 0).toString();
+              } else if (i === headerCells.indexOf("Deducciones")) {
+                let deductionSum = 0;
+                if (partialData.deductions && Array.isArray(partialData.deductions))
+                  deductionSum = partialData.deductions.reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0);
+                cellText = deductionSum.toFixed(2);
+              } else if (i === headerCells.indexOf("Total Parcial")) {
+                cellText = partialData.total ? partialData.total.toFixed(2) : "0.00";
+              } else if (i < cells.length) {
+                const input = cells[i].querySelector("input");
+                const select = cells[i].querySelector("select");
+                if (input) { cellText = input.value.trim(); }
+                else if (select) { cellText = select.options[select.selectedIndex].text; }
+                else { cellText = cells[i].innerText.trim(); }
+              }
+            } else if (i < cells.length) {
+              const input = cells[i].querySelector("input");
+              const select = cells[i].querySelector("select");
+              if (input) { cellText = input.value.trim(); }
+              else if (select) { cellText = select.options[select.selectedIndex].text; }
+              else { cellText = cells[i].innerText.trim(); }
+            }
+            rowData.push(cellText);
+          }
+          rowData.push("________________________"); // Columna Firma (línea en blanco)
+          data.push(rowData);
+        });
+        doc.autoTable({
+          head: headers,
+          body: data,
+          startY: 70,
+          theme: 'grid',
+          styles: { fontSize: 7, cellPadding: 4, halign: 'center', valign: 'middle' },
+          headStyles: { fillColor: [0, 51, 102] },
+          columnStyles: colStyles,
+          didDrawPage: function (data) {
+            let str = "PDF creado por Sistema de Calificaciones by: Francisco López Velazquez";
+            doc.setFontSize(8);
+            doc.text(str, data.settings.margin.left, doc.internal.pageSize.height - 10);
+          }
+        });
+        doc.save("calificaciones_" + subjectsConfig[currentSubject].name + "_parcial_" + currentPartial + ".pdf");
+      };
+      
       document.getElementById("exportExcel").onclick = () => {
         const table = document.getElementById("gradeTable");
         let csv = "";
@@ -1234,74 +1332,10 @@
         URL.revokeObjectURL(urlBlob);
       };
       
-      document.getElementById("exportPDF").onclick = () => {
-        recalculateAll();
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF('landscape', 'pt', 'a4');
-        const teacherName = "Francisco López Velazquez";
-        const genDate = new Date().toLocaleDateString();
-        doc.setFontSize(10);
-        doc.text("Calificaciones - " + subjectsConfig[currentSubject].name + " - Parcial " + currentPartial, 40, 30);
-        doc.text("Profesor: " + teacherName + "    Fecha: " + genDate, 40, 45);
-        let rubricText = "Rúbrica: " +
-          subjectsConfig[currentSubject].rubric.examLabel + " " + subjectsConfig[currentSubject].rubric.exam + "%, " +
-          subjectsConfig[currentSubject].rubric.taskLabel + " " + subjectsConfig[currentSubject].rubric.task + "%, " +
-          subjectsConfig[currentSubject].rubric.practiceLabel + " " + subjectsConfig[currentSubject].rubric.practice + "%, " +
-          subjectsConfig[currentSubject].rubric.participationLabel + " " + subjectsConfig[currentSubject].rubric.participation + "%";
-        doc.text(rubricText, 40, 60);
-        const headerCells = ["N° LS", "Alumno", "Equipo"];
-        const cfg = subjectsConfig[currentSubject].parcials[currentPartial];
-        cfg.examEvals.forEach(e => headerCells.push(e.name));
-        headerCells.push("Prom. Ex");
-        cfg.taskEvals.forEach(e => headerCells.push(e.name));
-        headerCells.push("Prom. Ta");
-        cfg.practiceEvals.forEach(e => headerCells.push(e.name));
-        headerCells.push("Prom. Pr", "Extra Total", "Participación", "Faltas", "Deducciones", "Total Parcial", "Firma");
-        const totalPartialIndex = headerCells.indexOf("Total Parcial");
-        const headers = [headerCells];
-        const data = [];
-        const colCount = headerCells.length;
-        document.querySelectorAll("#gradeTable tbody tr").forEach(row => {
-          const listNum = row.getAttribute("data-list");
-          const student = students.find(s => s.listNumber == listNum && s.subject === currentSubject);
-          const cells = Array.from(row.querySelectorAll("td"));
-          const rowData = [];
-          for (let i = 0; i < colCount - 1; i++) {
-            let cellText = "";
-            if (i === totalPartialIndex && student && student.partials[currentPartial]) {
-              cellText = student.partials[currentPartial].total ? student.partials[currentPartial].total.toFixed(2) : "0.00";
-            } else if (i < cells.length) {
-              const input = cells[i].querySelector("input");
-              const select = cells[i].querySelector("select");
-              if (input) { cellText = input.value.trim(); }
-              else if (select) { cellText = select.options[select.selectedIndex].text; }
-              else { cellText = cells[i].innerText.trim(); }
-            } else { cellText = ""; }
-            rowData.push(cellText);
-          }
-          rowData.push("________________________"); // Columna Firma (línea en blanco)
-          data.push(rowData);
-        });
-        doc.autoTable({
-          head: headers,
-          body: data,
-          startY: 70,
-          theme: 'grid',
-          styles: { fontSize: 7, cellPadding: 4, halign: 'center', valign: 'middle' },
-          headStyles: { fillColor: [0, 51, 102] },
-          didDrawPage: function (data) {
-            let str = "PDF creado por Sistema de Calificaciones by: Francisco López Velazquez";
-            doc.setFontSize(8);
-            doc.text(str, data.settings.margin.left, doc.internal.pageSize.height - 10);
-          }
-        });
-        doc.save("calificaciones_" + subjectsConfig[currentSubject].name + "_parcial_" + currentPartial + ".pdf");
-      };
-      
       document.getElementById("printGrades").onclick = () => { window.print(); };
       
       /***********************
-       * 16. Funcionalidades para Agregar/Editar Materia
+       * 26. Funcionalidades para Agregar/Editar Materia
        ***********************/
       document.getElementById("addSubject").onclick = () => {
         let content = `<h3>Agregar Materia</h3>
@@ -1360,7 +1394,7 @@
       };
       
       /***********************
-       * 17. Funcionalidad para Compartir Versión de Solo Lectura
+       * 27. Funcionalidad para Compartir Versión de Solo Lectura
        ***********************/
       document.getElementById("shareVersion").onclick = () => {
         const url = new URL(window.location.href);
@@ -1369,7 +1403,7 @@
       };
       
       /***********************
-       * 18. Actualización de URL
+       * 28. Actualización de URL
        ***********************/
       function updateURLParams() {
         const url = new URL(window.location.href);
@@ -1381,7 +1415,7 @@
       }
       
       /***********************
-       * 19. Cambio de materia y parcial
+       * 29. Cambio de materia y parcial
        ***********************/
       document.querySelectorAll(".tab-btn").forEach(btn => {
         btn.addEventListener("click", () => {
@@ -1407,7 +1441,7 @@
       });
       
       /***********************
-       * 20. Conexión Realtime Final (Firestore)
+       * 30. Conexión Realtime Final (Firestore)
        ***********************/
       function attachRealtimeListenersFinal() {
         db.collection("subjects").onSnapshot(snapshot => {
@@ -1451,7 +1485,7 @@
       buildGradeTable();
       
       /***********************
-       * 21. Autenticación y Modo Solo Lectura
+       * 31. Autenticación y Modo Solo Lectura
        ***********************/
       function setReadOnly() {
         document.querySelectorAll("input, select, button").forEach(el => { el.disabled = true; });
@@ -1506,7 +1540,7 @@
       });
       
       /***********************
-       * 22. Botón para Resetear la Base de Datos
+       * 32. Botón para Resetear la Base de Datos
        ***********************/
       document.getElementById("resetDBBtn").onclick = () => {
         const code = prompt("Para confirmar el reset, ingresa el código de seguridad:");
@@ -1525,7 +1559,7 @@
       };
       
       /***********************
-       * 23. Funcionalidades adicionales: Copiar alumnos y mostrar resumen individual
+       * 33. Funcionalidades adicionales: Copiar alumnos y mostrar resumen individual
        ***********************/
       document.getElementById("copyStudentsBtn").onclick = () => {
         const targetSubject = prompt("Ingrese el ID de la materia destino (Ej. circuitos, tt6, instalaciones, fisica4):");
@@ -1552,51 +1586,108 @@
         });
       });
       
-      function showStudentSummary(student) {
-        const partialData = student.partials[currentPartial] || {};
-        function average(arr) {
-          if (!arr || arr.length === 0) return 0;
-          return arr.reduce((a, b) => a + b, 0) / arr.length;
-        }
-        let resumenHTML = `
-          <h3 style="text-align:center; margin-bottom:10px;">Resumen del Alumno</h3>
-          <table class="student-summary-table">
-            <tr><th>Campo</th><th>Valor</th></tr>
-            <tr><td>N° Lista</td><td>${student.listNumber}</td></tr>
-            <tr><td>Nombre</td><td>${student.name}</td></tr>
-            <tr><td>Equipo</td><td>${student.team}</td></tr>
-            <tr><td>Materia</td><td>${subjectsConfig[student.subject].name}</td></tr>
-            <tr><td>Promedio Exámenes</td><td>${average(partialData.exams || []).toFixed(2)}</td></tr>
-            <tr><td>Promedio Tareas</td><td>${average(partialData.tasks || []).toFixed(2)}</td></tr>
-            <tr><td>Promedio Prácticas</td><td>${average(partialData.practices || []).toFixed(2)}</td></tr>
-            <tr><td>Extra Exámenes</td><td>${partialData.extraExam || 0}</td></tr>
-            <tr><td>Extra Tareas</td><td>${partialData.extraTask || 0}</td></tr>
-            <tr><td>Extra Prácticas</td><td>${partialData.extraPractice || 0}</td></tr>
-            <tr><td>Extra Parcial</td><td>${partialData.extraParcial || 0}</td></tr>
-            <tr><td>Total Extra</td><td>${partialData.total ? partialData.total.toFixed(2) : 0}</td></tr>
-            <tr><td>Participación</td><td>${partialData.participation || 0}</td></tr>
-            <tr><td>Faltas</td><td>${partialData.absences || 0}</td></tr>
-            <tr><td>Deducciones</td><td>${(partialData.deductions && partialData.deductions.length > 0) ? partialData.deductions.map(d => `${d.date} – ${d.reason}: ${d.amount} pts`).join("<br>") : "0"}</td></tr>
-            <tr><td>Total Parcial</td><td>${partialData.total ? partialData.total.toFixed(2) : 0}</td></tr>
-          </table>
-        `;
-        showModal(resumenHTML);
-      }
-      
-      function updateURLParams() {
-        const url = new URL(window.location.href);
-        url.searchParams.set("subject", currentSubject);
-        url.searchParams.set("partial", currentPartial);
-        if (isReadOnlyMode()) { url.searchParams.set("readonly", "true"); }
-        else { url.searchParams.delete("readonly"); }
-        window.history.replaceState({}, '', url.toString());
-      }
-      
       /***********************
-       * 24. Función para Exportar a Excel y PDF
-       * En el PDF se exportan TODAS las calificaciones; la columna "Total Parcial" se toma del objeto alumno
-       * y la columna "Firma" contiene una línea en blanco.
+       * 34. Función para Exportar a Excel y PDF
+       * En el PDF se exportan TODAS las calificaciones tal como se muestran en la web.
+       * Se obtienen los valores reales de las columnas calculadas (Extra Total, Participación, Faltas, Deducciones y Total Parcial)
+       * para que el PDF refleje lo que se ve en pantalla. La columna "Firma" contendrá una línea en blanco.
        ***********************/
+      document.getElementById("exportPDF").onclick = () => {
+        recalculateAll();
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('landscape', 'pt', 'a4');
+        const teacherName = "Francisco López Velazquez";
+        const genDate = new Date().toLocaleDateString();
+        doc.setFontSize(10);
+        doc.text("Calificaciones - " + subjectsConfig[currentSubject].name + " - Parcial " + currentPartial, 40, 30);
+        doc.text("Profesor: " + teacherName + "    Fecha: " + genDate, 40, 45);
+        let rubricText = "Rúbrica: " +
+          subjectsConfig[currentSubject].rubric.examLabel + " " + subjectsConfig[currentSubject].rubric.exam + "%, " +
+          subjectsConfig[currentSubject].rubric.taskLabel + " " + subjectsConfig[currentSubject].rubric.task + "%, " +
+          subjectsConfig[currentSubject].rubric.practiceLabel + " " + subjectsConfig[currentSubject].rubric.practice + "%, " +
+          subjectsConfig[currentSubject].rubric.participationLabel + " " + subjectsConfig[currentSubject].rubric.participation + "%";
+        doc.text(rubricText, 40, 60);
+        const headerCells = ["N° LS", "Alumno", "Equipo"];
+        const cfg = subjectsConfig[currentSubject].parcials[currentPartial];
+        cfg.examEvals.forEach(e => headerCells.push(e.name));
+        headerCells.push("Prom. Ex");
+        cfg.taskEvals.forEach(e => headerCells.push(e.name));
+        headerCells.push("Prom. Ta");
+        cfg.practiceEvals.forEach(e => headerCells.push(e.name));
+        headerCells.push("Prom. Pr", "Extra Total", "Participación", "Faltas", "Deducciones", "Total Parcial", "Firma");
+        const headers = [headerCells];
+        // Definir estilos para las columnas verdes (las que en la web tienen fondo #d1e7dd)
+        const greenColumns = ["Prom. Ex", "Prom. Ta", "Prom. Pr", "Total Parcial"];
+        const colStyles = {};
+        for (let i = 0; i < headerCells.length; i++) {
+          if (greenColumns.includes(headerCells[i])) {
+            colStyles[i] = { fillColor: [209, 231, 221] };
+          }
+        }
+        const data = [];
+        const colCount = headerCells.length;
+        document.querySelectorAll("#gradeTable tbody tr").forEach(row => {
+          const cells = Array.from(row.querySelectorAll("td"));
+          const rowData = [];
+          const listNum = row.getAttribute("data-list");
+          const student = students.find(s => s.listNumber == listNum && s.subject === currentSubject);
+          const partialData = student && student.partials[currentPartial] ? student.partials[currentPartial] : {};
+          for (let i = 0; i < colCount - 1; i++) {
+            let cellText = "";
+            if (student && partialData) {
+              if (i === headerCells.indexOf("Extra Total")) {
+                const extraTotal = (partialData.extraExam * subjectsConfig[currentSubject].rubric.exam/100) +
+                                   (partialData.extraTask * subjectsConfig[currentSubject].rubric.task/100) +
+                                   (partialData.extraPractice * subjectsConfig[currentSubject].rubric.practice/100) +
+                                   partialData.extraParcial;
+                cellText = extraTotal.toFixed(2);
+              } else if (i === headerCells.indexOf("Participación")) {
+                cellText = (partialData.participation || 0).toString();
+              } else if (i === headerCells.indexOf("Faltas")) {
+                cellText = (partialData.absences || 0).toString();
+              } else if (i === headerCells.indexOf("Deducciones")) {
+                let deductionSum = 0;
+                if (partialData.deductions && Array.isArray(partialData.deductions))
+                  deductionSum = partialData.deductions.reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0);
+                cellText = deductionSum.toFixed(2);
+              } else if (i === headerCells.indexOf("Total Parcial")) {
+                cellText = partialData.total ? partialData.total.toFixed(2) : "0.00";
+              } else if (i < cells.length) {
+                const input = cells[i].querySelector("input");
+                const select = cells[i].querySelector("select");
+                if (input) { cellText = input.value.trim(); }
+                else if (select) { cellText = select.options[select.selectedIndex].text; }
+                else { cellText = cells[i].innerText.trim(); }
+              }
+            } else if (i < cells.length) {
+              const input = cells[i].querySelector("input");
+              const select = cells[i].querySelector("select");
+              if (input) { cellText = input.value.trim(); }
+              else if (select) { cellText = select.options[select.selectedIndex].text; }
+              else { cellText = cells[i].innerText.trim(); }
+            }
+            rowData.push(cellText);
+          }
+          rowData.push("________________________"); // Columna Firma (línea en blanco)
+          data.push(rowData);
+        });
+        doc.autoTable({
+          head: headers,
+          body: data,
+          startY: 70,
+          theme: 'grid',
+          styles: { fontSize: 7, cellPadding: 4, halign: 'center', valign: 'middle' },
+          headStyles: { fillColor: [0, 51, 102] },
+          columnStyles: colStyles,
+          didDrawPage: function (data) {
+            let str = "PDF creado por Sistema de Calificaciones by: Francisco López Velazquez";
+            doc.setFontSize(8);
+            doc.text(str, data.settings.margin.left, doc.internal.pageSize.height - 10);
+          }
+        });
+        doc.save("calificaciones_" + subjectsConfig[currentSubject].name + "_parcial_" + currentPartial + ".pdf");
+      };
+      
       document.getElementById("exportExcel").onclick = () => {
         const table = document.getElementById("gradeTable");
         let csv = "";
@@ -1622,74 +1713,10 @@
         URL.revokeObjectURL(urlBlob);
       };
       
-      document.getElementById("exportPDF").onclick = () => {
-        recalculateAll();
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF('landscape', 'pt', 'a4');
-        const teacherName = "Francisco López Velazquez";
-        const genDate = new Date().toLocaleDateString();
-        doc.setFontSize(10);
-        doc.text("Calificaciones - " + subjectsConfig[currentSubject].name + " - Parcial " + currentPartial, 40, 30);
-        doc.text("Profesor: " + teacherName + "    Fecha: " + genDate, 40, 45);
-        let rubricText = "Rúbrica: " +
-          subjectsConfig[currentSubject].rubric.examLabel + " " + subjectsConfig[currentSubject].rubric.exam + "%, " +
-          subjectsConfig[currentSubject].rubric.taskLabel + " " + subjectsConfig[currentSubject].rubric.task + "%, " +
-          subjectsConfig[currentSubject].rubric.practiceLabel + " " + subjectsConfig[currentSubject].rubric.practice + "%, " +
-          subjectsConfig[currentSubject].rubric.participationLabel + " " + subjectsConfig[currentSubject].rubric.participation + "%";
-        doc.text(rubricText, 40, 60);
-        const headerCells = ["N° LS", "Alumno", "Equipo"];
-        const cfg = subjectsConfig[currentSubject].parcials[currentPartial];
-        cfg.examEvals.forEach(e => headerCells.push(e.name));
-        headerCells.push("Prom. Ex");
-        cfg.taskEvals.forEach(e => headerCells.push(e.name));
-        headerCells.push("Prom. Ta");
-        cfg.practiceEvals.forEach(e => headerCells.push(e.name));
-        headerCells.push("Prom. Pr", "Extra Total", "Participación", "Faltas", "Deducciones", "Total Parcial", "Firma");
-        const totalPartialIndex = headerCells.indexOf("Total Parcial");
-        const headers = [headerCells];
-        const data = [];
-        const colCount = headerCells.length;
-        document.querySelectorAll("#gradeTable tbody tr").forEach(row => {
-          const listNum = row.getAttribute("data-list");
-          const student = students.find(s => s.listNumber == listNum && s.subject === currentSubject);
-          const cells = Array.from(row.querySelectorAll("td"));
-          const rowData = [];
-          for (let i = 0; i < colCount - 1; i++) {
-            let cellText = "";
-            if (i === totalPartialIndex && student && student.partials[currentPartial]) {
-              cellText = student.partials[currentPartial].total ? student.partials[currentPartial].total.toFixed(2) : "0.00";
-            } else if (i < cells.length) {
-              const input = cells[i].querySelector("input");
-              const select = cells[i].querySelector("select");
-              if (input) { cellText = input.value.trim(); }
-              else if (select) { cellText = select.options[select.selectedIndex].text; }
-              else { cellText = cells[i].innerText.trim(); }
-            } else { cellText = ""; }
-            rowData.push(cellText);
-          }
-          rowData.push("________________________"); // Columna Firma (línea en blanco)
-          data.push(rowData);
-        });
-        doc.autoTable({
-          head: headers,
-          body: data,
-          startY: 70,
-          theme: 'grid',
-          styles: { fontSize: 7, cellPadding: 4, halign: 'center', valign: 'middle' },
-          headStyles: { fillColor: [0, 51, 102] },
-          didDrawPage: function (data) {
-            let str = "PDF creado por Sistema de Calificaciones by: Francisco López Velazquez";
-            doc.setFontSize(8);
-            doc.text(str, data.settings.margin.left, doc.internal.pageSize.height - 10);
-          }
-        });
-        doc.save("calificaciones_" + subjectsConfig[currentSubject].name + "_parcial_" + currentPartial + ".pdf");
-      };
-      
       document.getElementById("printGrades").onclick = () => { window.print(); };
       
       /***********************
-       * 16. Funcionalidades para Agregar/Editar Materia
+       * 26. Funcionalidades para Agregar/Editar Materia
        ***********************/
       document.getElementById("addSubject").onclick = () => {
         let content = `<h3>Agregar Materia</h3>
@@ -1748,7 +1775,7 @@
       };
       
       /***********************
-       * 17. Funcionalidad para Compartir Versión de Solo Lectura
+       * 27. Funcionalidad para Compartir Versión de Solo Lectura
        ***********************/
       document.getElementById("shareVersion").onclick = () => {
         const url = new URL(window.location.href);
@@ -1757,7 +1784,7 @@
       };
       
       /***********************
-       * 18. Actualización de URL
+       * 28. Actualización de URL
        ***********************/
       function updateURLParams() {
         const url = new URL(window.location.href);
@@ -1769,7 +1796,7 @@
       }
       
       /***********************
-       * 19. Cambio de materia y parcial
+       * 29. Cambio de materia y parcial
        ***********************/
       document.querySelectorAll(".tab-btn").forEach(btn => {
         btn.addEventListener("click", () => {
@@ -1795,7 +1822,7 @@
       });
       
       /***********************
-       * 20. Conexión Realtime Final (Firestore)
+       * 30. Conexión Realtime Final (Firestore)
        ***********************/
       function attachRealtimeListenersFinal() {
         db.collection("subjects").onSnapshot(snapshot => {
@@ -1839,7 +1866,7 @@
       buildGradeTable();
       
       /***********************
-       * 21. Autenticación y Modo Solo Lectura
+       * 31. Autenticación y Modo Solo Lectura
        ***********************/
       function setReadOnly() {
         document.querySelectorAll("input, select, button").forEach(el => { el.disabled = true; });
@@ -1894,7 +1921,7 @@
       });
       
       /***********************
-       * 22. Botón para Resetear la Base de Datos
+       * 32. Botón para Resetear la Base de Datos
        ***********************/
       document.getElementById("resetDBBtn").onclick = () => {
         const code = prompt("Para confirmar el reset, ingresa el código de seguridad:");
@@ -1913,7 +1940,7 @@
       };
       
       /***********************
-       * 23. Funcionalidades adicionales: Copiar alumnos y mostrar resumen individual
+       * 33. Funcionalidades adicionales: Copiar alumnos y mostrar resumen individual
        ***********************/
       document.getElementById("copyStudentsBtn").onclick = () => {
         const targetSubject = prompt("Ingrese el ID de la materia destino (Ej. circuitos, tt6, instalaciones, fisica4):");
@@ -1940,63 +1967,128 @@
         });
       });
       
-      function showStudentSummary(student) {
-        const partialData = student.partials[currentPartial] || {};
-        function average(arr) {
-          if (!arr || arr.length === 0) return 0;
-          return arr.reduce((a, b) => a + b, 0) / arr.length;
+      /***********************
+       * 34. Función para Exportar a Excel y PDF
+       * En el PDF se exportan TODAS las calificaciones tal como se muestran en la web.
+       * Se obtienen los valores reales de las columnas calculadas (Extra Total, Participación, Faltas, Deducciones y Total Parcial)
+       * para que el PDF refleje lo que se ve en pantalla. La columna "Firma" contendrá una línea en blanco.
+       ***********************/
+      document.getElementById("exportPDF").onclick = () => {
+        recalculateAll();
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('landscape', 'pt', 'a4');
+        const teacherName = "Francisco López Velazquez";
+        const genDate = new Date().toLocaleDateString();
+        doc.setFontSize(10);
+        doc.text("Calificaciones - " + subjectsConfig[currentSubject].name + " - Parcial " + currentPartial, 40, 30);
+        doc.text("Profesor: " + teacherName + "    Fecha: " + genDate, 40, 45);
+        let rubricText = "Rúbrica: " +
+          subjectsConfig[currentSubject].rubric.examLabel + " " + subjectsConfig[currentSubject].rubric.exam + "%, " +
+          subjectsConfig[currentSubject].rubric.taskLabel + " " + subjectsConfig[currentSubject].rubric.task + "%, " +
+          subjectsConfig[currentSubject].rubric.practiceLabel + " " + subjectsConfig[currentSubject].rubric.practice + "%, " +
+          subjectsConfig[currentSubject].rubric.participationLabel + " " + subjectsConfig[currentSubject].rubric.participation + "%";
+        doc.text(rubricText, 40, 60);
+        const headerCells = ["N° LS", "Alumno", "Equipo"];
+        const cfg = subjectsConfig[currentSubject].parcials[currentPartial];
+        cfg.examEvals.forEach(e => headerCells.push(e.name));
+        headerCells.push("Prom. Ex");
+        cfg.taskEvals.forEach(e => headerCells.push(e.name));
+        headerCells.push("Prom. Ta");
+        cfg.practiceEvals.forEach(e => headerCells.push(e.name));
+        headerCells.push("Prom. Pr", "Extra Total", "Participación", "Faltas", "Deducciones", "Total Parcial", "Firma");
+        const headers = [headerCells];
+        // Definir estilos para las columnas verdes (las que tienen fondo #d1e7dd en la web)
+        const greenColumns = ["Prom. Ex", "Prom. Ta", "Prom. Pr", "Total Parcial"];
+        const colStyles = {};
+        for (let i = 0; i < headerCells.length; i++) {
+          if (greenColumns.includes(headerCells[i])) {
+            colStyles[i] = { fillColor: [209, 231, 221] };
+          }
         }
-        let resumenHTML = `
-          <h3 style="text-align:center; margin-bottom:10px;">Resumen del Alumno</h3>
-          <table class="student-summary-table">
-            <tr><th>Campo</th><th>Valor</th></tr>
-            <tr><td>N° Lista</td><td>${student.listNumber}</td></tr>
-            <tr><td>Nombre</td><td>${student.name}</td></tr>
-            <tr><td>Equipo</td><td>${student.team}</td></tr>
-            <tr><td>Materia</td><td>${subjectsConfig[student.subject].name}</td></tr>
-            <tr><td>Promedio Exámenes</td><td>${average(partialData.exams || []).toFixed(2)}</td></tr>
-            <tr><td>Promedio Tareas</td><td>${average(partialData.tasks || []).toFixed(2)}</td></tr>
-            <tr><td>Promedio Prácticas</td><td>${average(partialData.practices || []).toFixed(2)}</td></tr>
-            <tr><td>Extra Exámenes</td><td>${partialData.extraExam || 0}</td></tr>
-            <tr><td>Extra Tareas</td><td>${partialData.extraTask || 0}</td></tr>
-            <tr><td>Extra Prácticas</td><td>${partialData.extraPractice || 0}</td></tr>
-            <tr><td>Extra Parcial</td><td>${partialData.extraParcial || 0}</td></tr>
-            <tr><td>Total Extra</td><td>${partialData.total ? partialData.total.toFixed(2) : 0}</td></tr>
-            <tr><td>Participación</td><td>${partialData.participation || 0}</td></tr>
-            <tr><td>Faltas</td><td>${partialData.absences || 0}</td></tr>
-            <tr><td>Deducciones</td><td>${(partialData.deductions && partialData.deductions.length > 0) ? partialData.deductions.map(d => `${d.date} – ${d.reason}: ${d.amount} pts`).join("<br>") : "0"}</td></tr>
-            <tr><td>Total Parcial</td><td>${partialData.total ? partialData.total.toFixed(2) : 0}</td></tr>
-          </table>
-        `;
-        showModal(resumenHTML);
-      }
-      
-      function updateURLParams() {
-        const url = new URL(window.location.href);
-        url.searchParams.set("subject", currentSubject);
-        url.searchParams.set("partial", currentPartial);
-        if (isReadOnlyMode()) { url.searchParams.set("readonly", "true"); }
-        else { url.searchParams.delete("readonly"); }
-        window.history.replaceState({}, '', url.toString());
-      }
+        const data = [];
+        const colCount = headerCells.length;
+        document.querySelectorAll("#gradeTable tbody tr").forEach(row => {
+          const cells = Array.from(row.querySelectorAll("td"));
+          const rowData = [];
+          const listNum = row.getAttribute("data-list");
+          const student = students.find(s => s.listNumber == listNum && s.subject === currentSubject);
+          const partialData = student && student.partials[currentPartial] ? student.partials[currentPartial] : {};
+          for (let i = 0; i < colCount - 1; i++) {
+            let cellText = "";
+            if (student && partialData) {
+              if (i === headerCells.indexOf("Extra Total")) {
+                const extraTotal = (partialData.extraExam * subjectsConfig[currentSubject].rubric.exam/100) +
+                                   (partialData.extraTask * subjectsConfig[currentSubject].rubric.task/100) +
+                                   (partialData.extraPractice * subjectsConfig[currentSubject].rubric.practice/100) +
+                                   partialData.extraParcial;
+                cellText = extraTotal.toFixed(2);
+              } else if (i === headerCells.indexOf("Participación")) {
+                cellText = (partialData.participation || 0).toString();
+              } else if (i === headerCells.indexOf("Faltas")) {
+                cellText = (partialData.absences || 0).toString();
+              } else if (i === headerCells.indexOf("Deducciones")) {
+                let deductionSum = 0;
+                if (partialData.deductions && Array.isArray(partialData.deductions))
+                  deductionSum = partialData.deductions.reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0);
+                cellText = deductionSum.toFixed(2);
+              } else if (i === headerCells.indexOf("Total Parcial")) {
+                cellText = partialData.total ? partialData.total.toFixed(2) : "0.00";
+              } else if (i < cells.length) {
+                const input = cells[i].querySelector("input");
+                const select = cells[i].querySelector("select");
+                if (input) { cellText = input.value.trim(); }
+                else if (select) { cellText = select.options[select.selectedIndex].text; }
+                else { cellText = cells[i].innerText.trim(); }
+              }
+            } else if (i < cells.length) {
+              const input = cells[i].querySelector("input");
+              const select = cells[i].querySelector("select");
+              if (input) { cellText = input.value.trim(); }
+              else if (select) { cellText = select.options[select.selectedIndex].text; }
+              else { cellText = cells[i].innerText.trim(); }
+            }
+            rowData.push(cellText);
+          }
+          rowData.push("________________________"); // Columna Firma (línea en blanco)
+          data.push(rowData);
+        });
+        doc.autoTable({
+          head: headers,
+          body: data,
+          startY: 70,
+          theme: 'grid',
+          styles: { fontSize: 7, cellPadding: 4, halign: 'center', valign: 'middle' },
+          headStyles: { fillColor: [0, 51, 102] },
+          columnStyles: colStyles,
+          didDrawPage: function (data) {
+            let str = "PDF creado por Sistema de Calificaciones by: Francisco López Velazquez";
+            doc.setFontSize(8);
+            doc.text(str, data.settings.margin.left, doc.internal.pageSize.height - 10);
+          }
+        });
+        doc.save("calificaciones_" + subjectsConfig[currentSubject].name + "_parcial_" + currentPartial + ".pdf");
+      };
       
       /***********************
-       * 20. Función para Agregar Equipo (Corregida sin setTimeout)
+       * 30. Función para Agregar Equipo (Corregida)
+       * Se adjunta el evento directamente al botón justo después de mostrar el modal
        ***********************/
       document.getElementById("addTeam").onclick = () => {
-        const content = `<h3>Agregar Equipo</h3>
+        showModal(`<h3>Agregar Equipo</h3>
            <label>ID: <input type="text" id="newTeamId"></label><br>
            <label>Nombre: <input type="text" id="newTeamName"></label><br>
            <label>Encargado: <input type="text" id="newTeamHead"></label><br>
-           <button id="saveTeamNew" class="btn">Guardar</button>`;
-        showModal(content);
+           <button id="saveTeamNew" class="btn">Guardar</button>`);
         const btn = document.getElementById("saveTeamNew");
         if (btn) {
           btn.addEventListener("click", () => {
             const id = document.getElementById("newTeamId").value.trim();
             const name = document.getElementById("newTeamName").value.trim();
             const head = document.getElementById("newTeamHead").value.trim();
-            if (!id || !name || !head) { alert("Complete todos los campos."); return; }
+            if (!id || !name || !head) {
+              alert("Complete todos los campos.");
+              return;
+            }
             if (teams[currentSubject].some(t => t.id.toLowerCase() === id.toLowerCase() || t.name.toLowerCase() === name.toLowerCase())) {
               alert("Ya existe un equipo con ese ID o nombre en esta materia.");
               return;
@@ -2011,7 +2103,7 @@
       };
       
       /***********************
-       * 21. Conexión Realtime Final (Firestore)
+       * 31. Conexión Realtime Final (Firestore)
        ***********************/
       function attachRealtimeListenersFinal() {
         db.collection("subjects").onSnapshot(snapshot => {
@@ -2055,7 +2147,7 @@
       buildGradeTable();
       
       /***********************
-       * 22. Autenticación y Modo Solo Lectura
+       * 32. Autenticación y Modo Solo Lectura
        ***********************/
       function setReadOnly() {
         document.querySelectorAll("input, select, button").forEach(el => { el.disabled = true; });
@@ -2110,7 +2202,7 @@
       });
       
       /***********************
-       * 23. Botón para Resetear la Base de Datos
+       * 33. Botón para Resetear la Base de Datos
        ***********************/
       document.getElementById("resetDBBtn").onclick = () => {
         const code = prompt("Para confirmar el reset, ingresa el código de seguridad:");
@@ -2129,7 +2221,7 @@
       };
       
       /***********************
-       * 24. Funcionalidades adicionales: Copiar alumnos y mostrar resumen individual
+       * 34. Funcionalidades adicionales: Copiar alumnos y mostrar resumen individual
        ***********************/
       document.getElementById("copyStudentsBtn").onclick = () => {
         const targetSubject = prompt("Ingrese el ID de la materia destino (Ej. circuitos, tt6, instalaciones, fisica4):");
