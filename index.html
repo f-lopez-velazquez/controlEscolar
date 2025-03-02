@@ -105,7 +105,7 @@
       border-radius: 3px;
     }
     .exam-average, .task-average, .practice-average, .total-partial { background-color: #d1e7dd; }
-    /* Fijar las dos primeras columnas: N° LS y Alumno */
+    /* Fijar las dos primeras columnas: N°LS y Alumno */
     th:first-child, td:first-child {
       position: sticky;
       left: 0;
@@ -198,6 +198,11 @@
       font-size: 0.9rem;
     }
     .student-summary-table th { background: #003366; color: #fff; }
+    /* Checkbox para mostrar/ocultar resumen final en PDF */
+    .toggle-summary {
+      margin: 10px;
+      font-size: 0.9rem;
+    }
   </style>
   <!-- Cargar Firebase (compat) y dependencias -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -294,21 +299,21 @@
           <table id="gradeTable">
             <thead>
               <tr id="groupHeaderRow">
-                <th rowspan="2">N° LS</th>
-                <th rowspan="2">Alumno</th>
-                <th rowspan="2">Equipo</th>
+                <th rowspan="2">N°LS</th>
+                <th rowspan="2">Alm</th>
+                <th rowspan="2">Eqp</th>
                 <th class="exam-group" colspan="0">Exámenes</th>
                 <th class="task-group" colspan="0">Tareas</th>
                 <th class="practice-group" colspan="0">Prácticas</th>
-                <th rowspan="2">Extra Ex.</th>
-                <th rowspan="2">Extra Ta.</th>
-                <th rowspan="2">Extra Pr.</th>
-                <th rowspan="2">Extra Parcial</th>
-                <th rowspan="2">Extra Total</th>
-                <th rowspan="2">Participación</th>
+                <th rowspan="2">Extra Ex</th>
+                <th rowspan="2">Extra Ta</th>
+                <th rowspan="2">Extra Pr</th>
+                <th rowspan="2">Extra Parc</th>
+                <th rowspan="2">Extra Tot</th>
+                <th rowspan="2">Part</th>
                 <th rowspan="2">Faltas</th>
-                <th rowspan="2">Deducciones</th>
-                <th rowspan="2">Total Parcial</th>
+                <th rowspan="2">Deduc</th>
+                <th rowspan="2">Total Parc</th>
               </tr>
               <tr id="dynamicHeader"></tr>
             </thead>
@@ -320,6 +325,8 @@
         <button id="exportExcel" class="btn">Exportar Excel</button>
         <button id="exportPDF" class="btn">Exportar PDF</button>
         <button id="printGrades" class="btn">Imprimir Parcial</button>
+        <!-- Checkbox para mostrar/ocultar resumen final en PDF -->
+        <label class="toggle-summary"><input type="checkbox" id="toggleSummary" checked> Incluir resumen final</label>
       </section>
     </main>
     <footer>Pagina creada y diseñada por Francisco López Velazquez</footer>
@@ -516,7 +523,7 @@
           headerRow.appendChild(th);
         });
         const thExamAvg = document.createElement("th");
-        thExamAvg.textContent = "Prom. Exámenes";
+        thExamAvg.textContent = "Prom.Ex";
         headerRow.appendChild(thExamAvg);
         // Tareas
         cfg.taskEvals.forEach(evalObj => {
@@ -526,7 +533,7 @@
           headerRow.appendChild(th);
         });
         const thTaskAvg = document.createElement("th");
-        thTaskAvg.textContent = "Prom. Tareas";
+        thTaskAvg.textContent = "Prom.Ta";
         headerRow.appendChild(thTaskAvg);
         // Prácticas
         cfg.practiceEvals.forEach(evalObj => {
@@ -536,7 +543,7 @@
           headerRow.appendChild(th);
         });
         const thPracticeAvg = document.createElement("th");
-        thPracticeAvg.textContent = "Prom. Prácticas";
+        thPracticeAvg.textContent = "Prom.Pr";
         headerRow.appendChild(thPracticeAvg);
         buildGroupHeader();
       }
@@ -550,7 +557,7 @@
         teamTableHead.innerHTML = "";
         teamTableBody.innerHTML = "";
         const cfg = subjectsConfig[currentSubject].parcials[currentPartial];
-        let headerHTML = "<tr><th>Equipo</th><th>Encargado</th>";
+        let headerHTML = "<tr><th>Equipo</th><th>Encarg.</th>";
         cfg.practiceEvals.forEach(evalObj => {
           if (evalObj && evalObj.name && evalObj.name.trim() !== "" && evalObj.name.toLowerCase() !== "acciones")
             headerHTML += `<th>${evalObj.name}</th>`;
@@ -669,7 +676,8 @@
               tasks: Array(cfg.taskEvals.length).fill(0),
               practices: Array(cfg.practiceEvals.length).fill(0),
               extraExam: 0, extraTask: 0, extraPractice: 0, extraParcial: 0,
-              participation: 0, absences: 0, deductions: [], total: 0
+              participation: 0, absences: 0, deductions: [], total: 0,
+              observations: [] // Para observaciones individuales
             };
           } else {
             while (student.partials[currentPartial].exams.length < cfg.examEvals.length) { student.partials[currentPartial].exams.push(0); }
@@ -679,17 +687,19 @@
               student.partials[currentPartial].extraParcial = 0;
             if (!student.partials[currentPartial].deductions)
               student.partials[currentPartial].deductions = [];
+            if (!student.observations)
+              student.observations = [];
           }
           const partialData = student.partials[currentPartial];
           let rowHTML = `<tr data-list="${student.listNumber}">
-            <td class="list-cell" style="cursor:pointer;" data-tooltip="${student.name}, N° Lista">${student.listNumber}</td>
-            <td contenteditable="true" class="student-name" data-tooltip="${student.name}, Nombre">${student.name}</td>
+            <td class="list-cell" style="cursor:pointer;" data-tooltip="${student.name}, N°LS">${student.listNumber}</td>
+            <td contenteditable="true" class="student-name" data-tooltip="${student.name}, Alumno">${student.name}</td>
             <td>
-              <select class="student-team" data-tooltip="${student.name}, Equipo">
+              <select class="student-team" data-tooltip="${student.name}, Eqp">
                 ${(() => {
                   let opts = teams[currentSubject].map(team => `<option value="${team.id}" ${team.id === student.team ? "selected" : ""}>${team.name}</option>`);
                   if (!teams[currentSubject].some(t => t.id === student.team)) {
-                    opts.push(`<option value="${student.team}" selected>Sin equipo</option>`);
+                    opts.push(`<option value="${student.team}" selected>Sin eqp</option>`);
                   }
                   return opts.join('');
                 })()}
@@ -717,25 +727,25 @@
             rowHTML += `<td><input type="number" class="practice-input" data-index="${index}" min="0" max="10" step="0.1" value="${grade}" readonly data-tooltip="${student.name}, ${evalObj.name}"></td>`;
           });
           rowHTML += `<td class="practice-average">0</td>`;
-          rowHTML += `<td><input type="number" class="extra-exam" min="0" max="2" step="0.1" value="${partialData.extraExam || 0}" data-tooltip="${student.name}, Extra Exámenes"></td>
-                     <td><input type="number" class="extra-task" min="0" max="2" step="0.1" value="${partialData.extraTask || 0}" data-tooltip="${student.name}, Extra Tareas"></td>
-                     <td><input type="number" class="extra-practice" min="0" max="2" step="0.1" value="${partialData.extraPractice || 0}" data-tooltip="${student.name}, Extra Prácticas"></td>
-                     <td><input type="number" class="extra-parcial" min="0" step="0.1" value="${partialData.extraParcial || 0}" data-tooltip="${student.name}, Extra Parcial"></td>
+          rowHTML += `<td><input type="number" class="extra-exam" min="0" max="2" step="0.1" value="${partialData.extraExam || 0}" data-tooltip="${student.name}, Extra Ex"></td>
+                     <td><input type="number" class="extra-task" min="0" max="2" step="0.1" value="${partialData.extraTask || 0}" data-tooltip="${student.name}, Extra Ta"></td>
+                     <td><input type="number" class="extra-practice" min="0" max="2" step="0.1" value="${partialData.extraPractice || 0}" data-tooltip="${student.name}, Extra Pr"></td>
+                     <td><input type="number" class="extra-parcial" min="0" step="0.1" value="${partialData.extraParcial || 0}" data-tooltip="${student.name}, Extra Parc"></td>
                      <td class="extra-total">0</td>
-                     <td><input type="number" class="participation" min="0" max="5" step="0.1" value="${partialData.participation || 0}" data-tooltip="${student.name}, Participación"></td>
+                     <td><input type="number" class="participation" min="0" max="5" step="0.1" value="${partialData.participation || 0}" data-tooltip="${student.name}, Part"></td>
                      <td><input type="number" class="absences" min="0" step="1" value="${partialData.absences || 0}" data-tooltip="${student.name}, Faltas"></td>
                      <td class="deductions"><span class="deduction-sum">0</span>${!isReadOnlyMode() ? ' <button class="deduct-btn btn" data-tooltip="Agregar deducción">Ded</button>' : ''}</td>
                      <td class="total-partial">0</td>`;
           if (!isReadOnlyMode()) {
             rowHTML += `<td class="actions-column">
-                          <button class="row-action-btn btn" data-tooltip="Ver deducciones">Ver Ded.</button>
+                          <button class="row-action-btn btn" data-tooltip="Ver deducciones/obs">Ver Ded/Obs</button>
                           <button class="delete-student btn" data-tooltip="Eliminar alumno">Eliminar</button>
                         </td>`;
           }
           rowHTML += "</tr>";
           tbody.innerHTML += rowHTML;
         });
-        // Delegación de eventos para el clic en N° Lista (resumen del alumno con observaciones)
+        // Delegación para clic en N°LS
         document.getElementById("gradeTable").addEventListener("click", function(e) {
           if(e.target && e.target.classList.contains("list-cell")){
             const listNum = e.target.innerText.trim();
@@ -935,6 +945,15 @@
         } else {
           content += `<p>No hay deducciones registradas.</p>`;
         }
+        // Se añade sección para observaciones individuales
+        if (student.observations && student.observations.length > 0) {
+          content += `<h4>Observaciones:</h4><ul>`;
+          student.observations.forEach(obs => {
+            content += `<li>${obs.date} – ${obs.text}</li>`;
+          });
+          content += `</ul>`;
+        }
+        content += `<button id="addObs" class="btn">Agregar Observación</button>`;
         showModal(content);
         if (!viewOnly) {
           document.getElementById("saveDed").onclick = () => {
@@ -948,10 +967,21 @@
             buildGradeTable();
             debounceSaveData();
           };
+          document.getElementById("addObs").onclick = () => {
+            let obsDate = prompt("Fecha de observación (AAAA-MM-DD):");
+            let obsText = prompt("Observación:");
+            if (obsDate && obsText) {
+              if (!student.observations) { student.observations = []; }
+              student.observations.push({ date: obsDate, text: obsText });
+              buildGradeTable();
+              debounceSaveData();
+              alert("Observación agregada.");
+            }
+          };
         }
       }
       
-      // Función openRubricModal para editar porcentajes, etiquetas, evaluaciones y valor de faltas
+      // Función openRubricModal para editar porcentajes, etiquetas y gestionar evaluaciones (agregar/quitar) y el valor de faltas
       function openRubricModal() {
         const cfg = subjectsConfig[currentSubject];
         const currParcial = subjectsConfig[currentSubject].parcials[currentPartial];
@@ -1131,7 +1161,7 @@
           if (!listNum || !name) { alert("Complete todos los campos."); return; }
           const exists = students.some(s => s.subject === currentSubject && s.listNumber === listNum);
           if (exists) { alert("Ya existe un alumno con ese número de lista en esta materia."); return; }
-          students.push({ listNumber: listNum, name, team, subject: currentSubject, partials: {} });
+          students.push({ listNumber: listNum, name, team, subject: currentSubject, partials: {}, observations: [] });
           modalOverlay.style.display = "none";
           buildGradeTable();
           debounceSaveData();
@@ -1164,7 +1194,6 @@
         });
       });
       
-      // Función showStudentSummary con sección de observaciones
       function showStudentSummary(student) {
         const partialData = student.partials[currentPartial] || {};
         function average(arr) {
@@ -1179,9 +1208,9 @@
             <tr><td>Nombre</td><td>${student.name}</td></tr>
             <tr><td>Equipo</td><td>${student.team}</td></tr>
             <tr><td>Materia</td><td>${subjectsConfig[student.subject].name}</td></tr>
-            <tr><td>Promedio Exámenes</td><td>${average(partialData.exams || []).toFixed(2)}</td></tr>
-            <tr><td>Promedio Tareas</td><td>${average(partialData.tasks || []).toFixed(2)}</td></tr>
-            <tr><td>Promedio Prácticas</td><td>${average(partialData.practices || []).toFixed(2)}</td></tr>
+            <tr><td>Prom. Exámenes</td><td>${average(partialData.exams || []).toFixed(2)}</td></tr>
+            <tr><td>Prom. Tareas</td><td>${average(partialData.tasks || []).toFixed(2)}</td></tr>
+            <tr><td>Prom. Prácticas</td><td>${average(partialData.practices || []).toFixed(2)}</td></tr>
             <tr><td>Extra Exámenes</td><td>${partialData.extraExam || 0}</td></tr>
             <tr><td>Extra Tareas</td><td>${partialData.extraTask || 0}</td></tr>
             <tr><td>Extra Prácticas</td><td>${partialData.extraPractice || 0}</td></tr>
@@ -1191,18 +1220,8 @@
             <tr><td>Faltas</td><td>${partialData.absences || 0}</td></tr>
             <tr><td>Deducciones</td><td>${(partialData.deductions && partialData.deductions.length > 0) ? partialData.deductions.map(d => `${d.date} – ${d.reason}: ${d.amount} pts`).join("<br>") : "0"}</td></tr>
             <tr><td>Total Parcial</td><td>${partialData.total ? partialData.total.toFixed(2) : 0}</td></tr>
-          </table>
-          <h4>Observaciones</h4>
-          <textarea id="studentObservations" rows="4" style="width:100%;">${student.observations || ""}</textarea>
-          <button id="saveObservations" class="btn">Guardar Observaciones</button>
-        `;
+          </table>`;
         showModal(resumenHTML);
-        document.getElementById("saveObservations").onclick = () => {
-          student.observations = document.getElementById("studentObservations").value.trim();
-          alert("Observaciones guardadas.");
-          modalOverlay.style.display = "none";
-          debounceSaveData();
-        };
       }
       
       function updateURLParams() {
@@ -1215,11 +1234,14 @@
       }
       
       /***********************
-       * 34. Función para Exportar a Excel y PDF
-       * En el PDF se exportan TODAS las calificaciones tal como se muestran en la web.
-       * Se obtienen los valores reales de las columnas calculadas (Extra Total, Participación, Faltas, Deducciones y Total Parcial)
-       * para que el PDF refleje lo que se ve en pantalla. Además, se incluyen las columnas de “Extra Ex”, “Extra Ta” y “Extra Pr”.
-       * La columna "Firma" contendrá una línea en blanco.
+       * 30. Función para Exportar a Excel y PDF
+       * – En el PDF se exportan TODAS las calificaciones tal como se muestran en la web.
+       * – Se obtienen los valores reales de las columnas calculadas para que el PDF refleje lo que se ve.
+       * – Se incluyen todas las columnas extra (Extra Ex, Extra Ta, Extra Pr, Extra Parc) y se muestran.
+       * – Se elimina la rotación de los encabezados (se muestran de manera “normal”).
+       * – Se ajusta el ancho de columnas para que la tabla se centre en la hoja A4 y no se corte.
+       * – Se aplica sombreado alterno en las filas.
+       * – Al final se añade un bloque resumen final que solo incluye alumnos y equipos de la materia actual.
        ***********************/
       document.getElementById("exportPDF").onclick = () => {
         recalculateAll();
@@ -1227,33 +1249,34 @@
         const doc = new jsPDF('landscape', 'pt', 'a4');
         const teacherName = "Francisco López Velazquez";
         const genDate = new Date().toLocaleDateString();
+        const marginLeft = 40, marginRight = 40;
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const availableWidth = pageWidth - marginLeft - marginRight;
         doc.setFontSize(10);
-        doc.text("Calificaciones - " + subjectsConfig[currentSubject].name + " - Parcial " + currentPartial, 40, 30);
-        doc.text("Profesor: " + teacherName + "    Fecha: " + genDate, 40, 45);
-        // Encabezado de la rúbrica (se usan valores con fallback en caso de indefinido)
+        // Encabezado centrado
+        doc.text("Calificaciones - " + subjectsConfig[currentSubject].name + " - Parcial " + currentPartial, pageWidth/2, 30, { align: 'center' });
+        doc.text("Profesor: " + teacherName + "    Fecha: " + genDate, pageWidth/2, 45, { align: 'center' });
         let rubricText = "Rúbrica: " +
-          (subjectsConfig[currentSubject].rubric.examLabel || "Exámenes") + " " + subjectsConfig[currentSubject].rubric.exam + "%, " +
-          (subjectsConfig[currentSubject].rubric.taskLabel || "Tareas") + " " + subjectsConfig[currentSubject].rubric.task + "%, " +
-          (subjectsConfig[currentSubject].rubric.practiceLabel || "Prácticas") + " " + subjectsConfig[currentSubject].rubric.practice + "%, " +
-          (subjectsConfig[currentSubject].rubric.participationLabel || "Participación") + " " + subjectsConfig[currentSubject].rubric.participation + "%";
-        doc.text(rubricText, 40, 60);
-        // Construir cabecera del PDF con todas las columnas (incluyendo las extras)
-        const headerCells = ["N° LS", "Alumno", "Equipo"];
+          subjectsConfig[currentSubject].rubric.examLabel + " " + subjectsConfig[currentSubject].rubric.exam + "%, " +
+          subjectsConfig[currentSubject].rubric.taskLabel + " " + subjectsConfig[currentSubject].rubric.task + "%, " +
+          subjectsConfig[currentSubject].rubric.practiceLabel + " " + subjectsConfig[currentSubject].rubric.practice + "%, " +
+          subjectsConfig[currentSubject].rubric.participationLabel + " " + subjectsConfig[currentSubject].rubric.participation + "%";
+        doc.text(rubricText, pageWidth/2, 60, { align: 'center' });
+        // Construir encabezado
+        const headerCells = ["N°LS", "Alm", "Eqp"];
         const cfg = subjectsConfig[currentSubject].parcials[currentPartial];
         cfg.examEvals.forEach(e => headerCells.push(e.name));
-        headerCells.push("Prom. Ex");
+        headerCells.push("Prom.Ex");
         cfg.taskEvals.forEach(e => headerCells.push(e.name));
-        headerCells.push("Prom. Ta");
+        headerCells.push("Prom.Ta");
         cfg.practiceEvals.forEach(e => headerCells.push(e.name));
-        headerCells.push("Prom. Pr", "Extra Ex", "Extra Ta", "Extra Pr", "Extra Parcial", "Extra Total", "Participación", "Faltas", "Deducciones", "Total Parcial", "Firma");
+        headerCells.push("Prom.Pr", "Extra Ex", "Extra Ta", "Extra Pr", "Extra Parc", "Extra Tot", "Part", "Faltas", "Deduc", "Total Parc", "Firma");
         const headers = [headerCells];
-        // Estilos para columnas verdes
-        const greenColumns = ["Prom. Ex", "Prom. Ta", "Prom. Pr", "Total Parcial"];
+        // Calcular ancho de cada columna
+        const colWidth = availableWidth / headerCells.length;
         const colStyles = {};
         for (let i = 0; i < headerCells.length; i++) {
-          if (greenColumns.includes(headerCells[i])) {
-            colStyles[i] = { fillColor: [209, 231, 221] };
-          }
+          colStyles[i] = { cellWidth: colWidth, halign: 'center' };
         }
         const data = [];
         const colCount = headerCells.length;
@@ -1266,22 +1289,22 @@
           for (let i = 0; i < colCount - 1; i++) {
             let cellText = "";
             if (student && partialData) {
-              if (i === headerCells.indexOf("Extra Total")) {
+              if (i === headerCells.indexOf("Extra Tot")) {
                 const extraTotal = (partialData.extraExam * subjectsConfig[currentSubject].rubric.exam/100) +
                                    (partialData.extraTask * subjectsConfig[currentSubject].rubric.task/100) +
                                    (partialData.extraPractice * subjectsConfig[currentSubject].rubric.practice/100) +
                                    partialData.extraParcial;
                 cellText = extraTotal.toFixed(2);
-              } else if (i === headerCells.indexOf("Participación")) {
+              } else if (i === headerCells.indexOf("Part")) {
                 cellText = (partialData.participation || 0).toString();
               } else if (i === headerCells.indexOf("Faltas")) {
                 cellText = (partialData.absences || 0).toString();
-              } else if (i === headerCells.indexOf("Deducciones")) {
+              } else if (i === headerCells.indexOf("Deduc")) {
                 let deductionSum = 0;
                 if (partialData.deductions && Array.isArray(partialData.deductions))
                   deductionSum = partialData.deductions.reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0);
                 cellText = deductionSum.toFixed(2);
-              } else if (i === headerCells.indexOf("Total Parcial")) {
+              } else if (i === headerCells.indexOf("Total Parc")) {
                 cellText = partialData.total ? partialData.total.toFixed(2) : "0.00";
               } else if (i < cells.length) {
                 const input = cells[i].querySelector("input");
@@ -1299,25 +1322,71 @@
             }
             rowData.push(cellText);
           }
-          rowData.push("________________________"); // Columna Firma (línea en blanco)
+          rowData.push("________________________"); // Columna Firma
           data.push(rowData);
         });
-        // Ajuste de márgenes para mejor vista en A4
+        // Configurar autoTable sin rotación (encabezados normales)
         doc.autoTable({
           head: headers,
           body: data,
           startY: 70,
+          tableWidth: availableWidth,
+          margin: { left: marginLeft, right: marginRight },
           theme: 'grid',
-          margin: { top: 70, bottom: 30 },
-          styles: { fontSize: 7, cellPadding: 4, halign: 'center', valign: 'middle' },
-          headStyles: { fillColor: [0, 51, 102] },
+          styles: { fontSize: 6, cellPadding: 2, halign: 'center', valign: 'middle' },
+          headStyles: { fillColor: [0, 51, 102], textColor: 255, halign: 'center' },
           columnStyles: colStyles,
+          alternateRowStyles: { fillColor: [240, 240, 240] },
           didDrawPage: function (data) {
             let str = "PDF creado por Sistema de Calificaciones by: Francisco López Velazquez";
             doc.setFontSize(8);
-            doc.text(str, data.settings.margin.left, doc.internal.pageSize.height - 10);
+            doc.text(str, marginLeft, doc.internal.pageSize.getHeight() - 10);
           }
         });
+        // Bloque resumen final: solo incluir alumnos del currentSubject que tengan deducciones u observaciones
+        const summaryData = [];
+        students.filter(s => s.subject === currentSubject).forEach(student => {
+          const partial = student.partials[currentPartial];
+          if (partial && ((partial.deductions && partial.deductions.length > 0) || (student.observations && student.observations.length > 0))) {
+            let dedText = "";
+            if (partial.deductions && partial.deductions.length > 0) {
+              dedText = partial.deductions.map(d => d.date + " – " + d.reason + ": " + d.amount + " pts").join("; ");
+            }
+            let obsText = "";
+            if (student.observations && student.observations.length > 0) {
+              obsText = student.observations.map(o => o.date + " – " + o.text).join("; ");
+            }
+            summaryData.push([student.listNumber, student.name, dedText, obsText]);
+          }
+        });
+        if(summaryData.length > 0 && document.getElementById("toggleSummary").checked){
+          doc.autoTable({
+            head: [["N°LS", "Alumno", "Deducciones", "Observaciones"]],
+            body: summaryData,
+            startY: doc.lastAutoTable.finalY + 20,
+            theme: 'grid',
+            styles: { fontSize: 6, cellPadding: 2, halign: 'left' },
+            headStyles: { fillColor: [0, 51, 102], textColor: 255 }
+          });
+        }
+        // Bloque resumen final para equipos: incluir solo equipos del currentSubject que tengan observaciones (si existen)
+        const teamSummaryData = [];
+        teams[currentSubject].forEach(team => {
+          if (team.observations && team.observations.length > 0) {
+            let teamObs = team.observations.map(o => o.date + " – " + o.text).join("; ");
+            teamSummaryData.push([team.name, team.head, teamObs]);
+          }
+        });
+        if(teamSummaryData.length > 0){
+          doc.autoTable({
+            head: [["Equipo", "Encarg.", "Observaciones"]],
+            body: teamSummaryData,
+            startY: doc.lastAutoTable ? doc.lastAutoTable.finalY + 20 :  doc.lastAutoTable.finalY + 20,
+            theme: 'grid',
+            styles: { fontSize: 6, cellPadding: 2, halign: 'left' },
+            headStyles: { fillColor: [0, 51, 102], textColor: 255 }
+          });
+        }
         doc.save("calificaciones_" + subjectsConfig[currentSubject].name + "_parcial_" + currentPartial + ".pdf");
       };
       
@@ -1602,10 +1671,13 @@
       
       /***********************
        * 34. Función para Exportar a Excel y PDF
-       * En el PDF se exportan TODAS las calificaciones tal como se muestran en la web.
-       * Se obtienen los valores reales de las columnas calculadas (Extra Total, Participación, Faltas, Deducciones y Total Parcial)
-       * para que el PDF refleje lo que se ve en pantalla. Además, se incluyen las columnas de “Extra Ex”, “Extra Ta” y “Extra Pr”.
-       * La columna "Firma" contendrá una línea en blanco.
+       * – El PDF incluirá todas las columnas tal como se muestran en la web.
+       * – Se obtienen los valores reales de las columnas calculadas para que el PDF refleje lo que se ve.
+       * – Se incluyen todas las columnas extra y se muestran.
+       * – Los encabezados se muestran de manera “normal” (sin rotación).
+       * – Se ajusta el ancho de columnas para que la tabla se centre en la hoja A4.
+       * – Se aplica sombreado alterno en las filas.
+       * – Al final se añade un bloque resumen final (solo de la materia actual) con deducciones y observaciones, si existen.
        ***********************/
       document.getElementById("exportPDF").onclick = () => {
         recalculateAll();
@@ -1613,33 +1685,34 @@
         const doc = new jsPDF('landscape', 'pt', 'a4');
         const teacherName = "Francisco López Velazquez";
         const genDate = new Date().toLocaleDateString();
+        const marginLeft = 40, marginRight = 40;
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const availableWidth = pageWidth - marginLeft - marginRight;
         doc.setFontSize(10);
-        doc.text("Calificaciones - " + subjectsConfig[currentSubject].name + " - Parcial " + currentPartial, 40, 30);
-        doc.text("Profesor: " + teacherName + "    Fecha: " + genDate, 40, 45);
-        // Encabezado de la rúbrica sin "undefined"
+        // Encabezado centrado
+        doc.text("Calificaciones - " + subjectsConfig[currentSubject].name + " - Parcial " + currentPartial, pageWidth/2, 30, { align: 'center' });
+        doc.text("Profesor: " + teacherName + "    Fecha: " + genDate, pageWidth/2, 45, { align: 'center' });
         let rubricText = "Rúbrica: " +
-          (subjectsConfig[currentSubject].rubric.examLabel || "Exámenes") + " " + subjectsConfig[currentSubject].rubric.exam + "%, " +
-          (subjectsConfig[currentSubject].rubric.taskLabel || "Tareas") + " " + subjectsConfig[currentSubject].rubric.task + "%, " +
-          (subjectsConfig[currentSubject].rubric.practiceLabel || "Prácticas") + " " + subjectsConfig[currentSubject].rubric.practice + "%, " +
-          (subjectsConfig[currentSubject].rubric.participationLabel || "Participación") + " " + subjectsConfig[currentSubject].rubric.participation + "%";
-        doc.text(rubricText, 40, 60);
-        // Construir cabecera del PDF con todas las columnas (incluyendo las extras)
-        const headerCells = ["N° LS", "Alumno", "Equipo"];
+          subjectsConfig[currentSubject].rubric.examLabel + " " + subjectsConfig[currentSubject].rubric.exam + "%, " +
+          subjectsConfig[currentSubject].rubric.taskLabel + " " + subjectsConfig[currentSubject].rubric.task + "%, " +
+          subjectsConfig[currentSubject].rubric.practiceLabel + " " + subjectsConfig[currentSubject].rubric.practice + "%, " +
+          subjectsConfig[currentSubject].rubric.participationLabel + " " + subjectsConfig[currentSubject].rubric.participation + "%";
+        doc.text(rubricText, pageWidth/2, 60, { align: 'center' });
+        // Construir encabezado
+        const headerCells = ["N°LS", "Alm", "Eqp"];
         const cfg = subjectsConfig[currentSubject].parcials[currentPartial];
         cfg.examEvals.forEach(e => headerCells.push(e.name));
-        headerCells.push("Prom. Ex");
+        headerCells.push("Prom.Ex");
         cfg.taskEvals.forEach(e => headerCells.push(e.name));
-        headerCells.push("Prom. Ta");
+        headerCells.push("Prom.Ta");
         cfg.practiceEvals.forEach(e => headerCells.push(e.name));
-        headerCells.push("Prom. Pr", "Extra Ex", "Extra Ta", "Extra Pr", "Extra Parcial", "Extra Total", "Participación", "Faltas", "Deducciones", "Total Parcial", "Firma");
+        headerCells.push("Prom.Pr", "Extra Ex", "Extra Ta", "Extra Pr", "Extra Parc", "Extra Tot", "Part", "Faltas", "Deduc", "Total Parc", "Firma");
         const headers = [headerCells];
-        // Estilos para columnas verdes
-        const greenColumns = ["Prom. Ex", "Prom. Ta", "Prom. Pr", "Total Parcial"];
+        // Calcular ancho de cada columna
+        const colWidth = availableWidth / headerCells.length;
         const colStyles = {};
         for (let i = 0; i < headerCells.length; i++) {
-          if (greenColumns.includes(headerCells[i])) {
-            colStyles[i] = { fillColor: [209, 231, 221] };
-          }
+          colStyles[i] = { cellWidth: colWidth, halign: 'center' };
         }
         const data = [];
         const colCount = headerCells.length;
@@ -1652,22 +1725,22 @@
           for (let i = 0; i < colCount - 1; i++) {
             let cellText = "";
             if (student && partialData) {
-              if (i === headerCells.indexOf("Extra Total")) {
+              if (i === headerCells.indexOf("Extra Tot")) {
                 const extraTotal = (partialData.extraExam * subjectsConfig[currentSubject].rubric.exam/100) +
                                    (partialData.extraTask * subjectsConfig[currentSubject].rubric.task/100) +
                                    (partialData.extraPractice * subjectsConfig[currentSubject].rubric.practice/100) +
                                    partialData.extraParcial;
                 cellText = extraTotal.toFixed(2);
-              } else if (i === headerCells.indexOf("Participación")) {
+              } else if (i === headerCells.indexOf("Part")) {
                 cellText = (partialData.participation || 0).toString();
               } else if (i === headerCells.indexOf("Faltas")) {
                 cellText = (partialData.absences || 0).toString();
-              } else if (i === headerCells.indexOf("Deducciones")) {
+              } else if (i === headerCells.indexOf("Deduc")) {
                 let deductionSum = 0;
                 if (partialData.deductions && Array.isArray(partialData.deductions))
                   deductionSum = partialData.deductions.reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0);
                 cellText = deductionSum.toFixed(2);
-              } else if (i === headerCells.indexOf("Total Parcial")) {
+              } else if (i === headerCells.indexOf("Total Parc")) {
                 cellText = partialData.total ? partialData.total.toFixed(2) : "0.00";
               } else if (i < cells.length) {
                 const input = cells[i].querySelector("input");
@@ -1685,25 +1758,71 @@
             }
             rowData.push(cellText);
           }
-          rowData.push("________________________"); // Columna Firma (línea en blanco)
+          rowData.push("________________________"); // Columna Firma
           data.push(rowData);
         });
-        // Configuración de autoTable para ajustar mejor a A4
+        // AutoTable sin rotación de encabezados
         doc.autoTable({
           head: headers,
           body: data,
           startY: 70,
+          tableWidth: availableWidth,
+          margin: { left: marginLeft, right: marginRight },
           theme: 'grid',
-          margin: { top: 70, bottom: 30, left: 40, right: 40 },
-          styles: { fontSize: 7, cellPadding: 4, halign: 'center', valign: 'middle' },
-          headStyles: { fillColor: [0, 51, 102] },
+          styles: { fontSize: 6, cellPadding: 2, halign: 'center', valign: 'middle' },
+          headStyles: { fillColor: [0, 51, 102], textColor: 255, halign: 'center' },
           columnStyles: colStyles,
+          alternateRowStyles: { fillColor: [240, 240, 240] },
           didDrawPage: function (data) {
             let str = "PDF creado por Sistema de Calificaciones by: Francisco López Velazquez";
             doc.setFontSize(8);
-            doc.text(str, data.settings.margin.left, doc.internal.pageSize.height - 10);
+            doc.text(str, marginLeft, doc.internal.pageSize.getHeight() - 10);
           }
         });
+        // Bloque resumen final para alumnos: solo de la materia actual
+        const summaryData = [];
+        students.filter(s => s.subject === currentSubject).forEach(student => {
+          const partial = student.partials[currentPartial];
+          if (partial && ((partial.deductions && partial.deductions.length > 0) || (student.observations && student.observations.length > 0))) {
+            let dedText = "";
+            if (partial.deductions && partial.deductions.length > 0) {
+              dedText = partial.deductions.map(d => d.date + " – " + d.reason + ": " + d.amount + " pts").join("; ");
+            }
+            let obsText = "";
+            if (student.observations && student.observations.length > 0) {
+              obsText = student.observations.map(o => o.date + " – " + o.text).join("; ");
+            }
+            summaryData.push([student.listNumber, student.name, dedText, obsText]);
+          }
+        });
+        if(summaryData.length > 0 && document.getElementById("toggleSummary").checked){
+          doc.autoTable({
+            head: [["N°LS", "Alumno", "Deducciones", "Observaciones"]],
+            body: summaryData,
+            startY: doc.lastAutoTable.finalY + 20,
+            theme: 'grid',
+            styles: { fontSize: 6, cellPadding: 2, halign: 'left' },
+            headStyles: { fillColor: [0, 51, 102], textColor: 255 }
+          });
+        }
+        // Bloque resumen final para equipos: solo de la materia actual
+        const teamSummaryData = [];
+        teams[currentSubject].forEach(team => {
+          if (team.observations && team.observations.length > 0) {
+            let teamObs = team.observations.map(o => o.date + " – " + o.text).join("; ");
+            teamSummaryData.push([team.name, team.head, teamObs]);
+          }
+        });
+        if(teamSummaryData.length > 0){
+          doc.autoTable({
+            head: [["Equipo", "Encarg.", "Observaciones"]],
+            body: teamSummaryData,
+            startY: doc.lastAutoTable ? doc.lastAutoTable.finalY + 20 :  doc.lastAutoTable.finalY + 20,
+            theme: 'grid',
+            styles: { fontSize: 6, cellPadding: 2, halign: 'left' },
+            headStyles: { fillColor: [0, 51, 102], textColor: 255 }
+          });
+        }
         doc.save("calificaciones_" + subjectsConfig[currentSubject].name + "_parcial_" + currentPartial + ".pdf");
       };
       
@@ -1735,7 +1854,8 @@
       document.getElementById("printGrades").onclick = () => { window.print(); };
       
       /***********************
-       * 30. Funcionalidad para Agregar Equipo (Corregida)
+       * 30. Función para Agregar Equipo
+       * Se usa un setTimeout para asegurar que el contenido del modal se haya insertado.
        ***********************/
       document.getElementById("addTeam").onclick = () => {
         showModal(`<h3>Agregar Equipo</h3>
@@ -1743,27 +1863,29 @@
            <label>Nombre: <input type="text" id="newTeamName"></label><br>
            <label>Encargado: <input type="text" id="newTeamHead"></label><br>
            <button id="saveTeamNew" class="btn">Guardar</button>`);
-        const btn = document.getElementById("saveTeamNew");
-        if (btn) {
-          btn.addEventListener("click", () => {
-            const id = document.getElementById("newTeamId").value.trim();
-            const name = document.getElementById("newTeamName").value.trim();
-            const head = document.getElementById("newTeamHead").value.trim();
-            if (!id || !name || !head) {
-              alert("Complete todos los campos.");
-              return;
-            }
-            if (teams[currentSubject].some(t => t.id.toLowerCase() === id.toLowerCase() || t.name.toLowerCase() === name.toLowerCase())) {
-              alert("Ya existe un equipo con ese ID o nombre en esta materia.");
-              return;
-            }
-            teams[currentSubject].push({ id, name, head, partials: {} });
-            modalOverlay.style.display = "none";
-            buildTeamTable();
-            buildGradeTable();
-            debounceSaveData();
-          });
-        }
+        setTimeout(() => {
+          const btn = document.getElementById("saveTeamNew");
+          if (btn) {
+            btn.addEventListener("click", () => {
+              const id = document.getElementById("newTeamId").value.trim();
+              const name = document.getElementById("newTeamName").value.trim();
+              const head = document.getElementById("newTeamHead").value.trim();
+              if (!id || !name || !head) {
+                alert("Complete todos los campos.");
+                return;
+              }
+              if (teams[currentSubject].some(t => t.id.toLowerCase() === id.toLowerCase() || t.name.toLowerCase() === name.toLowerCase())) {
+                alert("Ya existe un equipo con ese ID o nombre en esta materia.");
+                return;
+              }
+              teams[currentSubject].push({ id, name, head, partials: {} });
+              modalOverlay.style.display = "none";
+              buildTeamTable();
+              buildGradeTable();
+              debounceSaveData();
+            });
+          }
+        }, 100);
       };
       
       /***********************
@@ -1903,14 +2025,6 @@
           debounceSaveData();
         } else { alert("El ID de la materia destino no es válido."); }
       };
-      
-      document.querySelectorAll(".list-cell").forEach(cell => {
-        cell.addEventListener("click", () => {
-          const listNum = cell.innerText.trim();
-          const student = students.find(s => s.listNumber == listNum && s.subject === currentSubject);
-          if (student) { showStudentSummary(student); }
-        });
-      });
       
       /***********************
        * FIN. ¡Todo listo!
